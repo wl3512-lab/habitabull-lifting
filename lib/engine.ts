@@ -287,3 +287,32 @@ export function mergeRebuild(draft: Session | undefined, rebuilt: Session): Sess
     exercises: [...logged, ...rebuilt.exercises.filter((e) => !kept.has(e.exerciseId))],
   };
 }
+
+/**
+ * Every exercise that trains a muscle with the kit on hand, compounds first.
+ *
+ * The generator picks one; the editor needs the whole list so a swap is a real
+ * choice rather than a reroll. Bodyweight is always included: an empty list is
+ * a dead end, and there is always something you can do with no equipment.
+ */
+export function alternativesFor(
+  muscle: Muscle,
+  equipment: Equipment[],
+  exclude: string[] = []
+): Exercise[] {
+  const kit = new Set<Equipment>([...equipment, "bodyweight"]);
+  const skip = new Set(exclude);
+  return EXERCISES.filter((e) => e.primary === muscle && kit.has(e.equipment) && !skip.has(e.id)).sort(
+    (a, b) => Number(b.compound) - Number(a.compound) || a.name.localeCompare(b.name)
+  );
+}
+
+/** The muscles this routine already trains, in order, for grouping the editor. */
+export function musclesIn(routine: Routine): Muscle[] {
+  const seen: Muscle[] = [];
+  for (const e of routine.exercises) {
+    const m = byId(e.exerciseId)?.primary;
+    if (m && !seen.includes(m)) seen.push(m);
+  }
+  return seen;
+}

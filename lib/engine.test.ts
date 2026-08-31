@@ -11,6 +11,8 @@ import {
   streakWeeks,
   restSeconds,
   mergeRebuild,
+  alternativesFor,
+  musclesIn,
 } from "./engine";
 import { byId } from "./exercises";
 import type { Equipment, Session } from "./types";
@@ -362,5 +364,40 @@ describe("mergeRebuild", () => {
   it("does not duplicate a lift that survives the rebuild", () => {
     const same: Session = { ...rebuilt, exercises: [{ exerciseId: "back-squat", sets: [set(false)] }] };
     expect(mergeRebuild(draft, same).exercises.map((e) => e.exerciseId)).toEqual(["back-squat"]);
+  });
+});
+
+describe("alternativesFor", () => {
+  it("returns every option for a muscle, compounds first", () => {
+    const alts = alternativesFor("quads", ALL);
+    expect(alts.length).toBeGreaterThan(1);
+    expect(alts[0].compound).toBe(true);
+    expect(alts.every((e) => e.primary === "quads")).toBe(true);
+  });
+
+  it("respects the kit on hand", () => {
+    for (const e of alternativesFor("chest", ["dumbbell"])) {
+      expect(["dumbbell", "bodyweight"]).toContain(e.equipment);
+    }
+  });
+
+  it("always leaves something to do, even with no equipment", () => {
+    expect(alternativesFor("quads", []).length).toBeGreaterThan(0);
+  });
+
+  it("drops what is already in the session", () => {
+    const all = alternativesFor("back", ALL);
+    const trimmed = alternativesFor("back", ALL, [all[0].id]);
+    expect(trimmed.map((e) => e.id)).not.toContain(all[0].id);
+    expect(trimmed).toHaveLength(all.length - 1);
+  });
+});
+
+describe("musclesIn", () => {
+  it("lists each muscle once, in the order the routine trains them", () => {
+    const [routine] = generateRoutine("new", [1], ALL);
+    const muscles = musclesIn(routine);
+    expect(new Set(muscles).size).toBe(muscles.length);
+    expect(muscles.length).toBeGreaterThan(0);
   });
 });

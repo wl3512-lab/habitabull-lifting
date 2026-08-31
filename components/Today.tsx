@@ -32,6 +32,7 @@ export default function Today({
   onExercise,
   onProfile,
   onSetUpWeek,
+  onEditRoutine,
 }: {
   profile: Profile;
   routine: Routine | null;
@@ -42,6 +43,7 @@ export default function Today({
   onExercise: (id: string) => void;
   onProfile: (p: Profile) => void;
   onSetUpWeek: () => void;
+  onEditRoutine: () => void;
 }) {
   const [note, setNote] = useState("");
   const [asking, setAsking] = useState(false);
@@ -400,7 +402,16 @@ export default function Today({
 
       {routine ? (
         <section className="mt-8">
-          <p className="label text-dim">Today&apos;s lifts</p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="label text-dim">Today&apos;s lifts</p>
+            <button
+              type="button"
+              onClick={onEditRoutine}
+              className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+            >
+              Edit
+            </button>
+          </div>
           <ul className="mt-3 flex flex-col gap-2">
             {routine.exercises.map((e) => {
               const t = nextTarget(e.exerciseId, sessions, profile.level);
