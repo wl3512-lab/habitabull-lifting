@@ -11,6 +11,7 @@ import Onboarding from "@/components/Onboarding";
 import Progress from "@/components/Progress";
 import TabBar, { type Tab } from "@/components/TabBar";
 import Today from "@/components/Today";
+import WeekSetup from "@/components/WeekSetup";
 import {
   buildSession,
   generateRoutine,
@@ -23,7 +24,7 @@ import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/st
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew";
+type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -183,6 +184,24 @@ export default function Page() {
     );
   }
 
+  if (view === "week") {
+    return (
+      <WeekSetup
+        profile={profile}
+        onSave={(p: Profile) => {
+          // A changed week means changed routines; sessions already logged stay.
+          setState((s) => ({
+            ...s,
+            profile: p,
+            routines: generateRoutine(p.level, p.trainingDays, p.equipment),
+          }));
+          setView("today");
+        }}
+        onSkip={() => setView("today")}
+      />
+    );
+  }
+
   if (view === "crew") {
     // Regenerated here rather than on a timer: the month can turn while the
     // app sits open on a phone that never gets closed.
@@ -264,6 +283,7 @@ export default function Page() {
       onConstraints={applyConstraints}
       onExercise={(id) => openExercise(id, "today")}
       onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
+      onSetUpWeek={() => setView("week")}
     />,
     "today"
   );

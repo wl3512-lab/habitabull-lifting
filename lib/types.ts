@@ -1,3 +1,5 @@
+import type { Anchor } from "./schedule";
+
 export type Level = "new" | "returning" | "experienced";
 export type Equipment = "barbell" | "dumbbell" | "machine" | "bodyweight" | "kettlebell";
 export type Muscle = "quads" | "hamstrings" | "glutes" | "chest" | "back" | "shoulders" | "arms" | "core";
@@ -72,9 +74,15 @@ export interface Profile {
    */
   motivation?: string;
   /**
-   * Minutes from midnight. Habit principle 2 (deck p12) is "establish time when
-   * you will do it" — days alone are a preference, a day plus an hour is an
-   * implementation intention, and that distinction is most of why this works.
+   * When in the day, as a routine anchor rather than a clock time. Routine-
+   * anchored cues form habits faster than time-based ones and survive a week
+   * that moves, which is most weeks. Undefined until the schedule is set up,
+   * which happens after the first session, never before it.
+   */
+  anchor?: Anchor;
+  /**
+   * Minutes from midnight. Only set when someone genuinely has a fixed slot and
+   * chose one; otherwise the anchor supplies an hour for the calendar reminder.
    */
   trainingMinute?: number;
   createdAt: string;

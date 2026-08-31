@@ -6,6 +6,7 @@ import { nameOf } from "@/lib/exercises";
 import { nextTarget, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
+import { anchorOf, observedAnchor } from "@/lib/schedule";
 import type { Profile, Routine, Session } from "@/lib/types";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -29,6 +30,7 @@ export default function Today({
   onConstraints,
   onExercise,
   onProfile,
+  onSetUpWeek,
 }: {
   profile: Profile;
   routine: Routine | null;
@@ -38,6 +40,7 @@ export default function Today({
   onConstraints: (c: Constraints) => void;
   onExercise: (id: string) => void;
   onProfile: (p: Profile) => void;
+  onSetUpWeek: () => void;
 }) {
   const [note, setNote] = useState("");
   const [asking, setAsking] = useState(false);
@@ -175,6 +178,13 @@ export default function Today({
       0
     ) ?? 0;
 
+  /**
+   * Only when there is a real pattern and it disagrees with what she chose.
+   * Silence is the right output most of the time.
+   */
+  const seen = observedAnchor(sessions);
+  const drift = seen && profile.anchor && seen.anchor !== profile.anchor ? seen : null;
+
   // The next day she said she would train, named rather than counted.
   const nextDayLabel = (() => {
     const days = profile.trainingDays;
@@ -228,6 +238,47 @@ export default function Today({
         </h1>
         {subtitle && <p className="mt-1.5 text-[17px] text-dim">{subtitle}</p>}
       </header>
+
+      {/*
+        What she actually does, versus what she said she would. Stated
+        intentions and real behaviour drift, and the honest move is to believe
+        the behaviour — the timestamps were already there and nobody had to be
+        asked twice. Offered, never applied silently: it is still her plan.
+      */}
+      {drift && (
+        <button
+          type="button"
+          onClick={() => onProfile({ ...profile, anchor: drift.anchor, trainingMinute: anchorOf(drift.anchor).minute })}
+          className="mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
+        >
+          <span className="label block text-cyan">Noticed</span>
+          <span className="head mt-1.5 block text-[19px] text-fg">
+            You train in the {anchorOf(drift.anchor).label.toLowerCase()}, not {profile.anchor ? anchorOf(profile.anchor).label.toLowerCase() : "when you planned"}.
+          </span>
+          <span className="mt-0.5 block text-[15px] text-dim">
+            {drift.count} of your last {drift.total}. Make it the plan?
+          </span>
+        </button>
+      )}
+
+      {/*
+        The schedule is offered after the first session, not at signup. Asking a
+        beginner which days they will train before they have trained once asks
+        for a commitment they have no basis to make.
+      */}
+      {done.length > 0 && !profile.anchor && profile.trainingMinute === undefined && (
+        <button
+          type="button"
+          onClick={onSetUpWeek}
+          className="mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
+        >
+          <span className="label block text-cyan">Now the useful bit</span>
+          <span className="head mt-1.5 block text-[19px] text-fg">Set up your week</span>
+          <span className="mt-0.5 block text-[15px] text-dim">
+            You have done one. Pick the days you can actually keep.
+          </span>
+        </button>
+      )}
 
       {/* After a gap, their reason goes above the action, not below it. */}
       {mood === "return" && motivationCard && <div className="mt-6">{motivationCard}</div>}
