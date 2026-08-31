@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pill } from "./ui";
-import { alternativesFor, SHORT_DAYS, startingWeight } from "@/lib/engine";
+import { alternativesFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { byId, nameOf } from "@/lib/exercises";
 import type { Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
 
@@ -107,6 +107,9 @@ export default function RoutineEditor({
   };
 
   const used = routine.exercises.map((e) => e.exerciseId);
+  const suggestions = suggestFrom(profile.favourites ?? [], profile.equipment).filter(
+    (sg) => !used.includes(sg.tryThis)
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
@@ -151,7 +154,9 @@ export default function RoutineEditor({
         {routine.exercises.map((e) => {
           const meta = byId(e.exerciseId);
           const open = openId === e.exerciseId;
-          const alts = meta ? alternativesFor(meta.primary, profile.equipment, used) : [];
+          const alts = meta
+            ? alternativesFor(meta.primary, profile.equipment, used, profile.favourites ?? [])
+            : [];
           return (
             <li key={e.exerciseId} className="rounded-2xl bg-card">
               <button
@@ -251,7 +256,7 @@ export default function RoutineEditor({
             </button>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {alternativesFor(adding, profile.equipment, used).map((a) => (
+            {alternativesFor(adding, profile.equipment, used, profile.favourites ?? []).map((a) => (
               <button
                 key={a.id}
                 type="button"
@@ -278,6 +283,28 @@ export default function RoutineEditor({
               </button>
             ))}
           </div>
+          {suggestions.length > 0 && (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="label text-dim">Because of what you starred</p>
+              <ul className="mt-2.5 flex flex-col gap-2">
+                {suggestions.map((sg) => (
+                  <li key={sg.tryThis}>
+                    <button
+                      type="button"
+                      onClick={() => add(sg.tryThis)}
+                      className="w-full rounded-xl bg-raise/50 p-3.5 text-left transition-colors hover:bg-raise"
+                    >
+                      <span className="head block text-[17px] text-fg">{nameOf(sg.tryThis)}</span>
+                      <span className="block text-[15px] text-dim">
+                        You star {nameOf(sg.because)} — same muscle, different feel.
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {profile.level === "new" && (
             <p className="mt-3 text-[15px] text-dim">
               Your days are full body on purpose. Hitting everything twice a week beats a

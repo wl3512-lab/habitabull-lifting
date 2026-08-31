@@ -176,6 +176,8 @@ export default function Page() {
       <ExerciseInfo
         exerciseId={detail.id}
         sessions={sessions}
+        profile={profile}
+        onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
         onBack={() => setView(detail.from)}
       />
     );

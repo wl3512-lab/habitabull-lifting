@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Pill } from "./ui";
 import { byId } from "@/lib/exercises";
-import type { Session } from "@/lib/types";
+import type { Profile, Session } from "@/lib/types";
 
 /**
  * The bull coach moment — the deck's "Workout tutorial" screen, which answered
@@ -18,9 +18,13 @@ import type { Session } from "@/lib/types";
  */
 export default function ExerciseInfo({
   exerciseId,
+  profile,
+  onProfile,
   onBack,
 }: {
   exerciseId: string;
+  profile: Profile;
+  onProfile: (p: Profile) => void;
   /** Accepted so the caller stays uniform; the coach screen shows no history —
       the Figma keeps personal bests on the logging screen where they're used. */
   sessions?: Session[];
@@ -28,6 +32,7 @@ export default function ExerciseInfo({
 }) {
   const [demoAsked, setDemoAsked] = useState(false);
   const ex = byId(exerciseId);
+  const starred = (profile.favourites ?? []).includes(exerciseId);
 
   if (!ex) {
     return (
@@ -44,13 +49,37 @@ export default function ExerciseInfo({
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-start justify-between gap-4">
         <p className="label text-cyan">Form cue</p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
-        >
-          Back
-        </button>
+        <div className="-mt-0.5 flex shrink-0 items-center gap-1">
+          {/*
+            Starring a lift is a preference, not a rule. It wins a coin toss
+            between two exercises that would both do the job, and never
+            overrides the balance of a day.
+          */}
+          <button
+            type="button"
+            onClick={() => {
+              const now = profile.favourites ?? [];
+              onProfile({
+                ...profile,
+                favourites: starred ? now.filter((x) => x !== exerciseId) : [...now, exerciseId],
+              });
+            }}
+            aria-pressed={starred}
+            aria-label={starred ? `Unstar ${ex.name}` : `Star ${ex.name}`}
+            className={`grid h-11 w-11 place-items-center rounded-full text-[19px] transition-colors ${
+              starred ? "text-cyan" : "text-dim hover:text-fg"
+            }`}
+          >
+            {starred ? "★" : "☆"}
+          </button>
+          <button
+            type="button"
+            onClick={onBack}
+            className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          >
+            Back
+          </button>
+        </div>
       </div>
 
       <h1 className="statement mt-2 text-[42px] text-fg">{ex.name}</h1>

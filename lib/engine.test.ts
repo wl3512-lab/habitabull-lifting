@@ -14,6 +14,7 @@ import {
   alternativesFor,
   musclesIn,
   repsFor,
+  suggestFrom,
 } from "./engine";
 import { byId } from "./exercises";
 import type { Equipment, Session } from "./types";
@@ -482,5 +483,53 @@ describe("repsFor — one source of truth", () => {
       const target = nextTarget(planned.exerciseId, [], "new");
       expect(target.reps, `${planned.exerciseId} disagrees`).toBe(planned.reps);
     }
+  });
+});
+
+describe("favourites", () => {
+  const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
+
+  it("breaks a tie toward a starred lift", () => {
+    const plain = pickExercise("quads", KIT, new Set());
+    const starred = pickExercise("quads", KIT, new Set(), ["goblet-squat"]);
+    expect(plain?.id).toBe("back-squat");
+    expect(starred?.id).toBe("goblet-squat");
+  });
+
+  it("does not invent a lift the kit cannot do", () => {
+    const picked = pickExercise("chest", ["bodyweight"], new Set(), ["bench-press"]);
+    expect(picked?.equipment).toBe("bodyweight");
+  });
+
+  it("puts starred lifts first in the swap list without dropping the rest", () => {
+    const all = alternativesFor("quads", KIT);
+    const sorted = alternativesFor("quads", KIT, [], ["bodyweight-squat"]);
+    expect(sorted[0].id).toBe("bodyweight-squat");
+    expect(sorted).toHaveLength(all.length);
+  });
+
+  it("feeds the generated week", () => {
+    const [day] = generateRoutine("new", [1], KIT, ["goblet-squat"]);
+    expect(day.exercises.map((e) => e.exerciseId)).toContain("goblet-squat");
+  });
+
+  it("suggests a different lift for the same muscle", () => {
+    const [s] = suggestFrom(["back-squat"], KIT);
+    expect(s.because).toBe("back-squat");
+    expect(s.tryThis).not.toBe("back-squat");
+    expect(byId(s.tryThis)!.primary).toBe("quads");
+  });
+
+  it("never suggests something already starred", () => {
+    const out = suggestFrom(["back-squat", "goblet-squat"], KIT);
+    for (const s of out) expect(["back-squat", "goblet-squat"]).not.toContain(s.tryThis);
+  });
+
+  it("says nothing when there is no real alternative", () => {
+    expect(suggestFrom(["plank"], ["bodyweight"])).toEqual([]);
+  });
+
+  it("ignores a favourite that is not a real lift", () => {
+    expect(suggestFrom(["not-a-lift"], KIT)).toEqual([]);
   });
 });

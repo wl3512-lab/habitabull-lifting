@@ -87,6 +87,13 @@ export interface Profile {
    */
   motivation?: string;
   /**
+   * Lifts she has starred. From the 2023 Miro board, which asked to "give
+   * suggested exercises based on user's favorite exercises" and never got
+   * built. A favourite is a preference, not a rule: it wins a coin toss when
+   * two lifts train the same muscle, and never overrides the balance of a day.
+   */
+  favourites?: string[];
+  /**
    * When in the day, as a routine anchor rather than a clock time. Routine-
    * anchored cues form habits faster than time-based ones and survive a week
    * that moves, which is most weeks. Undefined until the schedule is set up,

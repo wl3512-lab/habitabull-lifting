@@ -62,13 +62,24 @@ export function roundToIncrement(weight: number, increment: number): number {
 }
 
 /** Pick the best available exercise for a muscle given the user's equipment. */
-export function pickExercise(muscle: Muscle, equipment: Equipment[], exclude: Set<string>): Exercise | null {
+export function pickExercise(
+  muscle: Muscle,
+  equipment: Equipment[],
+  exclude: Set<string>,
+  favourites: string[] = []
+): Exercise | null {
   const usable = EXERCISES.filter(
     (e) => e.primary === muscle && equipment.includes(e.equipment) && !exclude.has(e.id)
   );
   if (usable.length === 0) return null;
-  // Prefer compounds: they carry the session and progress most reliably.
-  usable.sort((a, b) => Number(b.compound) - Number(a.compound));
+  const starred = new Set(favourites);
+  // A starred lift wins between two that would both do the job. Compounds still
+  // come first otherwise, because they carry the session and progress cleanly.
+  usable.sort(
+    (a, b) =>
+      Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
+      Number(b.compound) - Number(a.compound)
+  );
   return usable[0];
 }
 
@@ -83,7 +94,12 @@ export function startingWeight(ex: Exercise, level: Level): number {
  * Build a week of routines. Deterministic: same inputs always give the same
  * plan, which matters because users must be able to trust it.
  */
-export function generateRoutine(level: Level, trainingDays: number[], equipment: Equipment[]): Routine[] {
+export function generateRoutine(
+  level: Level,
+  trainingDays: number[],
+  equipment: Equipment[],
+  favourites: string[] = []
+): Routine[] {
   const days = [...new Set(trainingDays)].sort((a, b) => a - b);
   if (days.length === 0) return [];
   const eq = equipment.length ? equipment : (["bodyweight"] as Equipment[]);
@@ -92,7 +108,9 @@ export function generateRoutine(level: Level, trainingDays: number[], equipment:
     const used = new Set<string>();
     const exercises: PlannedExercise[] = [];
     for (const m of muscles) {
-      const ex = pickExercise(m, eq, used) ?? pickExercise(m, ["bodyweight"], used);
+      const ex =
+        pickExercise(m, eq, used, favourites) ??
+        pickExercise(m, ["bodyweight"], used, favourites);
       if (!ex) continue;
       used.add(ex.id);
       exercises.push({
@@ -230,7 +248,8 @@ export function rebuildDay(
   routine: Routine,
   level: Level,
   equipment: Equipment[],
-  avoid: Muscle[] = []
+  avoid: Muscle[] = [],
+  favourites: string[] = []
 ): Routine {
   const eq = equipment.length ? equipment : (["bodyweight"] as Equipment[]);
   const skip = new Set(avoid);
@@ -241,7 +260,7 @@ export function rebuildDay(
   const used = new Set<string>();
   const exercises: PlannedExercise[] = [];
   for (const m of muscles) {
-    const ex = pickExercise(m, eq, used) ?? pickExercise(m, ["bodyweight"], used);
+    const ex = pickExercise(m, eq, used, favourites) ?? pickExercise(m, ["bodyweight"], used, favourites);
     if (!ex) continue;
     used.add(ex.id);
     exercises.push({
@@ -326,13 +345,41 @@ export function mergeRebuild(draft: Session | undefined, rebuilt: Session): Sess
 export function alternativesFor(
   muscle: Muscle,
   equipment: Equipment[],
-  exclude: string[] = []
+  exclude: string[] = [],
+  favourites: string[] = []
 ): Exercise[] {
   const kit = new Set<Equipment>([...equipment, "bodyweight"]);
   const skip = new Set(exclude);
+  const starred = new Set(favourites);
   return EXERCISES.filter((e) => e.primary === muscle && kit.has(e.equipment) && !skip.has(e.id)).sort(
-    (a, b) => Number(b.compound) - Number(a.compound) || a.name.localeCompare(b.name)
+    (a, b) =>
+      Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
+      Number(b.compound) - Number(a.compound) ||
+      a.name.localeCompare(b.name)
   );
+}
+
+/**
+ * "Because you favourite Back Squat — try Front Squat." One suggestion per
+ * starred lift: a different exercise for the same muscle, within the kit she
+ * has. Nothing is suggested when there is no genuine alternative, because a
+ * recommendation with nothing behind it is worse than no recommendation.
+ */
+export function suggestFrom(
+  favourites: string[],
+  equipment: Equipment[]
+): { because: string; tryThis: string }[] {
+  const out: { because: string; tryThis: string }[] = [];
+  const seen = new Set(favourites);
+  for (const id of favourites) {
+    const ex = byId(id);
+    if (!ex) continue;
+    const alt = alternativesFor(ex.primary, equipment, [...seen]).find(Boolean);
+    if (!alt) continue;
+    seen.add(alt.id);
+    out.push({ because: id, tryThis: alt.id });
+  }
+  return out;
 }
 
 /** The muscles this routine already trains, in order, for grouping the editor. */
