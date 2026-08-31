@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
+import DayDetail from "@/components/DayDetail";
 import Crew from "@/components/Crew";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
@@ -25,7 +27,7 @@ import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/st
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine";
+type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -35,6 +37,7 @@ export default function Page() {
   const [today, setToday] = useState(() => todayISO());
   // Where an exercise detail screen returns to, so it can open from anywhere.
   const [detail, setDetail] = useState<{ id: string; from: View } | null>(null);
+  const [dayOpen, setDayOpen] = useState<string | null>(null);
 
   useEffect(() => {
     setState(load());
@@ -96,7 +99,10 @@ export default function Page() {
     if (!draft && routine) {
       setState((s) => ({
         ...s,
-        sessions: upsertSession(s.sessions, buildSession(routine, s.sessions, profile.level, today)),
+        sessions: upsertSession(s.sessions, {
+          ...buildSession(routine, s.sessions, profile.level, today),
+          startedAt: new Date().toISOString(),
+        }),
       }));
     }
     setView("log");
@@ -185,6 +191,36 @@ export default function Page() {
     );
   }
 
+  if (view === "after") {
+    const finished = sessionFor(sessions, today);
+    if (finished) {
+      return (
+        <AfterWorkout
+          session={finished}
+          records={records}
+          onSave={(note?: string) => {
+            setState((s) => ({
+              ...s,
+              sessions: upsertSession(s.sessions, { ...finished, note }),
+            }));
+            setView("today");
+          }}
+          onSkip={() => setView("today")}
+        />
+      );
+    }
+  }
+
+  if (view === "day" && dayOpen) {
+    return (
+      <DayDetail
+        date={dayOpen}
+        session={sessions.find((s) => s.date === dayOpen)}
+        onBack={() => setView("calendar")}
+      />
+    );
+  }
+
   if (view === "routine") {
     return (
       <RoutineEditor
@@ -233,7 +269,17 @@ export default function Page() {
   }
 
   if (view === "calendar") {
-    return placed(<Calendar profile={profile} sessions={sessions} />, "calendar");
+    return placed(
+      <Calendar
+        profile={profile}
+        sessions={sessions}
+        onOpenDay={(d: string) => {
+          setDayOpen(d);
+          setView("day");
+        }}
+      />,
+      "calendar"
+    );
   }
 
   if (view === "goal") {
@@ -283,6 +329,7 @@ export default function Page() {
           onHome={() => setView("today")}
           offerGoal={!goal && !state.goalDismissed}
           onSetGoal={() => setView("goal")}
+          onAddDetail={() => setView("after")}
         />
       );
     }

@@ -82,9 +82,11 @@ function Thumb({
 export default function Calendar({
   profile,
   sessions,
+  onOpenDay,
 }: {
   profile: Profile;
   sessions: Session[];
+  onOpenDay: (date: string) => void;
 }) {
   const today = new Date();
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -223,7 +225,14 @@ export default function Calendar({
                 </div>
               ))}
               {rows.flat().map((c, i) => (
-                <div key={c.iso ?? `pad-${i}`} className="flex flex-col items-center py-0.5">
+                <button
+                  key={c.iso ?? `pad-${i}`}
+                  type="button"
+                  disabled={!c.iso}
+                  onClick={() => c.iso && onOpenDay(c.iso)}
+                  aria-label={c.iso ? `${c.day} ${MONTHS[month]}${c.trained ? ", trained" : ""}` : undefined}
+                  className="flex flex-col items-center py-0.5"
+                >
                   <span
                     className={`grid h-9 w-9 place-items-center rounded-full text-[15px] ${
                       c.trained
@@ -243,7 +252,7 @@ export default function Calendar({
                     aria-hidden
                     className={`mt-0.5 h-1 w-1 rounded-full ${c.hasPhoto ? "bg-cyan" : "bg-transparent"}`}
                   />
-                </div>
+                </button>
               ))}
             </div>
 

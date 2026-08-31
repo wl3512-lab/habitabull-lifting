@@ -55,7 +55,15 @@ export interface Session {
   date: string;
   label: string;
   exercises: LoggedExercise[];
+  /** Set when logging opens, so the summary can state a real duration. */
+  startedAt?: string;
   completedAt?: string;
+  /**
+   * Her own words about the session. The deck asked for it twice (p29, p30) and
+   * Ryder keeps a journal "because he can write anything he wants" — so it is a
+   * free field, never a mood picker or a set of tags.
+   */
+  note?: string;
 }
 
 export interface Profile {

@@ -25,6 +25,7 @@ export default function Finished({
   onHome,
   offerGoal,
   onSetGoal,
+  onAddDetail,
 }: {
   session: Session;
   sessions: Session[];
@@ -34,6 +35,7 @@ export default function Finished({
   /** Goals are offered here, after a session exists — never during setup. */
   offerGoal: boolean;
   onSetGoal: () => void;
+  onAddDetail: () => void;
 }) {
   const setsDone = session.exercises.reduce(
     (n, e) => n + e.sets.filter((s) => s.done).length,
@@ -98,6 +100,13 @@ export default function Finished({
             <Pill variant="onOrange" onClick={onHome}>
               Keep going
             </Pill>
+            <button
+              type="button"
+              onClick={onAddDetail}
+              className="head tap mt-2.5 block w-full text-center text-[15px] text-ground/80 transition-opacity hover:opacity-100"
+            >
+              Add a note or photo
+            </button>
             {offerGoal && (
               <button
                 type="button"
@@ -152,6 +161,13 @@ export default function Finished({
 
       <div className="mt-auto pt-10">
         <Pill onClick={onHome}>Done</Pill>
+        <button
+          type="button"
+          onClick={onAddDetail}
+          className="head tap mt-2.5 block w-full text-center text-[15px] text-cyan transition-opacity hover:opacity-70"
+        >
+          Add a note or photo
+        </button>
         {offerGoal && (
           <button
             type="button"
