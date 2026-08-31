@@ -1,0 +1,292 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
+import AfterWorkout from "@/components/AfterWorkout";
+import Calendar from "@/components/Calendar";
+import Crew from "@/components/Crew";
+import DayDetail from "@/components/DayDetail";
+import ExerciseInfo from "@/components/ExerciseInfo";
+import Finished from "@/components/Finished";
+import GoalScreen from "@/components/GoalScreen";
+import LogSession from "@/components/LogSession";
+import Onboarding from "@/components/Onboarding";
+import Progress from "@/components/Progress";
+import RestTimer from "@/components/RestTimer";
+import RoutineEditor from "@/components/RoutineEditor";
+import TabBar from "@/components/TabBar";
+import Today from "@/components/Today";
+import WeekSetup from "@/components/WeekSetup";
+import { challengeFor } from "@/lib/crew";
+import * as f from "./fixtures";
+
+/**
+ * Every screen at once, on one page, with no flow to walk through.
+ *
+ * These are the real components rendered against stand-in data, not exported
+ * images — so the gallery cannot drift out of date the way a folder of
+ * screenshots does. Each frame is clipped to 390 × 844, which is the artboard
+ * and the only size the app is designed at.
+ */
+
+const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+  .toISOString()
+  .slice(0, 10);
+
+function Frame({
+  n,
+  name,
+  note,
+  tab,
+  children,
+}: {
+  n: string;
+  name: string;
+  note: string;
+  /** Screens that sit at the top level carry the bar; modes do not. */
+  tab?: "today" | "calendar" | "progress" | "crew";
+  children: ReactNode;
+}) {
+  return (
+    <figure className="flex w-[390px] shrink-0 flex-col">
+      <figcaption className="mb-2.5">
+        <p className="label text-cyan">
+          {n} · {name}
+        </p>
+        <p className="mt-1 text-[14px] leading-snug text-dim">{note}</p>
+      </figcaption>
+      <div className="relative h-[844px] w-[390px] overflow-hidden rounded-[28px] bg-ground shadow-[0_0_0_1px_var(--color-line),0_24px_48px_-16px_rgb(0_0_0/0.6)]">
+        <div className="flex h-full w-full flex-col overflow-y-auto no-scrollbar">
+          {children}
+          {tab && <TabBar active={tab} onChange={f.noop} />}
+        </div>
+      </div>
+    </figure>
+  );
+}
+
+function Group({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
+  return (
+    <section className="mt-14 first:mt-0">
+      <h2 className="statement text-[34px] text-fg">{title}</h2>
+      <p className="mt-1 text-[17px] text-dim">{sub}</p>
+      <div className="mt-6 flex flex-wrap gap-x-8 gap-y-12">{children}</div>
+    </section>
+  );
+}
+
+export default function Frames() {
+  const [scale, setScale] = useState(1);
+  const challenge = challengeFor(f.profile, undefined);
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-auto bg-deep">
+      <div className="mx-auto max-w-[1600px] px-8 py-10">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="label text-cyan">HabitaBull</p>
+            <h1 className="statement mt-2 text-[52px] text-fg">Every screen at once</h1>
+            <p className="mt-1.5 max-w-[62ch] text-[17px] text-dim">
+              The real components against stand-in data — not exported images, so this cannot
+              drift out of date. Each frame is clipped to 390 × 844, the only size the app is
+              designed at. Screens scroll inside their own frame.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="label text-dim">Size</span>
+            {[0.6, 0.8, 1].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setScale(s)}
+                aria-pressed={scale === s}
+                className={`head h-11 rounded-full border px-4 text-[15px] transition-colors ${
+                  scale === s
+                    ? "border-cyan bg-cyan text-ground"
+                    : "border-line-strong text-dim hover:border-fg"
+                }`}
+              >
+                {Math.round(s * 100)}%
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <div
+          className="mt-10 origin-top-left"
+          style={{ zoom: scale }}
+        >
+          <Group title="Setup" sub="Two screens, then you lift.">
+            <Frame n="00" name="Welcome" note="The 2023 cyan field, kept for exactly one screen. Dark-on-cyan is 8:1; the original white wordmark was 2.23:1.">
+              <Onboarding onDone={f.noop} />
+            </Frame>
+            <Frame n="03" name="Your week" note="After the first session, never before. Anchors rather than clock times — 106 days to form a habit against 154.">
+              <WeekSetup profile={f.profile} onSave={f.noop} onSkip={f.noop} />
+            </Frame>
+          </Group>
+
+          <Group title="The loop" sub="One action per screen, in the same place every time.">
+            <Frame n="01" name="Today" tab="today" note="“Full body A”, not “Monday”. A weekday is not a description of a workout.">
+              <Today
+                profile={f.profile}
+                routine={f.routines[0]}
+                sessions={f.sessions}
+                today={today}
+                goal={f.goal}
+                onStart={f.noop}
+                onConstraints={f.noop}
+                onExercise={f.noop}
+                onProfile={f.noop}
+                onSetUpWeek={f.noop}
+                onEditRoutine={f.noop}
+                onGoal={f.noop}
+              />
+            </Frame>
+            <Frame n="04" name="Logging" note="56px steppers, one orange button, finished sets as a bar you can tap to correct.">
+              <LogSession
+                session={f.draft}
+                history={f.sessions}
+                onChange={f.noop}
+                onFinish={f.noop}
+                onExit={f.noop}
+                onExercise={f.noop}
+              />
+            </Frame>
+            <Frame n="05" name="Rest" note="The 45 lb plate from the 2023 app icon, doing a job. It never nags and never advances on its own.">
+              <RestTimer
+                seconds={120}
+                nextExerciseId="deadlift"
+                nextWeight={185}
+                nextReps={5}
+                onDone={f.noop}
+                onEnd={f.noop}
+              />
+            </Frame>
+            <Frame n="06" name="Personal record" note="The whole app inverts to orange. No confetti and no badge — the inversion is the celebration.">
+              <Finished
+                session={{
+                  ...f.lastSession,
+                  exercises: [
+                    { exerciseId: "back-squat", sets: [{ weight: 150, reps: 6, done: true }] },
+                  ],
+                }}
+                sessions={f.sessions}
+                records={["back-squat"]}
+                onHome={f.noop}
+                offerGoal={false}
+                onSetGoal={f.noop}
+                onAddDetail={f.noop}
+              />
+            </Frame>
+            <Frame n="09" name="Bull coach" note="The one screen where the mascot does literal work: he speaks the cue rather than standing next to it.">
+              <ExerciseInfo
+                exerciseId="back-squat"
+                profile={f.profile}
+                onProfile={f.noop}
+                onBack={f.noop}
+              />
+            </Frame>
+          </Group>
+
+          <Group title="Coming back" sub="The part every other app skips.">
+            <Frame n="01d" name="After a gap" tab="today" note="Her own words move above the primary action, and gain one line: “Still true. The gap does not undo it.”">
+              <Today
+                profile={f.profile}
+                routine={f.routines[0]}
+                sessions={f.lapsedSessions}
+                today={today}
+                goal={null}
+                onStart={f.noop}
+                onConstraints={f.noop}
+                onExercise={f.noop}
+                onProfile={f.noop}
+                onSetUpWeek={f.noop}
+                onEditRoutine={f.noop}
+                onGoal={f.noop}
+              />
+            </Frame>
+            <Frame n="01c" name="Learned" tab="today" note="Behaviour beats intention. She says “after work”; the timestamps say otherwise, so it offers the correction.">
+              <Today
+                profile={f.driftProfile}
+                routine={f.routines[0]}
+                sessions={f.sessions}
+                today={today}
+                goal={null}
+                onStart={f.noop}
+                onConstraints={f.noop}
+                onExercise={f.noop}
+                onProfile={f.noop}
+                onSetUpWeek={f.noop}
+                onEditRoutine={f.noop}
+                onGoal={f.noop}
+              />
+            </Frame>
+            <Frame n="16" name="After the workout" note="Optional and one tap away. The celebration is never gated behind a form.">
+              <AfterWorkout
+                session={{ ...f.lastSession, note: "Felt strong. Go up 5 lb next time." }}
+                records={["back-squat"]}
+                onSave={f.noop}
+                onSkip={f.noop}
+              />
+            </Frame>
+          </Group>
+
+          <Group title="The record" sub="Progress you can see, without a score attached to it.">
+            <Frame n="08" name="Progress" tab="progress" note="Missed days drawn as absence, never as a red mark. Comebacks get their own colour and their own counter.">
+              <Progress
+                sessions={f.sessions}
+                goal={f.goal}
+                onGoal={f.noop}
+                state={f.state}
+                onImport={f.noop}
+              />
+            </Frame>
+            <Frame n="11" name="Calendar" tab="calendar" note="Weeks, not days. The Figma's “you're on fire” was cut — PRODUCT.md bans hustle language by name.">
+              <Calendar profile={f.profile} sessions={f.sessions} onOpenDay={f.noop} />
+            </Frame>
+            <Frame n="17" name="Day detail" note="What you lifted, what you wrote, what you looked like. A rest day says so rather than apologising.">
+              <DayDetail
+                date={f.lastSession.date}
+                session={{ ...f.lastSession, note: "Felt strong. Bar speed was good on the last set." }}
+                onBack={f.noop}
+              />
+            </Frame>
+            <Frame n="07" name="Goal" note="One lift, one number, one date. Measured from where you started, so a slow week never subtracts.">
+              <GoalScreen
+                goal={f.goal}
+                sessions={f.sessions}
+                routines={f.routines}
+                onSave={f.noop}
+                onClear={f.noop}
+                onBack={f.noop}
+              />
+            </Frame>
+          </Group>
+
+          <Group title="Control" sub="Yours to change, and honest about what it does not have.">
+            <Frame n="14" name="Edit the week" note="The deck's second journey. Until this existed, a plan you disagreed with was a plan you were stuck with.">
+              <RoutineEditor
+                profile={f.profile}
+                routines={f.routines}
+                onSave={f.noop}
+                onBack={f.noop}
+              />
+            </Frame>
+            <Frame n="10" name="Crew" tab="crew" note="A target, not a ranking, and no invented people. Beginners quit leaderboards, not gyms.">
+              <Crew
+                profile={f.profile}
+                sessions={f.sessions}
+                challenge={challenge}
+                onChallenge={f.noop}
+              />
+            </Frame>
+          </Group>
+
+          <p className="mt-16 max-w-[70ch] text-[15px] text-dim">
+            Photos are stored per browser, so the calendar and day-detail frames show their
+            empty photo state here unless you have added some in this browser.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
