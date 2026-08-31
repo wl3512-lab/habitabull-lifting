@@ -1,4 +1,5 @@
 import { EXERCISES, byId } from "./exercises";
+import { templateOf, defaultTemplates, type TemplateId } from "./templates";
 import type { Equipment, Exercise, Goal, Level, Muscle, PlannedExercise, Routine, Session } from "./types";
 
 /**
@@ -98,19 +99,29 @@ export function generateRoutine(
   level: Level,
   trainingDays: number[],
   equipment: Equipment[],
-  favourites: string[] = []
+  favourites: string[] = [],
+  templates?: TemplateId[]
 ): Routine[] {
   const days = [...new Set(trainingDays)].sort((a, b) => a - b);
   if (days.length === 0) return [];
   const eq = equipment.length ? equipment : (["bodyweight"] as Equipment[]);
+  const chosen = templates?.length ? templates : defaultTemplates(days.length);
   return days.map((day, i) => {
-    const muscles = FULL_BODY[i % FULL_BODY.length];
+    const tpl = templateOf(chosen[i % chosen.length]);
+    // Full body still alternates its slots so two sessions are never identical;
+    // a named day is the same shape every time, which is the point of naming it.
+    const muscles =
+      tpl.id === "full-body" ? FULL_BODY[i % FULL_BODY.length] : tpl.muscles;
+    const circuit = tpl.style === "circuit";
     const used = new Set<string>();
     const exercises: PlannedExercise[] = [];
     for (const m of muscles) {
-      const ex =
-        pickExercise(m, eq, used, favourites) ??
-        pickExercise(m, ["bodyweight"], used, favourites);
+      // A circuit wants things you can start immediately, so bodyweight first.
+      const ex = circuit
+        ? pickExercise(m, ["bodyweight"], used, favourites) ??
+          pickExercise(m, eq, used, favourites)
+        : pickExercise(m, eq, used, favourites) ??
+          pickExercise(m, ["bodyweight"], used, favourites);
       if (!ex) continue;
       used.add(ex.id);
       exercises.push({
@@ -119,11 +130,13 @@ export function generateRoutine(
         // Compounds carry the session and are trained heavier and lower; the
         // accessories are where reps live. A beginner deadlifting 3×10 is the
         // clearest sign a generator was not paying attention.
-        reps: repsFor(ex, level),
-        weight: startingWeight(ex, level),
+        reps: circuit ? Math.max(15, repsFor(ex, level) * 2) : repsFor(ex, level),
+        weight: circuit ? 0 : startingWeight(ex, level),
       });
     }
-    return { day, label: SESSION_LABELS[i % SESSION_LABELS.length], exercises };
+    const label =
+      tpl.id === "full-body" ? SESSION_LABELS[i % SESSION_LABELS.length] : tpl.label;
+    return { day, label, template: tpl.id, exercises };
   });
 }
 

@@ -448,6 +448,19 @@ export default function Today({
 
       {routine ? (
         <section className="mt-8">
+          {!profile.planChosen && (
+            <button
+              type="button"
+              onClick={onEditRoutine}
+              className="mb-3 block w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
+            >
+              <span className="label block text-cyan">Before you start</span>
+              <span className="head mt-1.5 block text-[19px] text-fg">Name your days</span>
+              <span className="mt-0.5 block text-[15px] text-dim">
+                Leg day, push day, cardio — or leave it full body, which is what the app picked.
+              </span>
+            </button>
+          )}
           <div className="flex items-baseline justify-between gap-3">
             <p className="label text-dim">Today&apos;s lifts</p>
             <button

@@ -229,7 +229,13 @@ export default function Page() {
         profile={profile}
         routines={routines}
         onSave={(r: Routine[]) => {
-          setState((s) => ({ ...s, routines: r }));
+          // Saving the plan is the moment she has actually chosen it, so the
+          // first-run prompt retires.
+          setState((s) => ({
+            ...s,
+            routines: r,
+            profile: s.profile ? { ...s.profile, planChosen: true } : s.profile,
+          }));
           setView("today");
         }}
         onBack={() => setView("today")}

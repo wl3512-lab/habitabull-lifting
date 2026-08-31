@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Pill } from "./ui";
-import { alternativesFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
+import { alternativesFor, generateRoutine, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
+import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
 import { byId, nameOf } from "@/lib/exercises";
 import type { Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
 
@@ -106,6 +107,22 @@ export default function RoutineEditor({
     setOpenId(id);
   };
 
+  /** Changing the day type rebuilds that day from the template. */
+  function setTemplate(id: TemplateId) {
+    const [rebuilt] = generateRoutine(
+      profile.level,
+      [routine.day],
+      profile.equipment,
+      profile.favourites ?? [],
+      [id]
+    );
+    if (!rebuilt) return;
+    setDraft(draft.map((r, i) => (i === dayIndex ? { ...rebuilt, day: r.day } : r)));
+    setOpenId(null);
+    setAdding(null);
+  }
+
+  const thorough = coversTwiceWeekly(draft.map((r) => r.template ?? "full-body"));
   const used = routine.exercises.map((e) => e.exerciseId);
   const suggestions = suggestFrom(profile.favourites ?? [], profile.equipment).filter(
     (sg) => !used.includes(sg.tryThis)
@@ -125,6 +142,7 @@ export default function RoutineEditor({
       </div>
 
       <h1 className="statement mt-2 text-[44px] text-fg">{FULL[routine.day]}</h1>
+      <p className="mt-1 text-[17px] text-dim">{templateOf(routine.template ?? "full-body").label}</p>
 
       {days.length > 1 && (
         <div className="mt-4 flex gap-2">
@@ -150,7 +168,46 @@ export default function RoutineEditor({
         </div>
       )}
 
-      <ul className="mt-4 flex flex-col gap-2">
+      <section className="mt-4 rounded-2xl bg-card p-[18px]">
+        <p className="label text-dim">What kind of day</p>
+        <div className="mt-3 flex flex-col gap-2">
+          {TEMPLATES.map((t) => {
+            const on = (routine.template ?? "full-body") === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTemplate(t.id)}
+                aria-pressed={on}
+                className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+                  on ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
+                }`}
+              >
+                <span className="head flex items-baseline gap-2 text-[17px] text-fg">
+                  {t.label}
+                  {t.recommended && (
+                    <span className="label text-cyan">Recommended</span>
+                  )}
+                </span>
+                <span className="block text-[15px] text-dim">{t.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+        {/*
+          One honest line, not a block. Three days of push/pull/legs trains each
+          group once a week, and ACSM's whole point is that twice is what counts
+          — she should know that and then decide for herself.
+        */}
+        {!thorough && (
+          <p className="mt-3 text-[15px] text-dim">
+            This week trains some muscles once. Twice a week is what makes the difference —
+            full body, or run these days again.
+          </p>
+        )}
+      </section>
+
+      <ul className="mt-2.5 flex flex-col gap-2">
         {routine.exercises.map((e) => {
           const meta = byId(e.exerciseId);
           const open = openId === e.exerciseId;

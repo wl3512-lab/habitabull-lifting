@@ -1,4 +1,5 @@
 import type { Anchor } from "./schedule";
+import type { TemplateId } from "./templates";
 
 export type Level = "new" | "returning" | "experienced";
 export type Equipment = "barbell" | "dumbbell" | "machine" | "bodyweight" | "kettlebell";
@@ -41,6 +42,8 @@ export interface Routine {
   /** 0 = Sunday, matching Date.getDay() */
   day: number;
   label: string;
+  /** Which named day this is. Absent on plans made before day types existed. */
+  template?: TemplateId;
   exercises: PlannedExercise[];
 }
 
@@ -93,6 +96,9 @@ export interface Profile {
    * two lifts train the same muscle, and never overrides the balance of a day.
    */
   favourites?: string[];
+  /** Set once she has looked at the week and chosen. Until then the app is
+      running on its own defaults and says so. */
+  planChosen?: boolean;
   /**
    * When in the day she can train, as routine anchors rather than clock times.
    * Routine-anchored cues form habits faster than time-based ones and survive a
