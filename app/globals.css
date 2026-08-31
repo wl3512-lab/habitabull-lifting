@@ -18,7 +18,13 @@
   --color-ground: #16181d; /* the app field */
   --color-card: #1f232b; /* raised: cards, rows, panels */
   --color-raise: #2a2f39; /* raised twice: steppers, chips, inactive track */
-  --color-line: #333a45; /* hairlines and the outline-button border */
+  --color-line: #333a45; /* decorative hairlines and card edges */
+  /*
+    A control's boundary is not a hairline. #333a45 measures 1.55:1 on the
+    ground — fine for separating two surfaces, not enough to show someone where
+    a button ends. Anything you can press gets this instead, at 3.01:1.
+  */
+  --color-line-strong: #596578;
 
   /* Text. No pure white — #F4F6F7 is cooled toward the brand hue. */
   --color-fg: #f4f6f7;
@@ -128,6 +134,18 @@ body {
 /* Dark ground, light glyphs: without this the type looks a weight heavier. */
 body {
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+  Grows a small inline control's hit area to 44px without moving it a pixel.
+  The header links here ("Progress", "Back", "End", "How to do it") are 23px
+  tall as drawn; padding pushes the target out and the negative margin pulls the
+  layout back. This app is used one-handed, mid-set, with wet hands — an
+  under-sized target is not a technicality here.
+*/
+.tap {
+  padding: 12px 8px;
+  margin: -12px -8px;
 }
 
 /* Phones do not show a scrollbar track. Inside the device frame, neither do we. */

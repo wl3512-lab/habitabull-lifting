@@ -162,7 +162,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                   className={`head grid aspect-square min-w-0 flex-1 place-items-center rounded-full border-2 text-[17px] transition-colors duration-150 ${
                     days.includes(i)
                       ? "border-cyan bg-cyan text-ground"
-                      : "border-line text-dim hover:border-dim"
+                      : "border-line-strong text-dim hover:border-fg"
                   }`}
                 >
                   {d[0]}
@@ -185,7 +185,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 className={`head h-11 rounded-full border px-5 text-[15px] transition-colors duration-150 ${
                   equipment.includes(k.value)
                     ? "border-cyan bg-cyan text-ground"
-                    : "border-line text-dim hover:border-dim"
+                    : "border-line-strong text-dim hover:border-fg"
                 }`}
               >
                 {k.label}

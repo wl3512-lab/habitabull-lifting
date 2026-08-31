@@ -118,7 +118,7 @@ export default function Today({
           <button
             type="button"
             onClick={onProgress}
-            className="head -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+            className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
           >
             Progress
           </button>

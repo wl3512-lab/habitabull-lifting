@@ -142,7 +142,7 @@ export default function Finished({
           {records.map((id) => (
             <li
               key={id}
-              className="head rounded-full border border-line px-4 py-2 text-[15px] text-cyan"
+              className="head rounded-full border border-line-strong px-4 py-2 text-[15px] text-cyan"
             >
               First time on {nameOf(id)}
             </li>

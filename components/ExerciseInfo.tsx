@@ -47,7 +47,7 @@ export default function ExerciseInfo({
         <button
           type="button"
           onClick={onBack}
-          className="head -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
         >
           Back
         </button>

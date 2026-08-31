@@ -32,7 +32,7 @@ export function Pill({
     size === "lg" ? "h-14 w-full px-8 text-[17px]" : "h-10 px-5 text-[13px]";
   const skin = {
     primary: "bg-orange text-ground border-orange hover:bg-orange/90",
-    ghost: "border-line bg-transparent text-cyan hover:bg-raise/60",
+    ghost: "border-line-strong bg-transparent text-cyan hover:bg-raise/60",
     onCyan: "border-ground bg-ground text-fg hover:bg-ground/90",
     onOrange: "border-ground bg-ground text-orange hover:bg-ground/90",
   }[variant];

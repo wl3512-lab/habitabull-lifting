@@ -105,7 +105,7 @@ export default function LogSession({
                 type="button"
                 onClick={() => setIndex(index - 1)}
                 aria-label="Previous exercise"
-                className="-ml-1 grid h-8 w-6 place-items-center text-[16px] leading-none text-dim transition-colors hover:text-fg"
+                className="-ml-2 grid h-11 w-9 place-items-center text-[16px] leading-none text-dim transition-colors hover:text-fg"
               >
                 ←
               </button>
@@ -117,7 +117,7 @@ export default function LogSession({
           <button
             type="button"
             onClick={onExit}
-            className="head text-[17px] text-fg transition-opacity hover:opacity-70"
+            className="head tap text-[17px] text-fg transition-opacity hover:opacity-70"
           >
             End
           </button>
@@ -138,10 +138,21 @@ export default function LogSession({
                   ? `Set ${i + 1}, logged ${increment === 0 ? `${s.reps} reps` : `${s.weight} lb × ${s.reps}`}. Tap to edit.`
                   : `Set ${i + 1}, not logged`
               }
-              className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${
-                s.done ? "bg-green" : i === activeSet ? "bg-line" : "bg-raise"
-              }`}
-            />
+              // Drawn 6px, tapped at 44. The padding grows the target and the
+              // negative margin gives the layout its 6px back — these are how
+              // you correct a mis-logged set, one-handed, between working sets.
+              className="group flex-1 py-[19px] -my-[19px]"
+            >
+              <span
+                className={`block h-1.5 w-full rounded-full transition-colors duration-200 ${
+                  s.done
+                    ? "bg-green group-hover:bg-green/80"
+                    : i === activeSet
+                      ? "bg-line-strong"
+                      : "bg-raise"
+                }`}
+              />
+            </button>
           ))}
         </div>
 
@@ -155,7 +166,7 @@ export default function LogSession({
           <button
             type="button"
             onClick={() => onExercise(exercise.exerciseId)}
-            className="head text-[15px] text-cyan transition-opacity hover:opacity-70"
+            className="head tap text-[15px] text-cyan transition-opacity hover:opacity-70"
           >
             How to do it
           </button>

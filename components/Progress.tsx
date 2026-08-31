@@ -89,7 +89,7 @@ export default function Progress({
         <button
           type="button"
           onClick={onBack}
-          className="head -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
         >
           Back
         </button>
@@ -113,6 +113,12 @@ export default function Progress({
               {week.map((cell) => (
                 <div
                   key={cell.iso}
+                  // Missed days sit at `line`, not `raise`: enough to read the
+                  // lattice so a green cell has a weekday, not enough to make
+                  // an empty day shout. It measures 1.44:1 against the card and
+                  // that is deliberate — the information here is the green, at
+                  // 7:1, and absence is drawn as absence. Documented in
+                  // DESIGN.md as a knowing deviation from 1.4.11.
                   className={`aspect-square w-full rounded-[5px] ${
                     cell.comeback
                       ? "bg-cyan"
@@ -120,7 +126,7 @@ export default function Progress({
                         ? "bg-green"
                         : cell.future
                           ? "bg-raise/40"
-                          : "bg-raise"
+                          : "bg-line"
                   }`}
                 />
               ))}
@@ -139,7 +145,7 @@ export default function Progress({
             <span aria-hidden className="h-3 w-3 rounded-[3px] bg-cyan" /> Comeback
           </li>
           <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-raise" /> Missed
+            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-line" /> Missed
           </li>
         </ul>
       </Card>
@@ -167,7 +173,7 @@ export default function Progress({
             <button
               type="button"
               onClick={onGoal}
-              className="head text-[15px] text-cyan transition-opacity hover:opacity-70"
+              className="head tap text-[15px] text-cyan transition-opacity hover:opacity-70"
             >
               Change
             </button>
