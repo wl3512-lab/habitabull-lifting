@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Bull from "./Bull";
-import { Card, Pill } from "./ui";
+import { Card, GoalBar, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
-import { nextTarget, streakWeeks } from "@/lib/engine";
+import { goalProgress, nextTarget, personalRecord, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
 import { anchorOf, observedAnchor } from "@/lib/schedule";
-import type { Profile, Routine, Session } from "@/lib/types";
+import type { Goal, Profile, Routine, Session } from "@/lib/types";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
 const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -33,6 +33,8 @@ export default function Today({
   onProfile,
   onSetUpWeek,
   onEditRoutine,
+  goal,
+  onGoal,
 }: {
   profile: Profile;
   routine: Routine | null;
@@ -44,6 +46,8 @@ export default function Today({
   onProfile: (p: Profile) => void;
   onSetUpWeek: () => void;
   onEditRoutine: () => void;
+  goal: Goal | null;
+  onGoal: () => void;
 }) {
   const [note, setNote] = useState("");
   const [asking, setAsking] = useState(false);
@@ -201,6 +205,45 @@ export default function Today({
    */
   const seen = observedAnchor(sessions);
   const drift = seen && profile.anchor && seen.anchor !== profile.anchor ? seen : null;
+
+  /**
+   * Habit principle 4 (deck p12) does not say "have a goal" — it says the goal
+   * is "displayed when the app is opened". It was living on Progress, one tap
+   * away, which is one tap too many for something whose whole job is to be seen
+   * without being looked for.
+   */
+  const goalCard = goal ? (
+    <section className="rounded-2xl bg-card p-[18px]">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="label text-dim">Your goal</p>
+        <button
+          type="button"
+          onClick={onGoal}
+          className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+        >
+          Change
+        </button>
+      </div>
+      <p className="statement mt-2 text-[26px] leading-tight text-fg">
+        {nameOf(goal.exerciseId)} {goal.targetWeight} lb by{" "}
+        {new Date(goal.targetDate + "T00:00:00").toLocaleDateString(undefined, {
+          month: "long",
+          day: "numeric",
+        })}
+      </p>
+      <div className="mt-4">
+        <GoalBar
+          percent={goalProgress(sessions, goal)}
+          caption={
+            personalRecord(sessions, goal.exerciseId) > 0
+              ? `${personalRecord(sessions, goal.exerciseId)} lb now`
+              : "Nothing logged on this lift yet"
+          }
+          trailing={`${Math.round(goalProgress(sessions, goal))}% achieved`}
+        />
+      </div>
+    </section>
+  ) : null;
 
   // The next day she said she would train, named rather than counted.
   const nextDayLabel = (() => {
@@ -399,6 +442,8 @@ export default function Today({
       </section>
 
       {!raised && motivationCard && <div className="mt-8">{motivationCard}</div>}
+
+      {goalCard && <div className="mt-2.5">{goalCard}</div>}
 
       {routine ? (
         <section className="mt-8">

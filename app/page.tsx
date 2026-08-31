@@ -300,6 +300,8 @@ export default function Page() {
       onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
       onSetUpWeek={() => setView("week")}
       onEditRoutine={() => setView("routine")}
+      goal={goal}
+      onGoal={() => setView("goal")}
     />,
     "today"
   );
