@@ -94,12 +94,17 @@ export interface Profile {
    */
   favourites?: string[];
   /**
-   * When in the day, as a routine anchor rather than a clock time. Routine-
-   * anchored cues form habits faster than time-based ones and survive a week
-   * that moves, which is most weeks. Undefined until the schedule is set up,
-   * which happens after the first session, never before it.
+   * When in the day she can train, as routine anchors rather than clock times.
+   * Routine-anchored cues form habits faster than time-based ones and survive a
+   * week that moves.
+   *
+   * A list, not one value, and an empty list is a real answer. Plenty of people
+   * genuinely train whenever the day allows, and the research is clear that
+   * rigid plans break when circumstances change — forcing a single slot on
+   * someone whose week moves produces a plan they fail rather than a habit they
+   * keep. `undefined` means not asked yet; `[]` means it varies.
    */
-  anchor?: Anchor;
+  anchors?: Anchor[];
   /**
    * Minutes from midnight. Only set when someone genuinely has a fixed slot and
    * chose one; otherwise the anchor supplies an hour for the calendar reminder.

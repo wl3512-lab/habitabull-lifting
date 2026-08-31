@@ -9,6 +9,8 @@ import {
   spread,
   anchorForHour,
   observedAnchor,
+  primaryAnchor,
+  anchorLabel,
 } from "./schedule";
 
 describe("placeDays", () => {
@@ -195,5 +197,27 @@ describe("observedAnchor", () => {
     const o = observedAnchor([at(21), at(22), at(20), at(7), at(12)]);
     expect(o?.anchor).toBe("evening");
     expect(o?.count).toBe(3);
+  });
+});
+
+describe("multiple anchors", () => {
+  it("takes the earliest slot when one hour is needed", () => {
+    expect(primaryAnchor(["evening", "wake"])).toBe("wake");
+  });
+
+  it("has no primary when the day genuinely varies", () => {
+    expect(primaryAnchor([])).toBeUndefined();
+    expect(primaryAnchor(undefined)).toBeUndefined();
+  });
+
+  it("reads back the way someone would say it", () => {
+    expect(anchorLabel(["afterwork"])).toBe("after work");
+    expect(anchorLabel(["evening", "wake"])).toBe("first thing or evening");
+    expect(anchorLabel(["wake", "lunch", "evening"])).toBe("first thing, lunchtime or evening");
+  });
+
+  it("treats an empty list as a real answer, not a missing one", () => {
+    expect(anchorLabel([])).toBe("whenever you can");
+    expect(anchorLabel(undefined)).toBeNull();
   });
 });

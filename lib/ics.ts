@@ -1,3 +1,4 @@
+import { anchorOf, primaryAnchor } from "./schedule";
 import type { Profile } from "./types";
 
 /**
@@ -74,14 +75,19 @@ export function firstOccurrence(trainingDays: number[], minute: number, from: Da
  * Returns null when there is nothing to schedule.
  */
 export function buildIcs(
-  profile: Pick<Profile, "trainingDays" | "trainingMinute" | "motivation">,
+  profile: Pick<Profile, "trainingDays" | "trainingMinute" | "motivation" | "anchors">,
   now = new Date(),
   alarmMinutes = 15
 ): string | null {
   const { trainingDays } = profile;
-  if (!trainingDays.length || profile.trainingMinute === undefined) return null;
+  // An hour comes from the earliest chosen slot, or from an explicit clock time.
+  // "Whenever I can" gets a sensible default rather than no reminder at all —
+  // a calendar entry she can drag is more use than silence.
+  const anchor = primaryAnchor(profile.anchors);
+  const minute = anchor ? anchorOf(anchor).minute : profile.trainingMinute ?? 18 * 60;
+  if (!trainingDays.length) return null;
 
-  const start = firstOccurrence(trainingDays, profile.trainingMinute, now);
+  const start = firstOccurrence(trainingDays, minute, now);
   const byday = [...trainingDays].sort((a, b) => a - b).map((d) => BYDAY[d]).join(",");
 
   // Their own reason, unedited. The app never rewrites it — least of all in a

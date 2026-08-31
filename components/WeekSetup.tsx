@@ -5,10 +5,12 @@ import { Pill } from "./ui";
 import { SHORT_DAYS } from "@/lib/engine";
 import {
   ANCHORS,
+  anchorLabel,
   anchorOf,
   parseAvailability,
   placeDays,
   planWeek,
+  primaryAnchor,
   type Anchor,
   type Availability,
 } from "@/lib/schedule";
@@ -49,13 +51,13 @@ export default function WeekSetup({
   const [offline, setOffline] = useState(false);
   const [count, setCount] = useState(profile.trainingDays.length || 3);
   const [days, setDays] = useState<number[]>(profile.trainingDays.length ? profile.trainingDays : placeDays(3));
-  const [anchor, setAnchor] = useState<Anchor | undefined>(profile.anchor);
+  const [anchors, setAnchors] = useState<Anchor[] | undefined>(profile.anchors);
 
   function apply(a: Availability) {
     const week = planWeek(a, count);
     setDays(week);
     setCount(week.length);
-    if (a.anchor) setAnchor(a.anchor);
+    if (a.anchor) setAnchors((prev) => (prev?.includes(a.anchor!) ? prev : [...(prev ?? []), a.anchor!]));
   }
 
   async function askAi() {
@@ -95,10 +97,11 @@ export default function WeekSetup({
       return sorted;
     });
 
+  const when = anchorLabel(anchors);
   const summary =
     days.length === 0
       ? "Pick at least one day."
-      : `${days.map((d) => FULL[d]).join(", ")}${anchor ? ` — ${anchorOf(anchor).label.toLowerCase()}` : ""}`;
+      : `${days.map((d) => FULL[d]).join(", ")}${when ? ` — ${when}` : ""}`;
 
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
@@ -184,27 +187,55 @@ export default function WeekSetup({
 
       <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
         <p className="label text-dim">When in the day</p>
+        <p className="mt-1 text-[15px] text-dim">Pick as many as genuinely work.</p>
         <div className="mt-3 flex flex-col gap-2">
-          {ANCHORS.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => setAnchor(anchor === a.id ? undefined : a.id)}
-              aria-pressed={anchor === a.id}
-              className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
-                anchor === a.id
-                  ? "border-cyan bg-raise"
-                  : "border-transparent bg-raise/40 hover:bg-raise/70"
-              }`}
-            >
-              <span className="head block text-[17px] text-fg">{a.label}</span>
-              <span className="block text-[15px] text-dim">{a.hint}</span>
-            </button>
-          ))}
+          {ANCHORS.map((a) => {
+            const on = anchors?.includes(a.id) ?? false;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() =>
+                  setAnchors((prev) => {
+                    const list = prev ?? [];
+                    return list.includes(a.id)
+                      ? list.filter((x) => x !== a.id)
+                      : [...list, a.id];
+                  })
+                }
+                aria-pressed={on}
+                className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+                  on ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
+                }`}
+              >
+                <span className="head block text-[17px] text-fg">{a.label}</span>
+                <span className="block text-[15px] text-dim">{a.hint}</span>
+              </button>
+            );
+          })}
+          {/*
+            A real answer, not an opt-out. Plenty of weeks genuinely move, and
+            the research is clear that a rigid plan breaks when circumstances
+            change — so someone whose day varies should be able to say so
+            rather than pick a slot they will not keep.
+          */}
+          <button
+            type="button"
+            onClick={() => setAnchors(anchors?.length === 0 ? undefined : [])}
+            aria-pressed={anchors?.length === 0}
+            className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+              anchors?.length === 0
+                ? "border-cyan bg-raise"
+                : "border-transparent bg-raise/40 hover:bg-raise/70"
+            }`}
+          >
+            <span className="head block text-[17px] text-fg">Whenever I can</span>
+            <span className="block text-[15px] text-dim">It changes week to week</span>
+          </button>
         </div>
         <p className="mt-3 text-[15px] text-dim">
-          A slot in your day sticks better than a time on a clock — and it survives a week
-          that moves.
+          A slot in your day sticks better than a time on a clock. Two slots stick better than
+          one you keep missing.
         </p>
       </section>
 
@@ -215,8 +246,10 @@ export default function WeekSetup({
             onSave({
               ...profile,
               trainingDays: days,
-              anchor,
-              trainingMinute: anchor ? anchorOf(anchor).minute : profile.trainingMinute,
+              anchors,
+              trainingMinute: primaryAnchor(anchors)
+                ? anchorOf(primaryAnchor(anchors)!).minute
+                : undefined,
             })
           }
           disabled={days.length === 0}

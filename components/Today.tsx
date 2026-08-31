@@ -7,7 +7,7 @@ import { nameOf } from "@/lib/exercises";
 import { goalProgress, nextTarget, personalRecord, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
-import { anchorOf, observedAnchor } from "@/lib/schedule";
+import { anchorLabel, anchorOf, observedAnchor, primaryAnchor } from "@/lib/schedule";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -204,7 +204,8 @@ export default function Today({
    * Silence is the right output most of the time.
    */
   const seen = observedAnchor(sessions);
-  const drift = seen && profile.anchor && seen.anchor !== profile.anchor ? seen : null;
+  const stated = profile.anchors;
+  const drift = seen && stated && stated.length > 0 && !stated.includes(seen.anchor) ? seen : null;
 
   /**
    * Habit principle 4 (deck p12) does not say "have a goal" — it says the goal
@@ -262,21 +263,13 @@ export default function Today({
   const kit = [...new Set(profile.equipment)];
   // The hour they committed to, stated back. Habit principle 2 only does its
   // work if the intention is visible on the day, not filed away at signup.
-  const when =
-    profile.trainingMinute === undefined
-      ? null
-      : (() => {
-          const h = Math.floor(profile.trainingMinute / 60);
-          const m = profile.trainingMinute % 60;
-          const h12 = h % 12 === 0 ? 12 : h % 12;
-          return `${h12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
-        })();
+  const when = anchorLabel(profile.anchors);
 
   const subtitle = routine
     ? [
         `${routine.exercises.length} ${routine.exercises.length === 1 ? "lift" : "lifts"}`,
         kit.length === 1 ? (kit[0] === "bodyweight" ? "just you" : `${kit[0]}s only`) : null,
-        when && !alreadyLogged ? `around ${when}` : null,
+        when && !alreadyLogged ? (profile.anchors?.length ? when : "whenever you can") : null,
       ]
         .filter(Boolean)
         .join(" · ")
@@ -308,12 +301,20 @@ export default function Today({
       {drift && (
         <button
           type="button"
-          onClick={() => onProfile({ ...profile, anchor: drift.anchor, trainingMinute: anchorOf(drift.anchor).minute })}
+          onClick={() =>
+            onProfile({
+              ...profile,
+              // Added to what she said, not swapped for it — she may well train
+              // in both, and the app has only seen one of them.
+              anchors: [...(profile.anchors ?? []), drift.anchor],
+              trainingMinute: anchorOf(drift.anchor).minute,
+            })
+          }
           className="mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
         >
           <span className="label block text-cyan">Noticed</span>
           <span className="head mt-1.5 block text-[19px] text-fg">
-            You train in the {anchorOf(drift.anchor).label.toLowerCase()}, not {profile.anchor ? anchorOf(profile.anchor).label.toLowerCase() : "when you planned"}.
+            You train in the {anchorOf(drift.anchor).label.toLowerCase()}, not {anchorLabel(profile.anchors) ?? "when you planned"}.
           </span>
           <span className="mt-0.5 block text-[15px] text-dim">
             {drift.count} of your last {drift.total}. Make it the plan?
@@ -326,7 +327,7 @@ export default function Today({
         beginner which days they will train before they have trained once asks
         for a commitment they have no basis to make.
       */}
-      {done.length > 0 && !profile.anchor && profile.trainingMinute === undefined && (
+      {done.length > 0 && profile.anchors === undefined && (
         <button
           type="button"
           onClick={onSetUpWeek}

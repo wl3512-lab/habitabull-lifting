@@ -238,3 +238,21 @@ export function observedAnchor(
   if (count / hours.length < majority) return null;
   return { anchor, count, total: hours.length };
 }
+
+
+/** The earliest of the chosen slots, for anything that needs one hour. */
+export function primaryAnchor(anchors: Anchor[] | undefined): Anchor | undefined {
+  if (!anchors || anchors.length === 0) return undefined;
+  return [...anchors].sort((a, b) => anchorOf(a).minute - anchorOf(b).minute)[0];
+}
+
+/** "after work", "mornings or evenings", "whenever you can". */
+export function anchorLabel(anchors: Anchor[] | undefined): string | null {
+  if (!anchors) return null;
+  if (anchors.length === 0) return "whenever you can";
+  const names = [...anchors]
+    .sort((a, b) => anchorOf(a).minute - anchorOf(b).minute)
+    .map((a) => anchorOf(a).label.toLowerCase());
+  if (names.length === 1) return names[0];
+  return names.slice(0, -1).join(", ") + " or " + names[names.length - 1];
+}

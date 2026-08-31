@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildIcs, escapeText, firstOccurrence, foldLine } from "./ics";
 
-const profile = { trainingDays: [1, 3, 5], trainingMinute: 18 * 60 + 30, motivation: "It clears my head." };
+const profile = {
+  trainingDays: [1, 3, 5],
+  trainingMinute: 18 * 60 + 30,
+  motivation: "It clears my head.",
+};
 
 describe("escapeText", () => {
   it("escapes the RFC 5545 specials", () => {
@@ -52,9 +56,24 @@ describe("firstOccurrence", () => {
 describe("buildIcs", () => {
   const now = new Date(2026, 8, 2, 9, 0);
 
-  it("returns null when there is nothing to schedule", () => {
+  it("returns null only when there are no training days", () => {
     expect(buildIcs({ trainingDays: [], trainingMinute: 1110 }, now)).toBeNull();
-    expect(buildIcs({ trainingDays: [1], trainingMinute: undefined }, now)).toBeNull();
+  });
+
+  it("still writes a reminder when the day genuinely varies", () => {
+    // "Whenever I can" gets a calendar entry she can drag, not silence.
+    const ics = buildIcs({ trainingDays: [1], trainingMinute: undefined, anchors: [] }, now);
+    expect(ics).toContain("DTSTART:");
+    expect(ics).toContain("BYDAY=MO");
+  });
+
+  it("takes its hour from the earliest slot she chose", () => {
+    const ics = buildIcs(
+      { trainingDays: [3], trainingMinute: undefined, anchors: ["evening", "wake"] },
+      now
+    )!;
+    // wake is 07:00 and comes before evening.
+    expect(ics).toMatch(/DTSTART:\d{8}T0700/);
   });
 
   it("emits a weekly rule for the chosen days", () => {

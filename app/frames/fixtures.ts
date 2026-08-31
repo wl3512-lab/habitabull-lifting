@@ -28,7 +28,7 @@ export const profile: Profile = {
   trainingDays: [1, 3, 5],
   equipment: ["barbell", "dumbbell", "machine", "bodyweight"],
   motivation: "It clears my head.",
-  anchor: "evening",
+  anchors: ["evening"],
   trainingMinute: 20 * 60,
   favourites: ["back-squat"],
   createdAt: at(90),
@@ -118,7 +118,7 @@ export const goal = { exerciseId: "back-squat", targetWeight: 185, targetDate: i
 export const state: AppState = { profile, routines, sessions, goal, challenge: undefined };
 
 /** A profile that has trained in the evening while claiming "after work". */
-export const driftProfile: Profile = { ...profile, anchor: "afterwork" };
+export const driftProfile: Profile = { ...profile, anchors: ["afterwork"] };
 
 /** Long enough away that Today switches to its comeback state. */
 export const lapsedSessions: Session[] = sessions.filter((s) => {
