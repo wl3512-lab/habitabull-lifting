@@ -1,26 +1,182 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+  The 2026 revisit. The 2023 guide's palette was measured and it does not hold:
+  #8eb4bd on #c1d4d9 is 1.45:1, and on white 2.23:1. Only the maroon ever
+  carried text, which is why the original hi-fi buttons vanish into their own
+  background. The system also had no way to say "yes" — no success colour at
+  all, in an app whose entire loop is did-you-do-it-or-not.
 
+  So the ground moved to charcoal and the cyan was kept as accent, where it
+  measures 7.96:1 and the brand memory survives intact. Orange carries the one
+  action per screen; green means done. Nothing is red — a missed day is an
+  absence, not an error.
+*/
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Grounds, darkest to lightest. */
+  --color-deep: #0e1013; /* wells the eye should fall into — timer centre */
+  --color-ground: #16181d; /* the app field */
+  --color-card: #1f232b; /* raised: cards, rows, panels */
+  --color-raise: #2a2f39; /* raised twice: steppers, chips, inactive track */
+  --color-line: #333a45; /* hairlines and the outline-button border */
+
+  /* Text. No pure white — #F4F6F7 is cooled toward the brand hue. */
+  --color-fg: #f4f6f7;
+  --color-dim: #9aa3ae;
+
+  /* Brand memory, carried through from 2023. */
+  --color-cyan: #8eb4bd;
+  --color-cyan-soft: #c1d4d9;
+
+  /* The single action colour, and the only "yes" in the system. */
+  --color-orange: #f97316;
+  --color-green: #22c55e;
+
+  --font-display: var(--font-barlow-condensed), system-ui, sans-serif;
+  --font-body: var(--font-barlow), system-ui, sans-serif;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /*
+    The only breakpoint in the app, and it is not a layout breakpoint — the
+    layout never changes. It is the width past which the viewport has stopped
+    being a phone (430px is the widest shipping iPhone, plus margin), so the
+    app stops filling the screen and starts sitting inside a phone instead.
+  */
+  --breakpoint-desk: 460px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ground);
+  color: var(--color-fg);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+/* Weights and reps sit in columns. Proportional figures make them jitter. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The wordmark: condensed, heavy, set tight and upper. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+/*
+  Statement type does two jobs that are really one job: screen headlines
+  ("Push day", "Let's make today small.") and any figure big enough to read at
+  arm's length. Condensed buys roughly four more characters per line at the same
+  size, which is what lets a headline stay one line on a 390px screen.
+*/
+.statement {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 0.95;
+}
+
+.head {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/*
+  Condensed Medium. The bull's speaking voice — the form cue on the coach
+  screen, the "Welcome to" above the wordmark. Lighter than a headline and
+  wider than body copy, so it reads as something said rather than something
+  labelled.
+*/
+.aside {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.15;
+}
+
+/* Small all-caps eyebrows. Cyan by default at the call site, never on its own. */
+.label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* Cyan, not ink — an ink ring is invisible on this ground. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 2px;
+}
+
+/* Dark ground, light glyphs: without this the type looks a weight heavier. */
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Phones do not show a scrollbar track. Inside the device frame, neither do we. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nod {
+  0%,
+  100% {
+    transform: none;
+  }
+  35% {
+    transform: translateY(-8px) rotate(-2deg);
+  }
+  70% {
+    transform: translateY(2px) rotate(1deg);
+  }
+}
+
+.rise {
+  animation: rise 220ms var(--ease-out-quart) both;
+}
+
+.nod {
+  animation: nod 620ms var(--ease-out-quart);
+}
+
+/* The bull swaps pose instead of animating when motion is unwelcome. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

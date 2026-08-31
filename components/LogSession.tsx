@@ -1,0 +1,201 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Bull from "./Bull";
+import SetRow from "./SetRow";
+import { Pill } from "./ui";
+import { byId, nameOf } from "@/lib/exercises";
+import { personalRecord } from "@/lib/engine";
+import { line } from "@/lib/voice";
+import type { LoggedSet, Session } from "@/lib/types";
+
+/**
+ * The working screen, and the one the whole product is judged on. Someone is
+ * standing between sets, sweaty, glancing down for four seconds with one thumb
+ * free. Everything here is subordinate to that: one exercise, one set, one
+ * orange button in the same place it is on every other screen.
+ */
+
+/** The most recent completed attempt at this lift, phrased for the cue line. */
+function lastAttempt(history: Session[], exerciseId: string, increment: number) {
+  const prior = history
+    .filter((s) => s.completedAt)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  for (const s of prior) {
+    const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
+    const sets = ex?.sets.filter((x) => x.done) ?? [];
+    if (sets.length === 0) continue;
+    const best = sets.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
+    return increment === 0 ? `${best.reps} reps` : `${best.weight} lb × ${best.reps}`;
+  }
+  return undefined;
+}
+
+export default function LogSession({
+  session,
+  history,
+  onChange,
+  onFinish,
+  onExit,
+  onExercise,
+}: {
+  session: Session;
+  history: Session[];
+  onChange: (next: Session) => void;
+  onFinish: () => void;
+  onExit: () => void;
+  onExercise: (id: string) => void;
+}) {
+  const [index, setIndex] = useState(() => {
+    const i = session.exercises.findIndex((e) => e.sets.some((s) => !s.done));
+    return i === -1 ? 0 : i;
+  });
+
+  const exercise = session.exercises[index];
+  const meta = byId(exercise.exerciseId);
+  const increment = meta?.increment ?? 5;
+  const activeSet = exercise.sets.findIndex((s) => !s.done);
+  const pr = useMemo(
+    () => personalRecord(history, exercise.exerciseId),
+    [history, exercise.exerciseId]
+  );
+  const lastTime = useMemo(
+    () => lastAttempt(history, exercise.exerciseId, increment),
+    [history, exercise.exerciseId, increment]
+  );
+
+  const totalSets = session.exercises.reduce((n, e) => n + e.sets.length, 0);
+  const doneSets = session.exercises.reduce(
+    (n, e) => n + e.sets.filter((s) => s.done).length,
+    0
+  );
+  const allDone = doneSets === totalSets;
+  const exerciseDone = activeSet === -1;
+  const isLastExercise = index === session.exercises.length - 1;
+
+  function writeSets(sets: LoggedSet[]) {
+    const exercises = session.exercises.map((e, i) => (i === index ? { ...e, sets } : e));
+    onChange({ ...session, exercises });
+  }
+
+  function updateSet(i: number, next: LoggedSet) {
+    writeSets(exercise.sets.map((s, j) => (j === i ? next : s)));
+  }
+
+  function completeSet(i: number) {
+    const sets = exercise.sets.map((s, j) => (j === i ? { ...s, done: true } : s));
+    // Carry what you actually did into the sets ahead, so the next row is
+    // already right and needs zero taps in the common case.
+    writeSets(sets.map((s, j) => (j > i && !s.done ? { ...s, weight: sets[i].weight } : s)));
+
+    if (i === exercise.sets.length - 1 && !isLastExercise) setIndex(index + 1);
+  }
+
+  function reopenSet(i: number) {
+    writeSets(exercise.sets.map((s, j) => (j === i ? { ...s, done: false } : s)));
+  }
+
+  return (
+    <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col">
+      <header className="px-6 pb-1 pt-12">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {index > 0 && (
+              <button
+                type="button"
+                onClick={() => setIndex(index - 1)}
+                aria-label="Previous exercise"
+                className="-ml-1 grid h-8 w-6 place-items-center text-[16px] leading-none text-dim transition-colors hover:text-fg"
+              >
+                ←
+              </button>
+            )}
+            <p className="label text-cyan">
+              Exercise {index + 1} of {session.exercises.length}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onExit}
+            className="head text-[17px] text-fg transition-opacity hover:opacity-70"
+          >
+            End
+          </button>
+        </div>
+
+        <h1 className="statement mt-2 text-[44px] text-fg">{nameOf(exercise.exerciseId)}</h1>
+
+        {/* Sets you have finished. Tap one to reopen and correct it. */}
+        <div className="mt-3 flex gap-2.5">
+          {exercise.sets.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => s.done && reopenSet(i)}
+              disabled={!s.done}
+              aria-label={
+                s.done
+                  ? `Set ${i + 1}, logged ${increment === 0 ? `${s.reps} reps` : `${s.weight} lb × ${s.reps}`}. Tap to edit.`
+                  : `Set ${i + 1}, not logged`
+              }
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${
+                s.done ? "bg-green" : i === activeSet ? "bg-line" : "bg-raise"
+              }`}
+            />
+          ))}
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-[17px] text-dim">
+            {exerciseDone
+              ? `All ${exercise.sets.length} sets done`
+              : `Set ${activeSet + 1} of ${exercise.sets.length}`}
+          </p>
+          {pr > 0 && <span className="tabular text-[15px] text-dim">· Best {pr} lb</span>}
+          <button
+            type="button"
+            onClick={() => onExercise(exercise.exerciseId)}
+            className="head text-[15px] text-cyan transition-opacity hover:opacity-70"
+          >
+            How to do it
+          </button>
+        </div>
+      </header>
+
+      <div className="flex-1 px-6 pb-6 pt-4">
+        {!exerciseDone ? (
+          <SetRow
+            key={activeSet}
+            set={exercise.sets[activeSet]}
+            increment={increment}
+            lastTime={lastTime}
+            onChange={(next) => updateSet(activeSet, next)}
+          />
+        ) : (
+          <div className="rise flex flex-col items-center pt-4">
+            <Bull size={132} react say={line(allDone ? "done" : "midset", doneSets)} />
+          </div>
+        )}
+      </div>
+
+      <nav className="sticky bottom-0 bg-ground px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+        {!exerciseDone ? (
+          <>
+            <Pill onClick={() => completeSet(activeSet)}>Log set</Pill>
+            <p className="mt-2.5 text-center text-[15px] text-dim">
+              {activeSet === exercise.sets.length - 1 && isLastExercise
+                ? "Last set of the session."
+                : "Rest as long as you need. Nothing is counting."}
+            </p>
+          </>
+        ) : isLastExercise ? (
+          <Pill onClick={onFinish} disabled={doneSets === 0}>
+            Finish workout
+          </Pill>
+        ) : (
+          <Pill onClick={() => setIndex(index + 1)}>Next exercise</Pill>
+        )}
+      </nav>
+    </main>
+  );
+}

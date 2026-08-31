@@ -1,69 +1,200 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+import { useEffect, useState } from "react";
+import ExerciseInfo from "@/components/ExerciseInfo";
+import Finished from "@/components/Finished";
+import GoalScreen from "@/components/GoalScreen";
+import LogSession from "@/components/LogSession";
+import Onboarding from "@/components/Onboarding";
+import Progress from "@/components/Progress";
+import Today from "@/components/Today";
+import { buildSession, generateRoutine, personalRecord, rebuildDay } from "@/lib/engine";
+import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
+import type { Constraints } from "@/lib/constraints";
+import type { AppState, Goal, Profile, Session } from "@/lib/types";
+
+type View = "today" | "log" | "done" | "progress" | "goal" | "exercise";
+
+export default function Page() {
+  const [state, setState] = useState<AppState>(EMPTY);
+  const [ready, setReady] = useState(false);
+  const [view, setView] = useState<View>("today");
+  const [records, setRecords] = useState<string[]>([]);
+  const [today, setToday] = useState(() => todayISO());
+  // Where an exercise detail screen returns to, so it can open from anywhere.
+  const [detail, setDetail] = useState<{ id: string; from: View } | null>(null);
+
+  useEffect(() => {
+    setState(load());
+    setToday(todayISO());
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (ready) save(state);
+  }, [state, ready]);
+
+  if (!ready) return <div className="flex-1" aria-busy="true" />;
+
+  const { profile, routines, sessions, goal } = state;
+
+  if (!profile) {
+    return (
+      <Onboarding
+        onDone={(p: Profile) =>
+          setState({
+            profile: p,
+            routines: generateRoutine(p.level, p.trainingDays, p.equipment),
+            sessions: [],
+            goal: null,
+          })
+        }
+      />
+    );
+  }
+
+  const dow = new Date(today + "T00:00:00").getDay();
+  const scheduled = routines.find((r) => r.day === dow) ?? null;
+  const draft = sessionFor(sessions, today);
+  // On a rest day, "train anyway" pulls up the next routine in the rotation.
+  const routine = scheduled ?? routines.find((r) => r.day > dow) ?? routines[0] ?? null;
+
+  function startLogging() {
+    if (!profile) return;
+    if (!draft && routine) {
+      setState((s) => ({
+        ...s,
+        sessions: upsertSession(s.sessions, buildSession(routine, s.sessions, profile.level, today)),
+      }));
+    }
+    setView("log");
+  }
+
+  function applyConstraints(c: Constraints) {
+    if (!profile || !routine) return;
+    const equipment = c.equipment.length ? c.equipment : profile.equipment;
+    const rebuilt = rebuildDay(routine, profile.level, equipment, c.avoid);
+    setState((s) => ({
+      ...s,
+      routines: s.routines.map((r) => (r.day === rebuilt.day ? rebuilt : r)),
+      // Any untouched draft for today is stale now; it rebuilds on next start.
+      sessions: s.sessions.filter((x) => x.date !== today || x.completedAt),
+    }));
+  }
+
+  function updateDraft(next: Session) {
+    setState((s) => ({ ...s, sessions: upsertSession(s.sessions, next) }));
+  }
+
+  function openExercise(id: string, from: View) {
+    setDetail({ id, from });
+    setView("exercise");
+  }
+
+  function saveGoal(g: Goal) {
+    setState((s) => ({ ...s, goal: g, goalDismissed: true }));
+    setView("progress");
+  }
+
+  function finish() {
+    if (!draft) return;
+    const prior = sessions.filter((s) => s.date !== today);
+    const hit = draft.exercises
+      .filter((e) => {
+        const best = Math.max(0, ...e.sets.filter((s) => s.done).map((s) => s.weight));
+        return best > 0 && best > personalRecord(prior, e.exerciseId);
+      })
+      .map((e) => e.exerciseId);
+
+    setRecords(hit);
+    setState((s) => ({
+      ...s,
+      sessions: upsertSession(s.sessions, {
+        ...draft,
+        // Drop untouched sets so history reflects what was actually done.
+        exercises: draft.exercises.map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) })),
+        completedAt: new Date().toISOString(),
+      }),
+    }));
+    setView("done");
+  }
+
+  if (view === "exercise" && detail) {
+    return (
+      <ExerciseInfo
+        exerciseId={detail.id}
+        sessions={sessions}
+        onBack={() => setView(detail.from)}
+      />
+    );
+  }
+
+  if (view === "goal") {
+    return (
+      <GoalScreen
+        goal={goal}
+        sessions={sessions}
+        routines={routines}
+        onSave={saveGoal}
+        onClear={() => {
+          setState((s) => ({ ...s, goal: null, goalDismissed: true }));
+          setView("progress");
+        }}
+        onBack={() => setView("progress")}
+      />
+    );
+  }
+
+  if (view === "progress") {
+    return (
+      <Progress
+        sessions={sessions}
+        goal={goal}
+        onBack={() => setView("today")}
+        onGoal={() => setView("goal")}
+      />
+    );
+  }
+
+  if (view === "log" && draft) {
+    return (
+      <LogSession
+        session={draft}
+        history={sessions.filter((s) => s.date !== today)}
+        onChange={updateDraft}
+        onFinish={finish}
+        onExit={() => setView("today")}
+        onExercise={(id) => openExercise(id, "log")}
+      />
+    );
+  }
+
+  if (view === "done") {
+    const finished = sessionFor(sessions, today);
+    if (finished) {
+      return (
+        <Finished
+          session={finished}
+          sessions={sessions}
+          records={records}
+          onHome={() => setView("today")}
+          offerGoal={!goal && !state.goalDismissed}
+          onSetGoal={() => setView("goal")}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      );
+    }
+  }
+
+  return (
+    <Today
+      profile={profile}
+      routine={scheduled}
+      sessions={sessions}
+      today={today}
+      onStart={startLogging}
+      onConstraints={applyConstraints}
+      onProgress={() => setView("progress")}
+      onExercise={(id) => openExercise(id, "today")}
+    />
   );
 }
