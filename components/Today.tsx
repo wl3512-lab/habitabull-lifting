@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Bull from "./Bull";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { nextTarget, streakWeeks } from "@/lib/engine";
@@ -103,6 +104,15 @@ export default function Today({
   }
 
   /**
+   * The quote rises on the days it was written for and rests on the days it was
+   * not: a training day she has not started yet, and any comeback. Not on every
+   * launch — a line shown every time stops being read inside a week, and the
+   * mid-set opens are exactly the ones that must stay fast. Rare is what keeps
+   * it legible.
+   */
+  const raised = Boolean(profile.motivation) && (mood === "return" || (Boolean(routine) && !alreadyLogged));
+
+  /**
    * Their own words, quoted back. This is the sobriety-app mechanism from the
    * deck (p9) and the reason the question is asked at all — an answer collected
    * once and never shown again is a form field, not a motivation feature.
@@ -113,6 +123,11 @@ export default function Today({
    */
   const motivationCard = profile.motivation ? (
     <section className="rounded-2xl bg-card p-[18px]">
+      {raised && (
+        <div className="mb-3 flex justify-center">
+          <Bull size={72} />
+        </div>
+      )}
       <div className="flex items-baseline justify-between gap-3">
         <p className="label text-dim">You workout because</p>
         <button
@@ -281,7 +296,7 @@ export default function Today({
       )}
 
       {/* After a gap, their reason goes above the action, not below it. */}
-      {mood === "return" && motivationCard && <div className="mt-6">{motivationCard}</div>}
+      {raised && motivationCard && <div className="mt-6">{motivationCard}</div>}
 
       <div className="mt-6 flex flex-col gap-2.5">
         {/*
@@ -381,7 +396,7 @@ export default function Today({
         </p>
       </section>
 
-      {mood !== "return" && motivationCard && <div className="mt-8">{motivationCard}</div>}
+      {!raised && motivationCard && <div className="mt-8">{motivationCard}</div>}
 
       {routine ? (
         <section className="mt-8">
