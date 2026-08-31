@@ -15,6 +15,7 @@ import RestTimer from "@/components/RestTimer";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar from "@/components/TabBar";
 import Today from "@/components/Today";
+import YourData from "@/components/YourData";
 import WeekSetup from "@/components/WeekSetup";
 import { challengeFor } from "@/lib/crew";
 import * as f from "./fixtures";
@@ -59,6 +60,22 @@ function Frame({
           {children}
           {tab && <TabBar active={tab} onChange={f.noop} />}
         </div>
+      </div>
+    </figure>
+  );
+}
+
+function NotBuilt({ n, name, why }: { n: string; name: string; why: string }) {
+  return (
+    <figure className="flex w-[390px] shrink-0 flex-col">
+      <figcaption className="mb-2.5">
+        <p className="label text-dim">
+          {n} · {name}
+        </p>
+        <p className="mt-1 text-[14px] leading-snug text-dim">{why}</p>
+      </figcaption>
+      <div className="grid h-[844px] w-[390px] place-items-center rounded-[28px] border border-dashed border-line-strong">
+        <p className="statement px-10 text-center text-[26px] text-dim">Not built</p>
       </div>
     </figure>
   );
@@ -118,6 +135,9 @@ export default function Frames() {
           <Group title="Setup" sub="Two screens, then you lift.">
             <Frame n="00" name="Welcome" note="The 2023 cyan field, kept for exactly one screen. Dark-on-cyan is 8:1; the original white wordmark was 2.23:1.">
               <Onboarding onDone={f.noop} />
+            </Frame>
+            <Frame n="02" name="Why do you lift?" note="Deck p9 — I Am Sober asks why. Every suggestion is intrinsic on purpose; proposing the extrinsic frame would defeat the finding it came from.">
+              <Onboarding onDone={f.noop} initialStep={1} />
             </Frame>
             <Frame n="03" name="Your week" note="After the first session, never before. Anchors rather than clock times — 106 days to form a habit against 154.">
               <WeekSetup profile={f.profile} onSave={f.noop} onSkip={f.noop} />
@@ -250,7 +270,7 @@ export default function Frames() {
                 onBack={f.noop}
               />
             </Frame>
-            <Frame n="07" name="Goal" note="One lift, one number, one date. Measured from where you started, so a slow week never subtracts.">
+            <Frame n="—" name="Goal" note="One lift, one number, one date. Measured from where you started, so a slow week never subtracts.">
               <GoalScreen
                 goal={f.goal}
                 sessions={f.sessions}
@@ -263,6 +283,11 @@ export default function Frames() {
           </Group>
 
           <Group title="Control" sub="Yours to change, and honest about what it does not have.">
+            <Frame n="18" name="Your data" note="One file with every session, note and photo. Import treats the file as hostile: malformed sessions and non-image data are dropped.">
+              <div className="p-6">
+                <YourData state={f.state} onImport={f.noop} />
+              </div>
+            </Frame>
             <Frame n="14" name="Edit the week" note="The deck's second journey. Until this existed, a plan you disagreed with was a plan you were stuck with.">
               <RoutineEditor
                 profile={f.profile}
@@ -279,6 +304,19 @@ export default function Frames() {
                 onChallenge={f.noop}
               />
             </Frame>
+          </Group>
+
+          <Group title="Not in the app" sub="Frames from the Figma that no screen answers, said plainly rather than left blank.">
+            <NotBuilt
+              n="13"
+              name="Workouts · past routines"
+              why="A library of saved routines. Arguably solved already: routines are editable in place (14), so a separate library would be a second way to do one thing."
+            />
+            <NotBuilt
+              n="12"
+              name="Reminder"
+              why="Built, but not as a screen. A web app cannot schedule a local notification — Notification Triggers never shipped and Web Push needs a server — so the reminder is a calendar event with an alarm, set from the calendar."
+            />
           </Group>
 
           <p className="mt-16 max-w-[70ch] text-[15px] text-dim">

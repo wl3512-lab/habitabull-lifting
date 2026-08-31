@@ -38,8 +38,15 @@ const REASONS = [
  * and three non-consecutive days. All three correct themselves from what
  * actually gets logged.
  */
-export default function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
-  const [step, setStep] = useState(0);
+export default function Onboarding({
+  onDone,
+  initialStep = 0,
+}: {
+  onDone: (p: Profile) => void;
+  /** The frame gallery opens straight onto the second screen. */
+  initialStep?: number;
+}) {
+  const [step, setStep] = useState(initialStep);
   const [name, setName] = useState("");
   const [motivation, setMotivation] = useState("");
 
