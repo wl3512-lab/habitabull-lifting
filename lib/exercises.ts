@@ -11,7 +11,7 @@ import type { Exercise } from "./types";
  */
 export const EXERCISES: Exercise[] = [
   {
-    id: "back-squat", name: "Back Squat", equipment: "barbell", primary: "quads", increment: 10, compound: true,
+    id: "back-squat", name: "Back Squat", equipment: "barbell", primary: "quads", increment: 2.5, compound: true,
     // Cue and mistakes as written on the 2026 coach screen, which took the
     // mistakes straight from the deck's tutorial (p38). The original wrote the
     // third one as knees collapsing "forward"; knees collapse medially, so it
@@ -29,7 +29,7 @@ export const EXERCISES: Exercise[] = [
     ],
   },
   {
-    id: "goblet-squat", name: "Goblet Squat", equipment: "dumbbell", primary: "quads", increment: 5, compound: true,
+    id: "goblet-squat", name: "Goblet Squat", equipment: "dumbbell", primary: "quads", increment: 2.5, compound: true,
     cue: "Elbows inside the knees at the bottom. Chest tall.",
     steps: [
       "Hold one dumbbell vertically against your chest, both hands under the top plate.",
@@ -51,7 +51,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Rushing the descent, which is where the work is.", "Rounding the lower back at the bottom."],
   },
   {
-    id: "deadlift", name: "Deadlift", equipment: "barbell", primary: "hamstrings", increment: 10, compound: true,
+    id: "deadlift", name: "Deadlift", equipment: "barbell", primary: "hamstrings", increment: 2.5, compound: true, heavy: true,
     cue: "Bar stays against your legs. Push the floor away.",
     steps: [
       "Bar over mid-foot, about an inch from your shins. Feet hip width.",
@@ -62,7 +62,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Hips shooting up first, turning it into a back lift.", "Letting the bar swing out away from the shins."],
   },
   {
-    id: "romanian-deadlift", name: "Romanian Deadlift", equipment: "dumbbell", primary: "hamstrings", increment: 5, compound: true,
+    id: "romanian-deadlift", name: "Romanian Deadlift", equipment: "dumbbell", primary: "hamstrings", increment: 2.5, compound: true,
     cue: "Hinge at the hip, soft knees. Feel it in the hamstring.",
     steps: [
       "Stand with a dumbbell in each hand, in front of your thighs.",
@@ -73,7 +73,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Turning it into a squat by bending the knees.", "Going past your range and rounding the back."],
   },
   {
-    id: "hip-thrust", name: "Hip Thrust", equipment: "barbell", primary: "glutes", increment: 10, compound: false,
+    id: "hip-thrust", name: "Hip Thrust", equipment: "barbell", primary: "glutes", increment: 2.5, compound: false,
     cue: "Ribs down, chin tucked. Squeeze at the top.",
     steps: [
       "Shoulder blades on a bench, bar padded across the hips, feet flat.",
@@ -95,7 +95,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Pushing through the toes.", "Arching the back to get higher."],
   },
   {
-    id: "bench-press", name: "Bench Press", equipment: "barbell", primary: "chest", increment: 5, compound: true,
+    id: "bench-press", name: "Bench Press", equipment: "barbell", primary: "chest", increment: 2.5, compound: true,
     cue: "Shoulder blades pinned. Bar to the lower chest.",
     steps: [
       "Eyes under the bar, feet flat, shoulder blades pinched down and back.",
@@ -106,7 +106,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Elbows flared straight out to the sides.", "Bouncing the bar off the chest."],
   },
   {
-    id: "db-bench", name: "Dumbbell Bench Press", equipment: "dumbbell", primary: "chest", increment: 5, compound: true,
+    id: "db-bench", name: "Dumbbell Bench Press", equipment: "dumbbell", primary: "chest", increment: 2.5, compound: true,
     cue: "Wrists stacked over elbows. Control the lowering.",
     steps: [
       "Sit with the dumbbells on your thighs, then lie back and kick them into place.",
@@ -128,7 +128,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Hips sagging or piking up.", "Only going halfway down."],
   },
   {
-    id: "barbell-row", name: "Barbell Row", equipment: "barbell", primary: "back", increment: 5, compound: true,
+    id: "barbell-row", name: "Barbell Row", equipment: "barbell", primary: "back", increment: 2.5, compound: true,
     cue: "Hinge to about 45 degrees. Pull to the belly button.",
     steps: [
       "Hinge forward to about 45 degrees, back flat, bar hanging at arm's length.",
@@ -139,7 +139,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Standing up a little on every rep to help the weight.", "Pulling to the chest instead of the belly."],
   },
   {
-    id: "db-row", name: "Dumbbell Row", equipment: "dumbbell", primary: "back", increment: 5, compound: true,
+    id: "db-row", name: "Dumbbell Row", equipment: "dumbbell", primary: "back", increment: 2.5, compound: true,
     cue: "Flat back. Drive the elbow past your ribs.",
     steps: [
       "One hand and knee on a bench, other foot on the floor, back flat.",
@@ -150,7 +150,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Twisting the torso to lift more.", "Shrugging instead of rowing."],
   },
   {
-    id: "lat-pulldown", name: "Lat Pulldown", equipment: "machine", primary: "back", increment: 10, compound: true,
+    id: "lat-pulldown", name: "Lat Pulldown", equipment: "machine", primary: "back", increment: 2.5, compound: true,
     cue: "Lead with the elbows, not the hands.",
     steps: [
       "Set the thigh pad so you stay seated. Grip a little wider than the shoulders.",
@@ -172,7 +172,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Hips dropping as you tire.", "Stopping before the chest reaches the bar."],
   },
   {
-    id: "overhead-press", name: "Overhead Press", equipment: "barbell", primary: "shoulders", increment: 5, compound: true,
+    id: "overhead-press", name: "Overhead Press", equipment: "barbell", primary: "shoulders", increment: 2.5, compound: true,
     cue: "Squeeze the glutes so you don't lean back.",
     steps: [
       "Bar on the front of the shoulders, hands just outside shoulder width.",
@@ -183,7 +183,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Leaning back to turn it into an incline press.", "Pressing around the head instead of moving the head."],
   },
   {
-    id: "db-shoulder-press", name: "Dumbbell Shoulder Press", equipment: "dumbbell", primary: "shoulders", increment: 5, compound: true,
+    id: "db-shoulder-press", name: "Dumbbell Shoulder Press", equipment: "dumbbell", primary: "shoulders", increment: 2.5, compound: true,
     cue: "Press slightly forward of your ears, not behind.",
     steps: [
       "Dumbbells at shoulder height, palms facing forward.",
@@ -205,7 +205,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Hips dropping so it becomes a push-up.", "Lowering the face forward instead of the crown down."],
   },
   {
-    id: "db-curl", name: "Dumbbell Curl", equipment: "dumbbell", primary: "arms", increment: 5, compound: false,
+    id: "db-curl", name: "Dumbbell Curl", equipment: "dumbbell", primary: "arms", increment: 2.5, compound: false,
     cue: "Elbows stay at your sides. No swinging.",
     steps: [
       "Stand tall, dumbbells at your sides, palms forward.",
@@ -216,7 +216,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Swinging the torso to start the rep.", "Stopping halfway down."],
   },
   {
-    id: "tricep-pushdown", name: "Tricep Pushdown", equipment: "machine", primary: "arms", increment: 10, compound: false,
+    id: "tricep-pushdown", name: "Tricep Pushdown", equipment: "machine", primary: "arms", increment: 2.5, compound: false,
     cue: "Upper arms locked in place. Only the forearm moves.",
     steps: [
       "Set the cable at chest height or above. Grip with elbows at your sides.",
@@ -238,7 +238,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Hips sagging toward the floor.", "Holding your breath the whole time."],
   },
   {
-    id: "kb-swing", name: "Kettlebell Swing", equipment: "kettlebell", primary: "glutes", increment: 10, compound: true,
+    id: "kb-swing", name: "Kettlebell Swing", equipment: "kettlebell", primary: "glutes", increment: 2.5, compound: true,
     cue: "It's a hinge, not a squat. The hips throw it.",
     steps: [
       "Kettlebell a foot in front of you. Hinge and grab it with both hands.",

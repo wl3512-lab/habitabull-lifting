@@ -13,6 +13,7 @@ import {
   mergeRebuild,
   alternativesFor,
   musclesIn,
+  repsFor,
 } from "./engine";
 import { byId } from "./exercises";
 import type { Equipment, Session } from "./types";
@@ -147,7 +148,7 @@ describe("nextTarget", () => {
 
   it("adds exactly one increment after clearing every rep", () => {
     const s = [session("2026-08-01", "back-squat", 3, 10, 100)];
-    expect(nextTarget("back-squat", s, "new").weight).toBe(110);
+    expect(nextTarget("back-squat", s, "new").weight).toBe(102.5);
   });
 
   it("holds the weight after a missed session", () => {
@@ -189,8 +190,9 @@ describe("nextTarget", () => {
   });
 
   it("always lands on a loadable weight", () => {
+    // 2.5 lb is the smallest real jump: 1.25 lb plates, one per side.
     const s = [session("2026-08-01", "bench-press", 3, 3, 97)];
-    expect(nextTarget("bench-press", s, "new").weight % 5).toBe(0);
+    expect(nextTarget("bench-press", s, "new").weight % 2.5).toBe(0);
   });
 
   it("survives an unknown exercise id", () => {
@@ -399,5 +401,86 @@ describe("musclesIn", () => {
     const muscles = musclesIn(routine);
     expect(new Set(muscles).size).toBe(muscles.length);
     expect(muscles.length).toBeGreaterThan(0);
+  });
+});
+
+
+describe("generateRoutine — full body, not a split", () => {
+  const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
+
+  it("trains the lower body, a push, a pull and the core every session", () => {
+    for (const r of generateRoutine("new", [1, 3, 5], KIT)) {
+      const groups = r.exercises.map((e) => byId(e.exerciseId)!.primary);
+      const lower = groups.some((m) => ["quads", "hamstrings", "glutes"].includes(m));
+      const push = groups.some((m) => ["chest", "shoulders"].includes(m));
+      const pull = groups.includes("back");
+      expect(lower, `${r.label} has no lower body`).toBe(true);
+      expect(push, `${r.label} has no push`).toBe(true);
+      expect(pull, `${r.label} has no pull`).toBe(true);
+    }
+  });
+
+  it("hits every major group at least twice a week on three days", () => {
+    const week = generateRoutine("new", [1, 3, 5], KIT);
+    const counts = new Map<string, number>();
+    for (const r of week) {
+      for (const e of r.exercises) {
+        const m = byId(e.exerciseId)!.primary;
+        counts.set(m, (counts.get(m) ?? 0) + 1);
+      }
+    }
+    // ACSM: every major group twice a week. A split cannot do this on 3 days.
+    for (const group of ["back"]) {
+      expect(counts.get(group) ?? 0).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("names sessions by what they are, not by the weekday", () => {
+    for (const r of generateRoutine("new", [1, 3, 5], KIT)) {
+      expect(r.label).toMatch(/Full body/);
+      expect(r.label).not.toMatch(/Monday|Wednesday|Friday/);
+    }
+  });
+
+  it("alternates A and B so consecutive sessions are not identical", () => {
+    const [a, b] = generateRoutine("new", [1, 3], KIT);
+    expect(a.label).not.toBe(b.label);
+    expect(a.exercises.map((e) => e.exerciseId)).not.toEqual(b.exercises.map((e) => e.exerciseId));
+  });
+
+  it("gives compounds fewer reps than accessories", () => {
+    const [day] = generateRoutine("new", [1], KIT);
+    const compound = day.exercises.find((e) => byId(e.exerciseId)!.compound && byId(e.exerciseId)!.primary !== "core");
+    const accessory = day.exercises.find((e) => !byId(e.exerciseId)!.compound && byId(e.exerciseId)!.primary !== "core");
+    if (compound && accessory) expect(compound.reps).toBeLessThan(accessory.reps);
+  });
+
+  it("builds a real session, not two lifts and a plank", () => {
+    for (const r of generateRoutine("new", [1, 3, 5], KIT)) {
+      expect(r.exercises.length).toBeGreaterThanOrEqual(4);
+    }
+  });
+});
+
+describe("repsFor — one source of truth", () => {
+  it("keeps heavy lifts at five", () => {
+    expect(repsFor(byId("deadlift")!, "new")).toBe(5);
+    expect(repsFor(byId("deadlift")!, "experienced")).toBe(5);
+  });
+
+  it("gives accessories more reps than compounds", () => {
+    expect(repsFor(byId("db-curl")!, "new")).toBeGreaterThan(repsFor(byId("bench-press")!, "new"));
+  });
+
+  it("times the core instead of counting it", () => {
+    expect(repsFor(byId("plank")!, "new")).toBe(30);
+  });
+
+  it("agrees with what the plan and the home screen both show", () => {
+    const [day] = generateRoutine("new", [1], ["barbell", "dumbbell", "machine", "bodyweight"]);
+    for (const planned of day.exercises) {
+      const target = nextTarget(planned.exerciseId, [], "new");
+      expect(target.reps, `${planned.exerciseId} disagrees`).toBe(planned.reps);
+    }
   });
 });

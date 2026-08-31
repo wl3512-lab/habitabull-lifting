@@ -13,6 +13,11 @@ export interface Exercise {
   increment: number;
   /** compound lifts progress slower but carry the session */
   compound: boolean;
+  /**
+   * Lifts that are trained heavy and low by convention. A novice deadlifting
+   * for ten is the clearest sign nobody looked at the programme.
+   */
+  heavy?: boolean;
   cue: string;
   /** How to do it, in order. Shown on the exercise screen. */
   steps: string[];

@@ -16,18 +16,45 @@ const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fri
 const BASE_LOAD: Record<Level, number> = { new: 45, returning: 65, experienced: 95 };
 
 const LEVEL_SETS: Record<Level, number> = { new: 3, returning: 3, experienced: 4 };
-const LEVEL_REPS: Record<Level, number> = { new: 10, returning: 8, experienced: 6 };
+/**
+ * Working reps for the compounds. Ten was too many for a novice squat and far
+ * too many for a novice deadlift; the accessories are where higher reps belong.
+ */
+const LEVEL_REPS: Record<Level, number> = { new: 8, returning: 6, experienced: 5 };
 
-/** Muscle focus per session slot, cycled so consecutive days don't collide. */
-const SPLITS: Record<number, Muscle[][]> = {
-  1: [["quads", "chest", "back", "core"]],
-  2: [["quads", "hamstrings", "core"], ["chest", "back", "shoulders"]],
-  3: [["quads", "glutes", "core"], ["chest", "shoulders", "arms"], ["back", "hamstrings", "core"]],
-  4: [["quads", "glutes"], ["chest", "shoulders"], ["back", "arms"], ["hamstrings", "core"]],
-  5: [["quads", "glutes"], ["chest", "arms"], ["back", "core"], ["hamstrings", "glutes"], ["shoulders", "arms"]],
-  6: [["quads"], ["chest", "arms"], ["back"], ["hamstrings", "glutes"], ["shoulders"], ["core", "glutes"]],
-  7: [["quads"], ["chest"], ["back"], ["hamstrings"], ["shoulders", "arms"], ["glutes"], ["core"]],
-};
+/**
+ * Working reps for one lift. The single source of truth, because this used to
+ * be decided independently in the generator, the target calculator and the
+ * rebuild — and they disagreed: the plan said deadlift 3×5 while the home
+ * screen said 3×8 for the same lift on the same day.
+ */
+export function repsFor(ex: Exercise, level: Level): number {
+  if (ex.primary === "core") return 30;
+  if (ex.heavy) return Math.min(5, LEVEL_REPS[level]);
+  return ex.compound ? LEVEL_REPS[level] : LEVEL_REPS[level] + 4;
+}
+
+/**
+ * Full-body sessions, alternating A and B.
+ *
+ * This used to be a push/pull/legs split, which contradicted the app's own
+ * documentation and, more to the point, the guidance. ACSM's 2026 update puts
+ * novices on full-body work across non-consecutive days and is explicit that
+ * training every major group twice a week matters far more than the shape of
+ * the split — and a split cannot deliver that on three days a week, because
+ * anything you train on Monday you do not touch again until next Monday.
+ *
+ * Every session is knee, hinge, push, pull, core. A and B alternate which lift
+ * fills each slot, so nothing is identical week to week and everything still
+ * gets trained every session. This is the shape every serious beginner program
+ * uses, for the same reason.
+ */
+const FULL_BODY: Muscle[][] = [
+  ["quads", "hamstrings", "chest", "back", "core"],
+  ["glutes", "quads", "shoulders", "back", "arms"],
+];
+
+const SESSION_LABELS = ["Full body A", "Full body B"];
 
 export function roundToIncrement(weight: number, increment: number): number {
   if (increment <= 0) return 0;
@@ -60,10 +87,8 @@ export function generateRoutine(level: Level, trainingDays: number[], equipment:
   const days = [...new Set(trainingDays)].sort((a, b) => a - b);
   if (days.length === 0) return [];
   const eq = equipment.length ? equipment : (["bodyweight"] as Equipment[]);
-  const split = SPLITS[Math.min(days.length, 7)] ?? SPLITS[3];
-
   return days.map((day, i) => {
-    const muscles = split[i % split.length];
+    const muscles = FULL_BODY[i % FULL_BODY.length];
     const used = new Set<string>();
     const exercises: PlannedExercise[] = [];
     for (const m of muscles) {
@@ -73,11 +98,14 @@ export function generateRoutine(level: Level, trainingDays: number[], equipment:
       exercises.push({
         exerciseId: ex.id,
         sets: LEVEL_SETS[level],
-        reps: ex.primary === "core" ? 30 : LEVEL_REPS[level],
+        // Compounds carry the session and are trained heavier and lower; the
+        // accessories are where reps live. A beginner deadlifting 3×10 is the
+        // clearest sign a generator was not paying attention.
+        reps: repsFor(ex, level),
         weight: startingWeight(ex, level),
       });
     }
-    return { day, label: DAY_LABELS[day], exercises };
+    return { day, label: SESSION_LABELS[i % SESSION_LABELS.length], exercises };
   });
 }
 
@@ -108,7 +136,7 @@ export function nextTarget(
   const fallback = { weight: 0, reps: LEVEL_REPS[level], sets: LEVEL_SETS[level], note: "" };
   if (!ex) return fallback;
 
-  const targetReps = ex.primary === "core" ? 30 : LEVEL_REPS[level];
+  const targetReps = repsFor(ex, level);
   const sets = LEVEL_SETS[level];
   const hist = historyFor(sessions, exerciseId);
 
@@ -219,7 +247,7 @@ export function rebuildDay(
     exercises.push({
       exerciseId: ex.id,
       sets: LEVEL_SETS[level],
-      reps: ex.primary === "core" ? 30 : LEVEL_REPS[level],
+      reps: repsFor(ex, level),
       weight: startingWeight(ex, level),
     });
   }
@@ -230,7 +258,7 @@ export function rebuildDay(
       const ex = pickExercise(m, ["bodyweight"], used);
       if (!ex) continue;
       used.add(ex.id);
-      exercises.push({ exerciseId: ex.id, sets: LEVEL_SETS[level], reps: m === "core" ? 30 : LEVEL_REPS[level], weight: 0 });
+      exercises.push({ exerciseId: ex.id, sets: LEVEL_SETS[level], reps: repsFor(ex, level), weight: 0 });
     }
   }
 
