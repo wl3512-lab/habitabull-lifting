@@ -252,3 +252,38 @@ export function goalProgress(sessions: Session[], goal: Goal): number {
 
 export const dayLabel = (d: number) => DAY_LABELS[d];
 export const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * How long to rest after a set.
+ *
+ * p22's fifth finding is that beginners struggle "without enough instruction on
+ * pacing, rest periods, or modifications" — so the app should have an opinion
+ * rather than leave someone guessing between sets. Compounds move more weight
+ * and need longer; timed holds need least.
+ *
+ * It is guidance, not a deadline. Nothing in the app penalises overrunning it.
+ */
+export function restSeconds(exerciseId: string): number {
+  const ex = byId(exerciseId);
+  if (!ex) return 90;
+  if (ex.increment === 0) return 60;
+  return ex.compound ? 120 : 90;
+}
+
+/**
+ * Fold a rebuilt day into a session that is already part-logged.
+ *
+ * Swapping the plan mid-session used to throw the draft away, which quietly
+ * deleted sets someone had already done. Anything with a completed set is kept
+ * exactly as it is; the rebuild only supplies what has not been started.
+ */
+export function mergeRebuild(draft: Session | undefined, rebuilt: Session): Session {
+  if (!draft) return rebuilt;
+  const logged = draft.exercises.filter((e) => e.sets.some((s) => s.done));
+  if (logged.length === 0) return rebuilt;
+  const kept = new Set(logged.map((e) => e.exerciseId));
+  return {
+    ...rebuilt,
+    exercises: [...logged, ...rebuilt.exercises.filter((e) => !kept.has(e.exerciseId))],
+  };
+}

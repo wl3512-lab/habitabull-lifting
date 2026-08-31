@@ -9,6 +9,8 @@ import {
   roundToIncrement,
   startingWeight,
   streakWeeks,
+  restSeconds,
+  mergeRebuild,
 } from "./engine";
 import { byId } from "./exercises";
 import type { Equipment, Session } from "./types";
@@ -304,5 +306,61 @@ describe("streakWeeks", () => {
       session("2026-08-04", "plank", 3, 30, 0),
     ];
     expect(streakWeeks(s, today)).toBe(1);
+  });
+});
+
+describe("restSeconds", () => {
+  it("gives compounds the longest rest", () => {
+    expect(restSeconds("back-squat")).toBe(120);
+  });
+
+  it("gives timed holds the shortest", () => {
+    expect(restSeconds("plank")).toBe(60);
+  });
+
+  it("falls back for an unknown exercise rather than throwing", () => {
+    expect(restSeconds("not-a-real-lift")).toBe(90);
+  });
+});
+
+describe("mergeRebuild", () => {
+  const set = (done: boolean) => ({ weight: 100, reps: 8, done });
+  const draft: Session = {
+    date: "2026-09-01",
+    label: "Day",
+    exercises: [
+      { exerciseId: "back-squat", sets: [set(true), set(false)] },
+      { exerciseId: "bench-press", sets: [set(false)] },
+    ],
+  };
+  const rebuilt: Session = {
+    date: "2026-09-01",
+    label: "Day",
+    exercises: [{ exerciseId: "goblet-squat", sets: [set(false)] }],
+  };
+
+  it("keeps work already done and appends the rebuild", () => {
+    const out = mergeRebuild(draft, rebuilt);
+    expect(out.exercises.map((e) => e.exerciseId)).toEqual(["back-squat", "goblet-squat"]);
+    expect(out.exercises[0].sets[0].done).toBe(true);
+  });
+
+  it("drops an untouched draft entirely", () => {
+    const untouched: Session = {
+      ...draft,
+      exercises: [{ exerciseId: "back-squat", sets: [set(false)] }],
+    };
+    expect(mergeRebuild(untouched, rebuilt).exercises.map((e) => e.exerciseId)).toEqual([
+      "goblet-squat",
+    ]);
+  });
+
+  it("returns the rebuild when there is no draft at all", () => {
+    expect(mergeRebuild(undefined, rebuilt)).toBe(rebuilt);
+  });
+
+  it("does not duplicate a lift that survives the rebuild", () => {
+    const same: Session = { ...rebuilt, exercises: [{ exerciseId: "back-squat", sets: [set(false)] }] };
+    expect(mergeRebuild(draft, same).exercises.map((e) => e.exerciseId)).toEqual(["back-squat"]);
   });
 });

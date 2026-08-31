@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Bull from "./Bull";
+import RestTimer from "./RestTimer";
 import SetRow from "./SetRow";
 import { Pill } from "./ui";
 import { byId, nameOf } from "@/lib/exercises";
-import { personalRecord } from "@/lib/engine";
+import { personalRecord, restSeconds } from "@/lib/engine";
 import { line } from "@/lib/voice";
 import type { LoggedSet, Session } from "@/lib/types";
 
@@ -46,22 +47,28 @@ export default function LogSession({
   onExit: () => void;
   onExercise: (id: string) => void;
 }) {
+  const [rest, setRest] = useState<{
+    seconds: number;
+    exerciseId: string;
+    weight: number;
+    reps: number;
+  } | null>(null);
   const [index, setIndex] = useState(() => {
     const i = session.exercises.findIndex((e) => e.sets.some((s) => !s.done));
     return i === -1 ? 0 : i;
   });
 
-  const exercise = session.exercises[index];
-  const meta = byId(exercise.exerciseId);
+  const exercise = session.exercises[index] as (typeof session.exercises)[number] | undefined;
+  const meta = exercise ? byId(exercise.exerciseId) : undefined;
   const increment = meta?.increment ?? 5;
-  const activeSet = exercise.sets.findIndex((s) => !s.done);
+  const activeSet = exercise ? exercise.sets.findIndex((s) => !s.done) : -1;
   const pr = useMemo(
-    () => personalRecord(history, exercise.exerciseId),
-    [history, exercise.exerciseId]
+    () => (exercise ? personalRecord(history, exercise.exerciseId) : 0),
+    [history, exercise]
   );
   const lastTime = useMemo(
-    () => lastAttempt(history, exercise.exerciseId, increment),
-    [history, exercise.exerciseId, increment]
+    () => (exercise ? lastAttempt(history, exercise.exerciseId, increment) : undefined),
+    [history, exercise, increment]
   );
 
   const totalSets = session.exercises.reduce((n, e) => n + e.sets.length, 0);
@@ -74,25 +81,75 @@ export default function LogSession({
   const isLastExercise = index === session.exercises.length - 1;
 
   function writeSets(sets: LoggedSet[]) {
+    if (!exercise) return;
     const exercises = session.exercises.map((e, i) => (i === index ? { ...e, sets } : e));
     onChange({ ...session, exercises });
   }
 
   function updateSet(i: number, next: LoggedSet) {
+    if (!exercise) return;
     writeSets(exercise.sets.map((s, j) => (j === i ? next : s)));
   }
 
   function completeSet(i: number) {
+    if (!exercise) return;
     const sets = exercise.sets.map((s, j) => (j === i ? { ...s, done: true } : s));
     // Carry what you actually did into the sets ahead, so the next row is
     // already right and needs zero taps in the common case.
     writeSets(sets.map((s, j) => (j > i && !s.done ? { ...s, weight: sets[i].weight } : s)));
 
-    if (i === exercise.sets.length - 1 && !isLastExercise) setIndex(index + 1);
+    const lastOfExercise = i === exercise.sets.length - 1;
+    if (lastOfExercise && !isLastExercise) setIndex(index + 1);
+
+    // No rest after the final set — there is nothing to be ready for.
+    if (lastOfExercise && isLastExercise) return;
+
+    const upcoming = lastOfExercise
+      ? session.exercises[index + 1]
+      : { exerciseId: exercise.exerciseId, sets: sets.slice(i + 1) };
+    const nextSet = lastOfExercise ? upcoming.sets[0] : sets[i + 1];
+    setRest({
+      seconds: restSeconds(exercise.exerciseId),
+      exerciseId: upcoming.exerciseId,
+      weight: lastOfExercise ? nextSet.weight : sets[i].weight,
+      reps: nextSet.reps,
+    });
   }
 
   function reopenSet(i: number) {
+    if (!exercise) return;
     writeSets(exercise.sets.map((s, j) => (j === i ? { ...s, done: false } : s)));
+  }
+
+  if (!exercise) {
+    return (
+      <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
+        <h1 className="statement text-[44px] text-fg">Nothing to work with.</h1>
+        <p className="mt-1.5 text-[17px] text-dim">
+          Everything on today&apos;s plan got ruled out. Loosen what you asked to work around,
+          or train a different day.
+        </p>
+        <div className="mt-auto pt-10">
+          <Pill onClick={onExit}>Back</Pill>
+        </div>
+      </main>
+    );
+  }
+
+  if (rest) {
+    return (
+      <RestTimer
+        seconds={rest.seconds}
+        nextExerciseId={rest.exerciseId}
+        nextWeight={rest.weight}
+        nextReps={rest.reps}
+        onDone={() => setRest(null)}
+        onEnd={() => {
+          setRest(null);
+          onFinish();
+        }}
+      />
+    );
   }
 
   return (

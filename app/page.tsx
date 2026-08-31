@@ -10,11 +10,17 @@ import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import Progress from "@/components/Progress";
 import Today from "@/components/Today";
-import { buildSession, generateRoutine, personalRecord, rebuildDay } from "@/lib/engine";
+import {
+  buildSession,
+  generateRoutine,
+  mergeRebuild,
+  personalRecord,
+  rebuildDay,
+} from "@/lib/engine";
 import { challengeFor } from "@/lib/crew";
 import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
 import type { Constraints } from "@/lib/constraints";
-import type { AppState, Challenge, Goal, Profile, Session } from "@/lib/types";
+import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
 type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew";
 
@@ -60,7 +66,27 @@ export default function Page() {
   const scheduled = routines.find((r) => r.day === dow) ?? null;
   const draft = sessionFor(sessions, today);
   // On a rest day, "train anyway" pulls up the next routine in the rotation.
-  const routine = scheduled ?? routines.find((r) => r.day > dow) ?? routines[0] ?? null;
+  // Sorted before the wrap-around: unsorted, "the next training day" can pick
+  // a day that has already passed.
+  const byDay = [...routines].sort((a, b) => a.day - b.day);
+  const routine = scheduled ?? byDay.find((r) => r.day > dow) ?? byDay[0] ?? null;
+
+  // What today actually is. An unfinished draft outranks the stored routine, so
+  // a temporary swap ("only dumbbells today") shows on the home screen straight
+  // away without that swap being written back into the plan.
+  const todayPlan: Routine | null =
+    draft && !draft.completedAt
+      ? {
+          day: dow,
+          label: draft.label,
+          exercises: draft.exercises.map((e) => ({
+            exerciseId: e.exerciseId,
+            sets: e.sets.length,
+            reps: e.sets[0]?.reps ?? 0,
+            weight: e.sets[0]?.weight ?? 0,
+          })),
+        }
+      : scheduled;
 
   function startLogging() {
     if (!profile) return;
@@ -73,15 +99,29 @@ export default function Page() {
     setView("log");
   }
 
+  /**
+   * "Something hurts today" changes today, and only today.
+   *
+   * This used to write the rebuilt day back into `routines`, which meant saying
+   * "my shoulder is tweaked" once quietly removed shoulder work from every
+   * future Monday. The 2023 note was explicit that the change is temporary —
+   * the whole point of the flexibility principle is adapting a session without
+   * losing the plan you adapted from. The saved routine is left alone and the
+   * rebuild lands in today's draft session instead.
+   */
   function applyConstraints(c: Constraints) {
     if (!profile || !routine) return;
     const equipment = c.equipment.length ? c.equipment : profile.equipment;
     const rebuilt = rebuildDay(routine, profile.level, equipment, c.avoid);
     setState((s) => ({
       ...s,
-      routines: s.routines.map((r) => (r.day === rebuilt.day ? rebuilt : r)),
-      // Any untouched draft for today is stale now; it rebuilds on next start.
-      sessions: s.sessions.filter((x) => x.date !== today || x.completedAt),
+      sessions: upsertSession(
+        s.sessions.filter((x) => x.date !== today || x.completedAt),
+        mergeRebuild(
+          sessionFor(s.sessions, today),
+          buildSession(rebuilt, s.sessions, profile.level, today)
+        )
+      ),
     }));
   }
 
@@ -212,7 +252,7 @@ export default function Page() {
   return (
     <Today
       profile={profile}
-      routine={scheduled}
+      routine={todayPlan}
       sessions={sessions}
       today={today}
       onStart={startLogging}
