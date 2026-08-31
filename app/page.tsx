@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Calendar from "@/components/Calendar";
+import Crew from "@/components/Crew";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
@@ -10,11 +11,12 @@ import Onboarding from "@/components/Onboarding";
 import Progress from "@/components/Progress";
 import Today from "@/components/Today";
 import { buildSession, generateRoutine, personalRecord, rebuildDay } from "@/lib/engine";
+import { challengeFor } from "@/lib/crew";
 import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
 import type { Constraints } from "@/lib/constraints";
-import type { AppState, Goal, Profile, Session } from "@/lib/types";
+import type { AppState, Challenge, Goal, Profile, Session } from "@/lib/types";
 
-type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar";
+type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -130,6 +132,21 @@ export default function Page() {
     );
   }
 
+  if (view === "crew") {
+    // Regenerated here rather than on a timer: the month can turn while the
+    // app sits open on a phone that never gets closed.
+    const challenge = challengeFor(profile, state.challenge);
+    return (
+      <Crew
+        profile={profile}
+        sessions={sessions}
+        challenge={challenge}
+        onChallenge={(c: Challenge) => setState((s) => ({ ...s, challenge: c }))}
+        onBack={() => setView("progress")}
+      />
+    );
+  }
+
   if (view === "calendar") {
     return <Calendar sessions={sessions} onBack={() => setView("progress")} />;
   }
@@ -158,6 +175,7 @@ export default function Page() {
         onBack={() => setView("today")}
         onGoal={() => setView("goal")}
         onCalendar={() => setView("calendar")}
+        onCrew={() => setView("crew")}
       />
     );
   }

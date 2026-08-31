@@ -92,6 +92,16 @@ export interface Goal {
   targetDate: string;
 }
 
+/**
+ * A month's target, regenerated when the month turns. Replaces the 2023
+ * leaderboard: something to be behind or ahead of that is not another person.
+ */
+export interface Challenge {
+  /** YYYY-MM the target belongs to. */
+  month: string;
+  target: number;
+}
+
 export interface AppState {
   profile: Profile | null;
   routines: Routine[];
@@ -99,4 +109,5 @@ export interface AppState {
   goal: Goal | null;
   /** Set once the user has declined to set a goal, so we stop asking. */
   goalDismissed?: boolean;
+  challenge?: Challenge;
 }

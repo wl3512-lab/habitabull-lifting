@@ -22,6 +22,7 @@ export function load(): AppState {
       sessions: parsed.sessions ?? [],
       goal: parsed.goal ?? null,
       goalDismissed: parsed.goalDismissed,
+      challenge: parsed.challenge,
     };
   } catch {
     return EMPTY;

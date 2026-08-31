@@ -24,12 +24,14 @@ export default function Progress({
   onBack,
   onGoal,
   onCalendar,
+  onCrew,
 }: {
   sessions: Session[];
   goal: Goal | null;
   onBack: () => void;
   onGoal: () => void;
   onCalendar: () => void;
+  onCrew: () => void;
 }) {
   const done = sessions
     .filter((s) => s.completedAt)
@@ -152,9 +154,12 @@ export default function Progress({
         </ul>
       </Card>
 
-      <div className="mt-2.5">
-        <Pill variant="ghost" onClick={onCalendar}>
-          Open the calendar
+      <div className="mt-2.5 flex gap-2.5">
+        <Pill variant="ghost" onClick={onCalendar} className="flex-1 px-4">
+          Calendar
+        </Pill>
+        <Pill variant="ghost" onClick={onCrew} className="flex-1 px-4">
+          Crew
         </Pill>
       </div>
 
