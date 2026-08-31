@@ -28,6 +28,7 @@ export default function Today({
   onConstraints,
   onProgress,
   onExercise,
+  onProfile,
 }: {
   profile: Profile;
   routine: Routine | null;
@@ -37,12 +38,15 @@ export default function Today({
   onConstraints: (c: Constraints) => void;
   onProgress: () => void;
   onExercise: (id: string) => void;
+  onProfile: (p: Profile) => void;
 }) {
   const [note, setNote] = useState("");
   const [asking, setAsking] = useState(false);
   const [offline, setOffline] = useState(false);
   const [understood, setUnderstood] = useState("");
   const [open, setOpen] = useState(false);
+  const [editingWhy, setEditingWhy] = useState(false);
+  const [whyDraft, setWhyDraft] = useState(profile.motivation ?? "");
 
   const done = sessions.filter((s) => s.completedAt);
   const last = done.map((s) => s.date).sort().at(-1);
@@ -96,13 +100,95 @@ export default function Today({
     }
   }
 
+  /**
+   * Their own words, quoted back. This is the sobriety-app mechanism from the
+   * deck (p9) and the reason the question is asked at all — an answer collected
+   * once and never shown again is a form field, not a motivation feature.
+   *
+   * It moves. On an ordinary day it sits below the fold of the primary action,
+   * quiet. After a gap it comes up above everything, because that is the day it
+   * was written for. The model never touches the text either way.
+   */
+  const motivationCard = profile.motivation ? (
+    <section className="rounded-2xl bg-card p-[18px]">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="label text-dim">You workout because</p>
+        <button
+          type="button"
+          onClick={() => {
+            setWhyDraft(profile.motivation ?? "");
+            setEditingWhy(true);
+          }}
+          className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+        >
+          Change
+        </button>
+      </div>
+      {editingWhy ? (
+        <div className="mt-2.5">
+          <textarea
+            value={whyDraft}
+            onChange={(e) => setWhyDraft(e.target.value)}
+            rows={3}
+            maxLength={160}
+            autoFocus
+            aria-label="Why you work out"
+            className="w-full resize-none rounded-xl bg-raise p-3.5 text-[17px] leading-snug text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
+          />
+          <div className="mt-2.5 flex gap-2">
+            <Pill
+              size="sm"
+              className="h-12 flex-1"
+              onClick={() => {
+                onProfile({ ...profile, motivation: whyDraft.trim() || undefined });
+                setEditingWhy(false);
+              }}
+            >
+              Save
+            </Pill>
+            <button
+              type="button"
+              onClick={() => setEditingWhy(false)}
+              className="head h-12 shrink-0 px-4 text-[15px] text-dim transition-colors hover:text-fg"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <blockquote className="statement mt-2 text-[26px] leading-tight text-fg">
+          &ldquo;{profile.motivation}&rdquo;
+        </blockquote>
+      )}
+      {mood === "return" && !editingWhy && (
+        <p className="mt-2.5 text-[15px] text-dim">Still true. The gap does not undo it.</p>
+      )}
+    </section>
+  ) : null;
+
   // Only when there is a session to describe — on a rest day the headline
   // already says it, and repeating it under itself reads like a bug.
   const kit = [...new Set(profile.equipment)];
+  // The hour they committed to, stated back. Habit principle 2 only does its
+  // work if the intention is visible on the day, not filed away at signup.
+  const when =
+    profile.trainingMinute === undefined
+      ? null
+      : (() => {
+          const h = Math.floor(profile.trainingMinute / 60);
+          const m = profile.trainingMinute % 60;
+          const h12 = h % 12 === 0 ? 12 : h % 12;
+          return `${h12}:${String(m).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
+        })();
+
   const subtitle = routine
-    ? `${routine.exercises.length} ${routine.exercises.length === 1 ? "lift" : "lifts"}${
-        kit.length === 1 ? ` · ${kit[0] === "bodyweight" ? "just you" : kit[0] + "s only"}` : ""
-      }`
+    ? [
+        `${routine.exercises.length} ${routine.exercises.length === 1 ? "lift" : "lifts"}`,
+        kit.length === 1 ? (kit[0] === "bodyweight" ? "just you" : `${kit[0]}s only`) : null,
+        when && !alreadyLogged ? `around ${when}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
     : null;
 
   return (
@@ -128,6 +214,9 @@ export default function Today({
         </h1>
         {subtitle && <p className="mt-1.5 text-[17px] text-dim">{subtitle}</p>}
       </header>
+
+      {/* After a gap, their reason goes above the action, not below it. */}
+      {mood === "return" && motivationCard && <div className="mt-6">{motivationCard}</div>}
 
       <div className="mt-6 flex flex-col gap-2.5">
         <Pill onClick={onStart}>
@@ -205,6 +294,8 @@ export default function Today({
           {done.filter((s) => week.some((d) => d.iso === s.date)).length} sessions logged this week.
         </p>
       </section>
+
+      {mood !== "return" && motivationCard && <div className="mt-8">{motivationCard}</div>}
 
       {routine ? (
         <section className="mt-8">

@@ -195,6 +195,7 @@ export default function Page() {
       onConstraints={applyConstraints}
       onProgress={() => setView("progress")}
       onExercise={(id) => openExercise(id, "today")}
+      onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
     />
   );
 }

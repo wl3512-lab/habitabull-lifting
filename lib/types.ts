@@ -62,6 +62,21 @@ export interface Profile {
   /** day numbers, 0-6 */
   trainingDays: number[];
   equipment: Equipment[];
+  /**
+   * Why they train, in their own words. From the sobriety-app research (deck
+   * p9): I Am Sober asks why someone wants to get sober, because self-determined
+   * reasons hold people where imposed ones do not. It is quoted back on the days
+   * they do not feel like it, and the app never rewrites it — improving on how
+   * someone said their own reason is the fastest way to make it stop being
+   * theirs.
+   */
+  motivation?: string;
+  /**
+   * Minutes from midnight. Habit principle 2 (deck p12) is "establish time when
+   * you will do it" — days alone are a preference, a day plus an hour is an
+   * implementation intention, and that distinction is most of why this works.
+   */
+  trainingMinute?: number;
   createdAt: string;
 }
 
