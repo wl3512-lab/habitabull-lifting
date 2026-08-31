@@ -23,11 +23,13 @@ export default function Progress({
   goal,
   onBack,
   onGoal,
+  onCalendar,
 }: {
   sessions: Session[];
   goal: Goal | null;
   onBack: () => void;
   onGoal: () => void;
+  onCalendar: () => void;
 }) {
   const done = sessions
     .filter((s) => s.completedAt)
@@ -149,6 +151,12 @@ export default function Progress({
           </li>
         </ul>
       </Card>
+
+      <div className="mt-2.5">
+        <Pill variant="ghost" onClick={onCalendar}>
+          Open the calendar
+        </Pill>
+      </div>
 
       <div className="mt-2.5 flex gap-2.5">
         <Stat value={done.length} label={done.length === 1 ? "session" : "sessions"} />

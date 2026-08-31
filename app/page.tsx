@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Calendar from "@/components/Calendar";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
@@ -13,7 +14,7 @@ import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/st
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Goal, Profile, Session } from "@/lib/types";
 
-type View = "today" | "log" | "done" | "progress" | "goal" | "exercise";
+type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -129,6 +130,10 @@ export default function Page() {
     );
   }
 
+  if (view === "calendar") {
+    return <Calendar sessions={sessions} onBack={() => setView("progress")} />;
+  }
+
   if (view === "goal") {
     return (
       <GoalScreen
@@ -152,6 +157,7 @@ export default function Page() {
         goal={goal}
         onBack={() => setView("today")}
         onGoal={() => setView("goal")}
+        onCalendar={() => setView("calendar")}
       />
     );
   }
