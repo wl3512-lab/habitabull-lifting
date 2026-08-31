@@ -35,13 +35,11 @@ export default function Crew({
   sessions,
   challenge,
   onChallenge,
-  onBack,
 }: {
   profile: Profile;
   sessions: Session[];
   challenge: Challenge;
   onChallenge: (c: Challenge) => void;
-  onBack: () => void;
 }) {
   const [shared, setShared] = useState<"idle" | "copied" | "failed">("idle");
 
@@ -78,13 +76,6 @@ export default function Crew({
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-start justify-between gap-4">
         <p className="label text-cyan">Your crew</p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
-        >
-          Back
-        </button>
       </div>
 
       <h1 className="statement mt-2 text-[44px] text-fg">Just you, for now.</h1>
@@ -119,7 +110,7 @@ export default function Crew({
             ? "Target met. The rest of the month is yours."
             : left <= daysLeft
               ? "Still on for it."
-              : `That is more than the days left. Move the number rather than the month.`}
+              : "More sessions than days left. Lower it and keep it real."}
         </p>
 
         <div className="mt-4 flex items-center gap-2.5 border-t border-line pt-4">
@@ -153,17 +144,14 @@ export default function Crew({
 
       {/*
         Said plainly rather than mocked up. A screen full of people who do not
-        exist is worse than a screen that admits what it does not have yet.
+        exist is worse than one that admits what it does not have yet. The
+        reasoning behind "no rankings" lives in DESIGN.md; here it is just the
+        promise, in the app's voice.
       */}
       <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
-        <p className="label text-dim">When there are others</p>
+        <p className="label text-dim">Nobody here yet</p>
         <p className="mt-2 text-[17px] leading-snug text-fg">
-          Your crew will show who trained and who came back — never what anybody
-          lifted, and never in order.
-        </p>
-        <p className="mt-2 text-[15px] text-dim">
-          Nobody can see your numbers, only whether you showed up. Beginners quit
-          leaderboards, not gyms.
+          When someone joins, you&apos;ll see whether they trained. Not what they lifted.
         </p>
       </section>
 

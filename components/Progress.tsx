@@ -21,17 +21,11 @@ const WEEKS = 12;
 export default function Progress({
   sessions,
   goal,
-  onBack,
   onGoal,
-  onCalendar,
-  onCrew,
 }: {
   sessions: Session[];
   goal: Goal | null;
-  onBack: () => void;
   onGoal: () => void;
-  onCalendar: () => void;
-  onCrew: () => void;
 }) {
   const done = sessions
     .filter((s) => s.completedAt)
@@ -90,13 +84,6 @@ export default function Progress({
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-start justify-between gap-4">
         <p className="label text-cyan">Last {WEEKS} weeks</p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
-        >
-          Back
-        </button>
       </div>
 
       <h1 className="statement mt-2 text-[44px] text-fg">
@@ -154,14 +141,6 @@ export default function Progress({
         </ul>
       </Card>
 
-      <div className="mt-2.5 flex gap-2.5">
-        <Pill variant="ghost" onClick={onCalendar} className="flex-1 px-4">
-          Calendar
-        </Pill>
-        <Pill variant="ghost" onClick={onCrew} className="flex-1 px-4">
-          Crew
-        </Pill>
-      </div>
 
       <div className="mt-2.5 flex gap-2.5">
         <Stat value={done.length} label={done.length === 1 ? "session" : "sessions"} />

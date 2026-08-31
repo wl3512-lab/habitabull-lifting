@@ -11,7 +11,8 @@ import {
   yearCounts,
 } from "@/lib/calendar";
 import { addPhoto, deletePhoto, listPhotos, photoUrl, type PhotoMeta } from "@/lib/photos";
-import type { Session } from "@/lib/types";
+import { buildIcs } from "@/lib/ics";
+import type { Profile, Session } from "@/lib/types";
 
 const DAY_HEADS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = [
@@ -79,11 +80,11 @@ function Thumb({
  * which is the comparison rather than another gallery.
  */
 export default function Calendar({
+  profile,
   sessions,
-  onBack,
 }: {
+  profile: Profile;
   sessions: Session[];
-  onBack: () => void;
 }) {
   const today = new Date();
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -146,17 +147,23 @@ export default function Calendar({
 
   const shift = (n: number) => setCursor(new Date(year, month + n, 1));
 
+  const reminderReady = profile.trainingDays.length > 0 && profile.trainingMinute !== undefined;
+
+  function saveReminder() {
+    const ics = buildIcs(profile);
+    if (!ics) return;
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "habitabull-training.ics";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-start justify-between gap-4">
         <p className="label text-cyan">Calendar</p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
-        >
-          Back
-        </button>
       </div>
 
       <div className="mt-2 flex items-baseline justify-between gap-3">
@@ -369,6 +376,35 @@ export default function Calendar({
         {failed && (
           <p className="mt-2 text-[15px] text-dim">
             Could not save that one. Private browsing blocks photo storage.
+          </p>
+        )}
+      </section>
+
+      {/*
+        Habit principle 5, "repeat consistently". A web app cannot honestly
+        schedule a local notification — Notification Triggers never shipped and
+        Web Push needs a server — so the reminder goes where reminders actually
+        fire. A calendar event works offline, on every platform, and outlives
+        the app being deleted.
+      */}
+      <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+        <p className="label text-dim">Reminders</p>
+        {reminderReady ? (
+          <>
+            <p className="mt-2 text-[17px] leading-snug text-fg">
+              Put your training days in the calendar you already look at, with a
+              nudge fifteen minutes before.
+            </p>
+            <div className="mt-3">
+              <Pill variant="ghost" onClick={saveReminder}>
+                Add to my calendar
+              </Pill>
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-[15px] text-dim">
+            Set your training days and time in setup and this becomes a calendar
+            reminder.
           </p>
         )}
       </section>

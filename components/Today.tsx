@@ -9,6 +9,7 @@ import { greetingMood, line } from "@/lib/voice";
 import type { Profile, Routine, Session } from "@/lib/types";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
+const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /**
  * The opening screen. It is a logging screen, not a dashboard — the single
@@ -26,7 +27,6 @@ export default function Today({
   today,
   onStart,
   onConstraints,
-  onProgress,
   onExercise,
   onProfile,
 }: {
@@ -36,7 +36,6 @@ export default function Today({
   today: string;
   onStart: () => void;
   onConstraints: (c: Constraints) => void;
-  onProgress: () => void;
   onExercise: (id: string) => void;
   onProfile: (p: Profile) => void;
 }) {
@@ -166,6 +165,28 @@ export default function Today({
     </section>
   ) : null;
 
+  // What today came to, once it is finished.
+  const todaySession = sessions.find((s) => s.date === today && s.completedAt);
+  const loggedSets =
+    todaySession?.exercises.reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0) ?? 0;
+  const loggedVolume =
+    todaySession?.exercises.reduce(
+      (n, e) => n + e.sets.filter((x) => x.done).reduce((v, x) => v + x.weight * x.reps, 0),
+      0
+    ) ?? 0;
+
+  // The next day she said she would train, named rather than counted.
+  const nextDayLabel = (() => {
+    const days = profile.trainingDays;
+    if (!days.length) return "soon";
+    const dow = new Date(today + "T00:00:00").getDay();
+    for (let i = 1; i <= 7; i++) {
+      const d = (dow + i) % 7;
+      if (days.includes(d)) return i === 1 ? "tomorrow" : FULL_DAYS[d];
+    }
+    return "soon";
+  })();
+
   // Only when there is a session to describe — on a rest day the headline
   // already says it, and repeating it under itself reads like a bug.
   const kit = [...new Set(profile.equipment)];
@@ -201,13 +222,6 @@ export default function Today({
               .toUpperCase()}
             {weeks > 0 && ` · Week ${weeks}`}
           </p>
-          <button
-            type="button"
-            onClick={onProgress}
-            className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
-          >
-            Progress
-          </button>
         </div>
         <h1 className="statement mt-2 text-[44px] text-fg">
           {routine ? routine.label : alreadyLogged ? "Logged" : "Rest day"}
@@ -219,9 +233,30 @@ export default function Today({
       {mood === "return" && motivationCard && <div className="mt-6">{motivationCard}</div>}
 
       <div className="mt-6 flex flex-col gap-2.5">
-        <Pill onClick={onStart}>
-          {alreadyLogged ? "Log another set" : routine ? "Start workout" : "Train anyway"}
-        </Pill>
+        {/*
+          Once today is logged there is no orange action, and that is the point.
+          The rule is one primary action per screen, not that a screen must
+          always have one — inventing "Log another set" for someone who has
+          already finished asks them to keep going when the app's whole argument
+          is that turning up was the job. What is left is a quiet way back in.
+        */}
+        {alreadyLogged ? (
+          <>
+            <div className="rounded-2xl bg-card p-[18px]">
+              <p className="label text-dim">Today</p>
+              <p className="statement mt-1.5 text-[26px] text-fg">
+                {loggedSets} {loggedSets === 1 ? "set" : "sets"} done
+                {loggedVolume > 0 && `, ${loggedVolume.toLocaleString()} lb moved`}
+              </p>
+              <p className="mt-1.5 text-[15px] text-dim">That is the whole job. See you {nextDayLabel}.</p>
+            </div>
+            <Pill variant="ghost" onClick={onStart}>
+              Add to today&apos;s session
+            </Pill>
+          </>
+        ) : (
+          <Pill onClick={onStart}>{routine ? "Start workout" : "Train anyway"}</Pill>
+        )}
         {open ? (
           <Card className="rise p-[18px]">
             <label htmlFor="note" className="label block text-dim">
@@ -234,7 +269,7 @@ export default function Today({
               rows={2}
               autoFocus
               placeholder="Only dumbbells today, and my shoulder is tweaked"
-              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim/70 focus:outline-none"
+              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim focus:outline-none"
             />
             <div className="mt-2.5 flex gap-2">
               <Pill

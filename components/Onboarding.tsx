@@ -127,7 +127,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
             autoComplete="given-name"
-            className="statement mt-1 w-full border-b-2 border-ground/70 bg-transparent pb-2 text-[30px] text-ground placeholder:text-ground/40 focus:border-ground focus:outline-none"
+            className="statement mt-1 w-full border-b-2 border-ground/70 bg-transparent pb-2 text-[30px] text-ground placeholder:text-ground/75 focus:border-ground focus:outline-none"
           />
 
           <div className="mt-auto pt-10">
@@ -189,7 +189,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             rows={3}
             maxLength={160}
             placeholder="I want to be strong and feel good."
-            className="mt-2 w-full resize-none rounded-2xl bg-card p-[18px] text-[19px] leading-snug text-fg placeholder:text-dim/70 focus:outline-none focus:ring-2 focus:ring-cyan"
+            className="mt-2 w-full resize-none rounded-2xl bg-card p-[18px] text-[19px] leading-snug text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
           />
 
           <p className="mt-4 text-[15px] text-dim">Or start from one of these:</p>

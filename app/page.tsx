@@ -9,6 +9,7 @@ import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import Progress from "@/components/Progress";
+import TabBar, { type Tab } from "@/components/TabBar";
 import Today from "@/components/Today";
 import {
   buildSession,
@@ -172,23 +173,33 @@ export default function Page() {
     );
   }
 
+  /** Wraps a top-level screen with the tab bar. Modes never get one. */
+  function placed(node: React.ReactNode, tab: Tab) {
+    return (
+      <>
+        {node}
+        <TabBar active={tab} onChange={(t) => setView(t)} />
+      </>
+    );
+  }
+
   if (view === "crew") {
     // Regenerated here rather than on a timer: the month can turn while the
     // app sits open on a phone that never gets closed.
     const challenge = challengeFor(profile, state.challenge);
-    return (
+    return placed(
       <Crew
         profile={profile}
         sessions={sessions}
         challenge={challenge}
         onChallenge={(c: Challenge) => setState((s) => ({ ...s, challenge: c }))}
-        onBack={() => setView("progress")}
-      />
+      />,
+      "crew"
     );
   }
 
   if (view === "calendar") {
-    return <Calendar sessions={sessions} onBack={() => setView("progress")} />;
+    return placed(<Calendar profile={profile} sessions={sessions} />, "calendar");
   }
 
   if (view === "goal") {
@@ -208,15 +219,9 @@ export default function Page() {
   }
 
   if (view === "progress") {
-    return (
-      <Progress
-        sessions={sessions}
-        goal={goal}
-        onBack={() => setView("today")}
-        onGoal={() => setView("goal")}
-        onCalendar={() => setView("calendar")}
-        onCrew={() => setView("crew")}
-      />
+    return placed(
+      <Progress sessions={sessions} goal={goal} onGoal={() => setView("goal")} />,
+      "progress"
     );
   }
 
@@ -249,7 +254,7 @@ export default function Page() {
     }
   }
 
-  return (
+  return placed(
     <Today
       profile={profile}
       routine={todayPlan}
@@ -257,9 +262,9 @@ export default function Page() {
       today={today}
       onStart={startLogging}
       onConstraints={applyConstraints}
-      onProgress={() => setView("progress")}
       onExercise={(id) => openExercise(id, "today")}
       onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
-    />
+    />,
+    "today"
   );
 }
