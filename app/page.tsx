@@ -300,7 +300,16 @@ export default function Page() {
 
   if (view === "progress") {
     return placed(
-      <Progress sessions={sessions} goal={goal} onGoal={() => setView("goal")} />,
+      <Progress
+        sessions={sessions}
+        goal={goal}
+        onGoal={() => setView("goal")}
+        state={state}
+        onImport={(next: AppState) => {
+          setState(next);
+          setView("today");
+        }}
+      />,
       "progress"
     );
   }

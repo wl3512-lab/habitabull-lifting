@@ -144,3 +144,49 @@ export async function photoUrl(id: string): Promise<string | null> {
 export async function deletePhoto(id: string): Promise<void> {
   await tx("readwrite", (s) => s.delete(id) as IDBRequest<undefined>);
 }
+
+/** Blob → data URL, so a backup is one self-contained file. */
+function toDataUrl(blob: Blob): Promise<string | null> {
+  return new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve(typeof r.result === "string" ? r.result : null);
+    r.onerror = () => resolve(null);
+    r.readAsDataURL(blob);
+  });
+}
+
+/** Every photo, inlined. Anything unreadable is skipped rather than failing the export. */
+export async function exportPhotos(): Promise<
+  { id: string; date: string; addedAt: string; data: string }[]
+> {
+  const all = await tx<PhotoRecord[]>("readonly", (s) => s.getAll() as IDBRequest<PhotoRecord[]>);
+  if (!all) return [];
+  const out = [];
+  for (const rec of all) {
+    const data = rec.blob ? await toDataUrl(rec.blob) : null;
+    if (data) out.push({ id: rec.id, date: rec.date, addedAt: rec.addedAt, data });
+  }
+  return out;
+}
+
+/**
+ * Restore photos from a backup. Existing ids are overwritten, which makes an
+ * import idempotent — running the same file twice leaves one copy, not two.
+ */
+export async function importPhotos(
+  photos: { id: string; date: string; addedAt: string; data: string }[]
+): Promise<number> {
+  let n = 0;
+  for (const p of photos) {
+    try {
+      const blob = await (await fetch(p.data)).blob();
+      const ok = await tx("readwrite", (s) =>
+        s.put({ id: p.id, date: p.date, addedAt: p.addedAt, bytes: blob.size, blob }) as IDBRequest<IDBValidKey>
+      );
+      if (ok !== null) n++;
+    } catch {
+      // One bad photo should not cost someone the rest of their history.
+    }
+  }
+  return n;
+}

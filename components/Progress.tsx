@@ -1,9 +1,10 @@
 "use client";
 
 import { Card, GoalBar, Pill, Stat } from "./ui";
+import YourData from "./YourData";
 import { nameOf } from "@/lib/exercises";
 import { goalProgress } from "@/lib/engine";
-import type { Goal, Session } from "@/lib/types";
+import type { AppState, Goal, Session } from "@/lib/types";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKS = 12;
@@ -22,10 +23,14 @@ export default function Progress({
   sessions,
   goal,
   onGoal,
+  state,
+  onImport,
 }: {
   sessions: Session[];
   goal: Goal | null;
   onGoal: () => void;
+  state: AppState;
+  onImport: (s: AppState) => void;
 }) {
   const done = sessions
     .filter((s) => s.completedAt)
@@ -196,6 +201,10 @@ export default function Progress({
           </div>
         )
       )}
+
+      <div className="mt-8">
+        <YourData state={state} onImport={onImport} />
+      </div>
 
       {ranked.length > 0 && (
         <section className="mt-8 flex flex-col gap-2.5">
