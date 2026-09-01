@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pill } from "./ui";
+import {
+  createCrew,
+  enabled,
+  fetchCrew,
+  joinCrew,
+  leaveCrew,
+  type CrewMember,
+} from "@/lib/cloud";
 import {
   challengeDone,
   challengePercent,
   daysLeftInMonth,
   defaultTarget,
 } from "@/lib/crew";
+import { formatCode, isValidCode } from "@/lib/joincode";
 import type { Challenge, Profile, Session } from "@/lib/types";
 
 const MONTHS = [
@@ -24,26 +33,78 @@ const MONTHS = [
  * written for, and beginners quit ladders. What replaces it is the Miro
  * sticky's "different challenge every month" — a target rather than a ranking.
  *
- * There is no crew list here yet and nothing pretends there is. Real presence
- * needs other people's check-ins, which needs a backend and accounts, both of
- * which are out of scope for v1. The screen is built so that a crew slots into
- * this layout without moving anything: the challenge is already the shared
- * object it would be measured against.
+ * A crew is joined by typing a code somebody read out, not by making an
+ * account — there is no password anywhere in this product. What a crew can see
+ * is deliberately thin: who trained on which day, and a photo if that person
+ * chose to share it. Never a weight, never an order.
+ *
+ * All of it disappears when no backend is configured. The app was built to work
+ * for one person offline and that stays the mode that always works.
  */
 export default function Crew({
   profile,
   sessions,
   challenge,
   onChallenge,
+  crewPreview,
 }: {
   profile: Profile;
   sessions: Session[];
   challenge: Challenge;
   onChallenge: (c: Challenge) => void;
+  /** Supplied instead of fetched, so /frames can show a crew statically. */
+  crewPreview?: { code: string | null; members: CrewMember[] };
 }) {
   const [shared, setShared] = useState<"idle" | "copied" | "failed">("idle");
+  const [code, setCode] = useState<string | null>(crewPreview?.code ?? null);
+  const [roster, setRoster] = useState<CrewMember[]>(crewPreview?.members ?? []);
+  const [entry, setEntry] = useState("");
+  const [bounced, setBounced] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    if (crewPreview || !enabled()) return;
+    fetchCrew().then((res) => {
+      setCode(res?.code ?? null);
+      setRoster(res?.members ?? []);
+    });
+  }, [crewPreview]);
+
+  useEffect(load, [load]);
+
+  async function doJoin() {
+    if (busy) return;
+    setBusy(true);
+    const res = await joinCrew(entry, profile.name);
+    setBusy(false);
+    if (!res) return setBounced(true);
+    setEntry("");
+    load();
+  }
+
+  async function doCreate() {
+    if (busy) return;
+    setBusy(true);
+    const res = await createCrew(profile.name);
+    setBusy(false);
+    if (res) load();
+  }
+
+  async function doLeave() {
+    if (busy) return;
+    setBusy(true);
+    await leaveCrew();
+    setBusy(false);
+    setCode(null);
+    setRoster([]);
+  }
 
   const now = new Date();
+  // Monday, so "this week" means the same thing here as on the calendar.
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const weekStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+
   const done = challengeDone(sessions, challenge);
   const pct = challengePercent(done, challenge.target);
   const left = Math.max(0, challenge.target - done);
@@ -55,7 +116,9 @@ export default function Crew({
     onChallenge({ ...challenge, target: Math.max(1, challenge.target + n) });
 
   async function share() {
-    const text = `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Come do it with me.`;
+    const text = code
+      ? `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Join my crew with ${formatCode(code)}.`
+      : `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Come do it with me.`;
     const url = typeof window === "undefined" ? "" : window.location.origin;
     try {
       if (navigator.share) {
@@ -78,7 +141,9 @@ export default function Crew({
         <p className="label text-cyan">Your crew</p>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">Just you, for now.</h1>
+      <h1 className="statement mt-2 text-[44px] text-fg">
+        {roster.length > 1 ? `${roster.length} of you.` : "Just you, for now."}
+      </h1>
       <p className="mt-1.5 text-[17px] text-dim">
         No rankings. No weights. Just who turned up.
       </p>
@@ -143,17 +208,93 @@ export default function Crew({
       </section>
 
       {/*
-        Said plainly rather than mocked up. A screen full of people who do not
-        exist is worse than one that admits what it does not have yet. The
-        reasoning behind "no rankings" lives in DESIGN.md; here it is just the
-        promise, in the app's voice.
+        With no backend this says plainly what it does not have. A screen full
+        of people who do not exist is worse than one that admits it.
       */}
-      <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
-        <p className="label text-dim">Nobody here yet</p>
-        <p className="mt-2 text-[17px] leading-snug text-fg">
-          When someone joins, you&apos;ll see whether they trained. Not what they lifted.
-        </p>
-      </section>
+      {!enabled() && !crewPreview ? (
+        <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+          <p className="label text-dim">Nobody here yet</p>
+          <p className="mt-2 text-[17px] leading-snug text-fg">
+            When someone joins, you&apos;ll see whether they trained. Not what they lifted.
+          </p>
+        </section>
+      ) : code ? (
+        <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="label text-dim">Who&apos;s in</p>
+            <p className="tabular head shrink-0 text-[15px] text-cyan">{formatCode(code)}</p>
+          </div>
+          <ul className="mt-3 flex flex-col gap-2.5">
+            {roster.map((m) => {
+              const week = m.days.filter((d) => d >= weekStart).length;
+              return (
+                <li key={m.id} className="flex items-baseline justify-between gap-3">
+                  <span className="head truncate text-[17px] text-fg">{m.name}</span>
+                  <span className="tabular shrink-0 text-[15px] text-dim">
+                    {week === 0 ? "not yet this week" : `${week} this week`}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3.5 border-t border-line pt-3.5 text-[15px] text-dim">
+            Read them the code and they&apos;re in.
+          </p>
+        </section>
+      ) : (
+        <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+          <p className="label text-dim">Train with someone</p>
+          <p className="mt-2 text-[17px] leading-snug text-fg">
+            They&apos;ll see the days you trained and any photo you share. Nothing else.
+          </p>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void doJoin();
+            }}
+            className="mt-4 flex items-center gap-2.5"
+          >
+            <input
+              value={entry}
+              onChange={(e) => {
+                setEntry(e.target.value.toUpperCase());
+                setBounced(false);
+              }}
+              maxLength={7}
+              inputMode="text"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="Their code"
+              aria-label="A crew code"
+              aria-invalid={bounced}
+              className="tabular min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[17px] tracking-[0.12em] text-fg placeholder:tracking-normal placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+            />
+            <button
+              type="submit"
+              disabled={!isValidCode(entry) || busy}
+              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+            >
+              Join
+            </button>
+          </form>
+          {bounced && (
+            <p className="mt-2 text-[15px] text-dim">
+              No crew with that code. Check a character and try again.
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void doCreate()}
+            disabled={busy}
+            className="head tap mt-4 self-start text-[15px] text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
+          >
+            {busy ? "One moment…" : "Or start one and get a code"}
+          </button>
+        </section>
+      )}
 
       <div className="mt-auto pt-8">
         <Pill variant="ghost" onClick={share}>
@@ -163,6 +304,16 @@ export default function Crew({
           <p className="mt-2.5 text-center text-[15px] text-dim">
             Copied. Paste it wherever they&apos;ll see it.
           </p>
+        )}
+        {code && (
+          <button
+            type="button"
+            onClick={() => void doLeave()}
+            disabled={busy}
+            className="tap mx-auto mt-4 block text-[15px] text-dim underline underline-offset-4 transition-colors hover:text-fg disabled:opacity-40"
+          >
+            Leave this crew
+          </button>
         )}
       </div>
     </main>

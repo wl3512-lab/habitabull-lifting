@@ -270,6 +270,14 @@ export default function Frames() {
                 onBack={f.noop}
               />
             </Frame>
+            <Frame n="17b" name="Day detail · with a crew" note="The same day once someone else is in it: who trained, their photo, and what they said about yours. Never a weight and never a rank.">
+              <DayDetail
+                date={f.lastSession.date}
+                session={{ ...f.lastSession, note: "Felt strong. Bar speed was good on the last set." }}
+                crewPreview={f.crewDay}
+                onBack={f.noop}
+              />
+            </Frame>
             <Frame n="—" name="Goal" note="One lift, one number, one date. Measured from where you started, so a slow week never subtracts.">
               <GoalScreen
                 goal={f.goal}
@@ -301,6 +309,24 @@ export default function Frames() {
                 profile={f.profile}
                 sessions={f.sessions}
                 challenge={challenge}
+                onChallenge={f.noop}
+              />
+            </Frame>
+            <Frame n="10b" name="Crew · joined" note="Joined by a code somebody read out, never by an account. Days trained and nothing else — the schema has no column for a weight.">
+              <Crew
+                profile={f.profile}
+                sessions={f.sessions}
+                challenge={{ month: new Date().toISOString().slice(0, 7), target: 12 }}
+                crewPreview={f.crew}
+                onChallenge={f.noop}
+              />
+            </Frame>
+            <Frame n="10c" name="Crew · join" note="Six characters with no O, I, L or U in the alphabet, because the failure mode is reading a code out across a gym floor.">
+              <Crew
+                profile={f.profile}
+                sessions={f.sessions}
+                challenge={{ month: new Date().toISOString().slice(0, 7), target: 12 }}
+                crewPreview={{ code: null, members: [] }}
                 onChallenge={f.noop}
               />
             </Frame>

@@ -155,6 +155,12 @@ function toDataUrl(blob: Blob): Promise<string | null> {
   });
 }
 
+/** One photo as a data URL, for sharing it with a crew. */
+export async function photoData(id: string): Promise<string | null> {
+  const rec = await tx<PhotoRecord>("readonly", (s) => s.get(id) as IDBRequest<PhotoRecord>);
+  return rec?.blob ? toDataUrl(rec.blob) : null;
+}
+
 /** Every photo, inlined. Anything unreadable is skipped rather than failing the export. */
 export async function exportPhotos(): Promise<
   { id: string; date: string; addedAt: string; data: string }[]

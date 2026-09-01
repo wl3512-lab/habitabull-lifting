@@ -22,6 +22,7 @@ import {
   personalRecord,
   rebuildDay,
 } from "@/lib/engine";
+import { enabled, pushCheckins } from "@/lib/cloud";
 import { challengeFor } from "@/lib/crew";
 import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
 import type { Constraints } from "@/lib/constraints";
@@ -48,6 +49,20 @@ export default function Page() {
   useEffect(() => {
     if (ready) save(state);
   }, [state, ready]);
+
+  /*
+    Tell the crew which days she trained — the dates, and nothing else. It runs
+    on the completed count rather than on every keystroke of a live session, so
+    a workout in progress is nobody's business until it is finished.
+  */
+  const completed = state.sessions.filter((s) => s.completedAt).length;
+  useEffect(() => {
+    if (!ready || !enabled()) return;
+    void pushCheckins(
+      state.sessions.filter((s) => s.completedAt).map((s) => s.date)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, completed]);
 
   if (!ready) return <div className="flex-1" aria-busy="true" />;
 
