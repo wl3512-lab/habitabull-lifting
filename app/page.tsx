@@ -381,6 +381,10 @@ export default function Page() {
       onEditRoutine={() => setView("routine")}
       goal={goal}
       onGoal={() => setView("goal")}
+      onOpenDay={(d: string) => {
+        setDayOpen(d);
+        setView("day");
+      }}
     />,
     "today"
   );

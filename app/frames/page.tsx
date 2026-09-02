@@ -159,6 +159,7 @@ export default function Frames() {
                 onSetUpWeek={f.noop}
                 onEditRoutine={f.noop}
                 onGoal={f.noop}
+                onOpenDay={f.noop}
               />
             </Frame>
             <Frame n="04" name="Logging" note="56px steppers, one orange button, finished sets as a bar you can tap to correct.">
@@ -222,6 +223,7 @@ export default function Frames() {
                 onSetUpWeek={f.noop}
                 onEditRoutine={f.noop}
                 onGoal={f.noop}
+                onOpenDay={f.noop}
               />
             </Frame>
             <Frame n="01c" name="Learned" tab="today" note="Behaviour beats intention. She says “after work”; the timestamps say otherwise, so it offers the correction.">
@@ -238,6 +240,25 @@ export default function Frames() {
                 onSetUpWeek={f.noop}
                 onEditRoutine={f.noop}
                 onGoal={f.noop}
+                onOpenDay={f.noop}
+              />
+            </Frame>
+            <Frame n="01e" name="Today · with a crew" tab="today" note="The whole social layer, one line, on the screen the app opens to. A reply nobody finds is a reply nobody got. Renders nothing when there is nothing to say.">
+              <Today
+                profile={f.profile}
+                routine={f.routines[0]}
+                sessions={f.sessions}
+                today={f.lastSession.date}
+                goal={f.goal}
+                crewPreview={f.crewDay}
+                onStart={f.noop}
+                onConstraints={f.noop}
+                onExercise={f.noop}
+                onProfile={f.noop}
+                onSetUpWeek={f.noop}
+                onEditRoutine={f.noop}
+                onGoal={f.noop}
+                onOpenDay={f.noop}
               />
             </Frame>
             <Frame n="16" name="After the workout" note="Optional and one tap away. The celebration is never gated behind a form.">

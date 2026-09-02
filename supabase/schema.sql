@@ -53,7 +53,7 @@ create table if not exists photos (
   member_id   uuid not null references members(id) on delete cascade,
   day         date not null,
   path        text not null,               -- object path in the `crew-photos` bucket
-  caption     text check (char_length(caption) <= 200),
+  caption     text check (char_length(caption) <= 500),
   created_at  timestamptz not null default now()
 );
 create index if not exists photos_day on photos(day);

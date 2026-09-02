@@ -284,7 +284,8 @@ async function share(device: string, body: Record<string, unknown>) {
     member_id: me.id,
     day: body.day,
     path,
-    caption: cleanText(body.caption) ?? null,
+    // A caption is the workout note she already wrote; same length.
+    caption: cleanText(body.caption, 500) ?? null,
   });
   return NextResponse.json({ id: rows[0]?.id ?? null });
 }

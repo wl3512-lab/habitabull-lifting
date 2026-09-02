@@ -48,6 +48,34 @@ export function enabled(): boolean {
   return process.env.NEXT_PUBLIC_CREW_ENABLED === "1";
 }
 
+/**
+ * The crew's code, remembered on this device.
+ *
+ * Screens that only need to know *whether* there is a crew — should this button
+ * exist at all — must not each pay for a request to find out. This is a cache
+ * of the last answer, not the truth; the truth is the member row on the server,
+ * and every call re-checks it there.
+ */
+const CREW_KEY = "habitabull.crew";
+
+export function crewCode(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(CREW_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberCrew(code: string | null) {
+  try {
+    if (code) window.localStorage.setItem(CREW_KEY, code);
+    else window.localStorage.removeItem(CREW_KEY);
+  } catch {
+    // Blocked storage costs a button, not the feature.
+  }
+}
+
 async function call<T>(path: string, body: unknown): Promise<T | null> {
   if (!enabled()) return null;
   const device = deviceId();
@@ -67,16 +95,31 @@ async function call<T>(path: string, body: unknown): Promise<T | null> {
   }
 }
 
-export const createCrew = (name: string) => call<{ code: string }>("create", { name });
+export const createCrew = async (name: string) => {
+  const res = await call<{ code: string }>("create", { name });
+  rememberCrew(res?.code ?? null);
+  return res;
+};
 
-export const joinCrew = (code: string, name: string) =>
-  call<{ ok: true; code: string }>("join", { code, name });
+export const joinCrew = async (code: string, name: string) => {
+  const res = await call<{ ok: true; code: string }>("join", { code, name });
+  if (res) rememberCrew(res.code);
+  return res;
+};
 
-export const leaveCrew = () => call<{ ok: true }>("leave", {});
+export const leaveCrew = async () => {
+  const res = await call<{ ok: true }>("leave", {});
+  rememberCrew(null);
+  return res;
+};
 
 /** Who is in the crew, and which days each of them trained. */
-export const fetchCrew = () =>
-  call<{ code: string | null; members: CrewMember[] }>("members", {});
+export const fetchCrew = async () => {
+  const res = await call<{ code: string | null; members: CrewMember[] }>("members", {});
+  // Only a real answer corrects the cache; a network failure is not a departure.
+  if (res) rememberCrew(res.code);
+  return res;
+};
 
 /** Push the days she has trained, so the crew sees presence and nothing else. */
 export const pushCheckins = (days: string[]) => call<{ ok: true }>("checkin", { days });

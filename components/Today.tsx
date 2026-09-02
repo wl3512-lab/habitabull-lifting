@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Bull from "./Bull";
+import CrewToday from "./CrewToday";
 import { Card, GoalBar, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { goalProgress, nextTarget, personalRecord, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
 import { anchorLabel, anchorOf, observedAnchor, primaryAnchor } from "@/lib/schedule";
+import type { CrewDay } from "@/lib/cloud";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -35,6 +37,8 @@ export default function Today({
   onEditRoutine,
   goal,
   onGoal,
+  onOpenDay,
+  crewPreview,
 }: {
   profile: Profile;
   routine: Routine | null;
@@ -48,6 +52,9 @@ export default function Today({
   onEditRoutine: () => void;
   goal: Goal | null;
   onGoal: () => void;
+  onOpenDay: (date: string) => void;
+  /** Passed straight through to the crew line, for /frames. */
+  crewPreview?: CrewDay;
 }) {
   const [note, setNote] = useState("");
   const [asking, setAsking] = useState(false);
@@ -441,6 +448,8 @@ export default function Today({
           {done.filter((s) => week.some((d) => d.iso === s.date)).length} sessions logged this week.
         </p>
       </section>
+
+      <CrewToday date={today} onOpen={() => onOpenDay(today)} preview={crewPreview} />
 
       {!raised && motivationCard && <div className="mt-8">{motivationCard}</div>}
 
