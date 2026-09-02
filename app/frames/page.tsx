@@ -306,6 +306,23 @@ function gallery(challenge: Challenge) {
                 onOpenDay={f.noop}
               />
             </Frame>
+            <Frame n="01g" name="Today · first run" tab="today" note="Onboarding generates a full-body week so nobody has to configure anything — but showing it as “Today's lifts” presented “Hip Thrust 20 lb” to someone who never asked for a hip thrust, and interview finding six is that people reject generic routines. The plan is a proposal until it is hers. Agreeing to it costs one tap.">
+              <Today
+                profile={f.firstRunProfile}
+                routine={f.routines[0]}
+                sessions={[]}
+                today={f.lastSession.date}
+                goal={null}
+                onStart={f.noop}
+                onConstraints={f.noop}
+                onExercise={f.noop}
+                onProfile={f.noop}
+                onSetUpWeek={f.noop}
+                onEditRoutine={f.noop}
+                onGoal={f.noop}
+                onOpenDay={f.noop}
+              />
+            </Frame>
             <Frame n="16" name="After the workout" note="Optional and one tap away. The celebration is never gated behind a form.">
               <AfterWorkout
                 session={{ ...f.lastSession, note: "Felt strong. Go up 5 lb next time." }}

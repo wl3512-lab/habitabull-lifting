@@ -118,6 +118,9 @@ export const goal = { exerciseId: "back-squat", targetWeight: 185, targetDate: i
 
 export const state: AppState = { profile, routines, sessions, goal, challenge: undefined };
 
+/** Straight out of onboarding: a reason, no plan chosen, nothing trained. */
+export const firstRunProfile: Profile = { ...profile, planChosen: false };
+
 /** Skipped the "why" at onboarding, and has not trained yet. */
 export const noReasonProfile: Profile = { ...profile, motivation: undefined };
 

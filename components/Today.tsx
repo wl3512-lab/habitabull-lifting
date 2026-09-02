@@ -239,6 +239,21 @@ export default function Today({
    * Only when there is a real pattern and it disagrees with what she chose.
    * Silence is the right output most of the time.
    */
+  /**
+   * A generated plan is a proposal, not a fact.
+   *
+   * Onboarding builds a full-body week so nobody has to configure anything,
+   * and that part is right — but showing it under "Today's lifts" as though it
+   * were chosen presented "Hip Thrust 20 lb" to someone who had never asked
+   * for a hip thrust. Interview finding six is that people reject generic
+   * routines, and a list you did not pick is exactly that.
+   *
+   * So the plan is not shown until it is hers. The proposal is one tap away
+   * and full body is already selected there, so agreeing costs a tap and
+   * changing it costs the same tap.
+   */
+  const unchosen = Boolean(routine) && !profile.planChosen && sessions.length === 0;
+
   const seen = observedAnchor(sessions);
   const stated = profile.anchors;
   const drift = seen && stated && stated.length > 0 && !stated.includes(seen.anchor) ? seen : null;
@@ -301,7 +316,12 @@ export default function Today({
   // work if the intention is visible on the day, not filed away at signup.
   const when = anchorLabel(profile.anchors);
 
-  const subtitle = routine
+  // "5 lifts" under a screen that says nothing is planned yet is the app
+  // arguing with itself. Before the week is hers, the header states the
+  // occasion and leaves the counting until there is something to count.
+  const subtitle = unchosen
+    ? null
+    : routine
     ? [
         `${routine.exercises.length} ${routine.exercises.length === 1 ? "lift" : "lifts"}`,
         kit.length === 1 ? (kit[0] === "bodyweight" ? "just you" : `${kit[0]}s only`) : null,
@@ -323,7 +343,13 @@ export default function Today({
           </p>
         </div>
         <h1 className="statement mt-2 text-[44px] text-fg">
-          {routine ? routine.label : alreadyLogged ? "Logged" : "Rest day"}
+          {unchosen
+            ? "Your first workout"
+            : routine
+              ? routine.label
+              : alreadyLogged
+                ? "Logged"
+                : "Rest day"}
         </h1>
         {subtitle && <p className="mt-1.5 text-[17px] text-dim">{subtitle}</p>}
       </header>
@@ -403,7 +429,9 @@ export default function Today({
             </Pill>
           </>
         ) : (
-          <Pill onClick={onStart}>{routine ? "Start workout" : "Train anyway"}</Pill>
+          <Pill onClick={unchosen ? onEditRoutine : onStart}>
+            {unchosen ? "Build your workout" : routine ? "Start workout" : "Train anyway"}
+          </Pill>
         )}
         {open ? (
           <Card className="rise p-[18px]">
@@ -438,9 +466,12 @@ export default function Today({
             </div>
           </Card>
         ) : (
-          <Pill variant="ghost" onClick={() => setOpen(true)}>
-            Swap today&apos;s plan
-          </Pill>
+          // Nothing to swap before there is a plan to swap out of.
+          !unchosen && (
+            <Pill variant="ghost" onClick={() => setOpen(true)}>
+              Swap today&apos;s plan
+            </Pill>
+          )
         )}
         {understood && (
           <p className="text-[15px] text-dim">
@@ -484,7 +515,23 @@ export default function Today({
 
       {goalCard && <div className="mt-2.5">{goalCard}</div>}
 
-      {routine ? (
+      {unchosen ? (
+        <section className="mt-8">
+          <p className="label text-dim">Today&apos;s lifts</p>
+          <button
+            type="button"
+            onClick={onEditRoutine}
+            className="mt-3 block w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
+          >
+            <span className="head block text-[19px] text-fg">Nothing here yet</span>
+            <span className="mt-1 block text-[15px] leading-snug text-dim">
+              Build your week and this fills in. Leg day, push day, cardio — or full body,
+              which is what most people should start with and what is already picked.
+            </span>
+            <span className="head mt-2.5 block text-[15px] text-cyan">Build your workout →</span>
+          </button>
+        </section>
+      ) : routine ? (
         <section className="mt-8">
           {!profile.planChosen && (
             <button

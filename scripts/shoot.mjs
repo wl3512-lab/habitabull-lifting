@@ -45,6 +45,7 @@ const SHOTS = [
   ["01d", "01d-today-comeback"],
   ["01e", "01e-today-crew"],
   ["01f", "01f-today-reason-skipped"],
+  ["01g", "01g-today-first-run"],
   ["04", "04-logging"],
   ["05", "05-rest-timer"],
   ["06", "06-pr-celebration"],
