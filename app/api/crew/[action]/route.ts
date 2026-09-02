@@ -146,6 +146,10 @@ async function leave(device: string) {
  * Leaving takes the check-ins and the photos with it — the cascade in the
  * schema does that. Nobody should have to trust a promise that their pictures
  * are gone when the foreign key can make it true.
+ *
+ * The last person out takes the crew with them. A crew with no members is not
+ * a crew, and leaving it behind holds its join code hostage forever: 29^6 is a
+ * large number but an empty row still owns a code nobody can ever use again.
  */
 async function leaveQuietly(device: string) {
   const me = await whoami(device);
@@ -153,6 +157,9 @@ async function leaveQuietly(device: string) {
   const mine = await select<{ path: string }>("photos", `member_id=eq.${me.id}&select=path`);
   await Promise.all(mine.map((p) => deleteObject(p.path)));
   await remove("members", `id=eq.${me.id}`);
+
+  const left = await select<{ id: string }>("members", `crew_id=eq.${me.crew_id}&select=id&limit=1`);
+  if (left.length === 0) await remove("crews", `id=eq.${me.crew_id}`);
 }
 
 async function members(device: string) {

@@ -427,6 +427,20 @@ describe("leave", () => {
     expect(objects).toBeLessThan(row);
   });
 
+  it("takes the crew with it when the last member goes", async () => {
+    amMember();
+    on(`members?crew_id=eq.${MY_CREW}`, []); // nobody left after the delete
+    await post("leave", { device: ME });
+    expect(sent("DELETE", `crews?id=eq.${MY_CREW}`)).toBe(true);
+  });
+
+  it("leaves the crew standing while anyone is still in it", async () => {
+    amMember();
+    on(`members?crew_id=eq.${MY_CREW}`, [{ id: MAYA }]);
+    await post("leave", { device: ME });
+    expect(sent("DELETE", "/crews")).toBe(false);
+  });
+
   it("is quiet about a device that was never in a crew", async () => {
     expect((await post("leave", { device: ME })).status).toBe(200);
   });
