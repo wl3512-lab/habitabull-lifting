@@ -525,8 +525,9 @@ export default function Today({
           >
             <span className="head block text-[19px] text-fg">Nothing here yet</span>
             <span className="mt-1 block text-[15px] leading-snug text-dim">
-              Build your week and this fills in. Leg day, push day, cardio — or full body,
-              which is what most people should start with and what is already picked.
+              Pick the shape of each day — leg day, push day, cardio, or full body, which
+              is already chosen and is where most people should start. Or describe the
+              week you want and the app will build it.
             </span>
             <span className="head mt-2.5 block text-[15px] text-cyan">Build your workout →</span>
           </button>

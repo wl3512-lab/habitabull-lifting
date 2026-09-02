@@ -55,6 +55,51 @@ export default function RoutineEditor({
   const [ask, setAsk] = useState("");
   const [asking, setAsking] = useState(false);
   const [suggested, setSuggested] = useState<{ id: string; why: string } | null>(null);
+  const [weekAsk, setWeekAsk] = useState("");
+  const [weekBusy, setWeekBusy] = useState(false);
+  const [weekWhy, setWeekWhy] = useState<string | null>(null);
+
+  /**
+   * "Build me a week."
+   *
+   * The model picks day *types* from the seven above and nothing else. Every
+   * exercise, set, rep and weight then comes out of `generateRoutine` exactly
+   * as it does when the shapes are tapped by hand — so the worst a bad answer
+   * can do is give someone leg day on a Wednesday, and the fix for that is one
+   * tap on the list above.
+   */
+  async function buildWeek() {
+    if (weekBusy || !weekAsk.trim()) return;
+    setWeekBusy(true);
+    setWeekWhy(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "week", text: weekAsk, count: draft.length }),
+      });
+      const out = (await res.json()) as { templates?: TemplateId[]; why?: string | null };
+      if (out.templates?.length) {
+        const built = generateRoutine(
+          profile.level,
+          draft.map((r) => r.day),
+          profile.equipment,
+          profile.favourites ?? [],
+          out.templates
+        );
+        if (built.length) {
+          setDraft(built);
+          setDayIndex(0);
+          setOpenId(null);
+          setWeekWhy(out.why ?? null);
+          setWeekAsk("");
+        }
+      }
+    } catch {
+      // The shapes above still work. Nothing is blocked by this being down.
+    }
+    setWeekBusy(false);
+  }
 
   /**
    * "I don't know what I want to do for biceps."
@@ -243,6 +288,43 @@ export default function RoutineEditor({
             );
           })}
         </div>
+        {/*
+          For the person who does not know what a split is. It sits under the
+          shapes, never instead of them: anyone who knows what they want taps
+          the list and never sees a text field.
+        */}
+        <div className="mt-4 border-t border-line pt-4">
+          <p className="label text-dim">Or describe your week</p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void buildWeek();
+            }}
+            className="mt-2.5 flex items-center gap-2.5"
+          >
+            <input
+              value={weekAsk}
+              onChange={(e) => setWeekAsk(e.target.value)}
+              maxLength={200}
+              placeholder="I want to focus on legs, and one easy day"
+              aria-label="Describe the week you want"
+              className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+            />
+            <button
+              type="submit"
+              disabled={!weekAsk.trim() || weekBusy}
+              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+            >
+              {weekBusy ? "…" : "Build"}
+            </button>
+          </form>
+          {weekWhy && (
+            <p role="status" className="mt-2.5 text-[15px] leading-snug text-dim">
+              {weekWhy} Change any day above.
+            </p>
+          )}
+        </div>
+
         {/*
           One honest line, not a block. Three days of push/pull/legs trains each
           group once a week, and ACSM's whole point is that twice is what counts

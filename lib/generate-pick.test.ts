@@ -122,3 +122,53 @@ describe("what the model is shown", () => {
     expect(out.source).toBe("local");
   });
 });
+
+describe("building a week", () => {
+  const week = (text: string, count = 3) =>
+    POST(
+      new Request("https://app.test/api/generate", {
+        method: "POST",
+        body: JSON.stringify({ intent: "week", count, text }),
+      })
+    );
+
+  it("passes through day types that exist", async () => {
+    reply = { templates: ["push", "pull", "legs"], why: "A classic split." };
+    const out = await (await week("push pull legs")).json();
+    expect(out.templates).toEqual(["push", "pull", "legs"]);
+    expect(out.source).toBe("ai");
+  });
+
+  it("replaces an invented day type with full body, keeping the rest", async () => {
+    // One bad slot must not cost the whole answer.
+    reply = { templates: ["push", "shoulders-and-abs", "legs"], why: "ok" };
+    expect((await (await week("x")).json()).templates).toEqual(["push", "full-body", "legs"]);
+  });
+
+  it("always returns exactly as many days as were asked for", async () => {
+    reply = { templates: ["push"], why: "ok" };
+    expect((await (await week("x", 4)).json()).templates).toHaveLength(4);
+    reply = { templates: ["push", "pull", "legs", "upper", "lower", "cardio", "push", "pull"] };
+    expect((await (await week("x", 2)).json()).templates).toHaveLength(2);
+  });
+
+  it("falls back to a full-body week when the model is unreachable", async () => {
+    vi.stubGlobal("fetch", async () => new Response("nope", { status: 500 }));
+    const out = await (await week("legs")).json();
+    expect(out.templates).toEqual(["full-body", "full-body", "full-body"]);
+    expect(out.source).toBe("local");
+  });
+
+  it("does not call the model with nothing to go on", async () => {
+    const out = await (await week("  ")).json();
+    expect(prompts).toHaveLength(0);
+    expect(out.source).toBe("local");
+  });
+
+  it("never returns an exercise, a set or a rep — only shapes", async () => {
+    reply = { templates: ["legs", "push", "full-body"], why: "Squats 3x8 at 135 lb." };
+    const out = await (await week("legs")).json();
+    expect(JSON.stringify(out)).not.toMatch(/\d/);
+    expect(out.why).toBeNull();
+  });
+});

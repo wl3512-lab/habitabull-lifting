@@ -3,6 +3,7 @@ import { EQUIPMENT, MUSCLES, parseLocally, sanitize } from "@/lib/constraints";
 import { alternativesFor } from "@/lib/engine";
 import { byId } from "@/lib/exercises";
 import { parseAvailability } from "@/lib/schedule";
+import { TEMPLATES, type TemplateId } from "@/lib/templates";
 import type { Equipment, Muscle } from "@/lib/types";
 
 /**
@@ -116,14 +117,42 @@ Write "why" in second person, plainly, about what the movement is like. Never
 mention sets, reps, weights or numbers. Never invent an exercise.`;
 }
 
+/**
+ * "Build me a week."
+ *
+ * The model picks day *types* and nothing else — full body, push, legs — from
+ * the same seven the picker shows. It never returns an exercise, a weight, a
+ * set count or a rep count, because `generateRoutine` builds all of that from
+ * the templates afterwards. That is the whole trick: the model is choosing
+ * words, and the words happen to be an enum the rules engine already accepts.
+ */
+function weekSystem(count: number) {
+  return `A gym-goer described the week they want. Choose the shape of each session.
+
+Day types, and the only values allowed:
+${TEMPLATES.map((t) => `${t.id} = ${t.label}, ${t.hint}`).join("\n")}
+
+Return ONLY JSON, no prose, no markdown fence:
+{"templates": [${Array(count).fill('"..."').join(", ")}], "why": "<one short sentence, under 15 words>"}
+
+Give exactly ${count} values, in the order the sessions fall across the week.
+Prefer full-body when they are new or unsure — training everything twice a week
+matters more than the split. Never mention sets, reps, weights or numbers.`;
+}
+
 export async function POST(request: Request) {
   let text = "";
   let intent = "constraints";
   let muscle: Muscle | null = null;
   let equipment: Equipment[] = [];
   let exclude: string[] = [];
+  let bodyCount: unknown = 3;
   try {
     const body = await request.json();
+    if (body?.intent === "week") {
+      intent = "week";
+      bodyCount = body?.count;
+    }
     text = typeof body?.text === "string" ? body.text.slice(0, 500) : "";
     if (body?.intent === "availability") intent = "availability";
     if (body?.intent === "pick") {
@@ -140,6 +169,51 @@ export async function POST(request: Request) {
     }
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+
+  if (intent === "week") {
+    const count = Math.min(7, Math.max(1, Math.round(Number(bodyCount) || 3)));
+    const ids = new Set(TEMPLATES.map((t) => t.id));
+    // What the app would have built on its own, and the floor we never fall
+    // below: full body is the shape the guidance actually recommends.
+    const local = () =>
+      NextResponse.json({
+        templates: Array(count).fill("full-body") as TemplateId[],
+        why: null,
+        source: "local",
+      });
+    if (!text.trim()) return local();
+
+    try {
+      const res = await fetch(PROXY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          input: { prompt: text, system_prompt: weekSystem(count), max_completion_tokens: 160 },
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return local();
+
+      const raw = extractJson(readOutput(await res.json())) as Record<string, unknown> | null;
+      const got = Array.isArray(raw?.templates) ? raw.templates : [];
+
+      // Every value checked against the enum. One bad entry does not cost the
+      // whole answer — that slot falls back to full body, which is the default
+      // it would have had anyway.
+      const templates = Array.from({ length: count }, (_, i) => {
+        const v = got[i];
+        if (typeof v === "string" && ids.has(v as TemplateId)) return v as TemplateId;
+        console.warn(`[generate:week] discarded template ${JSON.stringify(v)}`);
+        return "full-body" as TemplateId;
+      });
+
+      const why = typeof raw?.why === "string" ? raw.why.replace(/\s+/g, " ").trim().slice(0, 120) : "";
+      return NextResponse.json({ templates, why: /\d/.test(why) ? null : why || null, source: "ai" });
+    } catch {
+      return local();
+    }
   }
 
   if (intent === "pick") {
