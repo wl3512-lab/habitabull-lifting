@@ -59,7 +59,7 @@ export default function Crew({
   const [code, setCode] = useState<string | null>(crewPreview?.code ?? null);
   const [roster, setRoster] = useState<CrewMember[]>(crewPreview?.members ?? []);
   const [entry, setEntry] = useState("");
-  const [bounced, setBounced] = useState(false);
+  const [trouble, setTrouble] = useState<"none" | "no-such-crew" | "unreachable">("none");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -77,7 +77,13 @@ export default function Crew({
     setBusy(true);
     const res = await joinCrew(entry, profile.name);
     setBusy(false);
-    if (!res) return setBounced(true);
+    if (!res.ok) {
+      // Only a 404 means the code was wrong. Anything else is our problem and
+      // should not be described as hers.
+      setTrouble(res.status === 404 ? "no-such-crew" : "unreachable");
+      return;
+    }
+    setTrouble("none");
     setEntry("");
     load();
   }
@@ -87,7 +93,12 @@ export default function Crew({
     setBusy(true);
     const res = await createCrew(profile.name);
     setBusy(false);
-    if (res) load();
+    if (res.ok) {
+      setTrouble("none");
+      load();
+    } else {
+      setTrouble("unreachable");
+    }
   }
 
   async function doLeave() {
@@ -259,7 +270,7 @@ export default function Crew({
               value={entry}
               onChange={(e) => {
                 setEntry(e.target.value.toUpperCase());
-                setBounced(false);
+                setTrouble("none");
               }}
               maxLength={7}
               inputMode="text"
@@ -268,7 +279,7 @@ export default function Crew({
               spellCheck={false}
               placeholder="Their code"
               aria-label="A crew code"
-              aria-invalid={bounced}
+              aria-invalid={trouble === "no-such-crew"}
               className="tabular min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[17px] tracking-[0.12em] text-fg placeholder:tracking-normal placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <button
@@ -279,9 +290,11 @@ export default function Crew({
               Join
             </button>
           </form>
-          {bounced && (
-            <p className="mt-2 text-[15px] text-dim">
-              No crew with that code. Check a character and try again.
+          {trouble !== "none" && (
+            <p role="status" className="mt-2 text-[15px] text-dim">
+              {trouble === "no-such-crew"
+                ? "No crew with that code. Check a character and try again."
+                : "Could not reach your crew just now. Your training is saved either way — try again in a moment."}
             </p>
           )}
 

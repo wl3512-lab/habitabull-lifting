@@ -124,6 +124,25 @@ describe("the request itself", () => {
     vi.resetModules();
   });
 
+  it("treats a copied .env template as not set up, not as an error", async () => {
+    vi.resetModules();
+    vi.stubEnv("SUPABASE_URL", "https://your-project.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_KEY", "your-service-role-key");
+    const fresh = await import("../../app/api/crew/[action]/route");
+    const res = await fresh.POST(
+      new Request("https://app.test/api/crew/members", {
+        method: "POST",
+        body: JSON.stringify({ device: ME }),
+      }),
+      { params: Promise.resolve({ action: "members" }) }
+    );
+    // 503 says "nobody set this up". 500 says "we are broken", which sends
+    // someone hunting a bug that is really an empty field in .env.local.
+    expect(res.status).toBe(503);
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
   it("never repeats the database's own words back to the phone", async () => {
     amMember();
     handlers.unshift((url, m) => (m === "GET" && url.includes("photos") ? undefined : undefined));

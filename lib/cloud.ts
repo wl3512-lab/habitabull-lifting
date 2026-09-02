@@ -76,34 +76,52 @@ function rememberCrew(code: string | null) {
   }
 }
 
-async function call<T>(path: string, body: unknown): Promise<T | null> {
-  if (!enabled()) return null;
+/**
+ * A refusal and a failure are different things, and only one of them is the
+ * user's doing. "No crew with that code" is true of a 404 and a lie about a
+ * dropped connection, so the two paths that report to a person — joining and
+ * creating — get the status, and everything else keeps the simpler shape.
+ */
+export type Result<T> = { ok: true; data: T } | { ok: false; status: number };
+
+const UNREACHABLE = 0;
+
+async function request<T>(path: string, body: unknown): Promise<Result<T>> {
+  if (!enabled()) return { ok: false, status: UNREACHABLE };
   const device = deviceId();
-  if (!device) return null;
+  if (!device) return { ok: false, status: UNREACHABLE };
   try {
     const res = await fetch(`/api/crew/${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...(body as object), device }),
     });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, data: (await res.json()) as T };
   } catch {
-    // A crew that cannot be reached is a crew that is not there today. The
-    // calendar still shows her own training; it just shows nobody else's.
-    return null;
+    return { ok: false, status: UNREACHABLE };
   }
 }
 
+/**
+ * For everything that can fail quietly. A crew that cannot be reached is a
+ * crew that is not there today: the calendar still shows her own training, it
+ * just shows nobody else's.
+ */
+async function call<T>(path: string, body: unknown): Promise<T | null> {
+  const res = await request<T>(path, body);
+  return res.ok ? res.data : null;
+}
+
 export const createCrew = async (name: string) => {
-  const res = await call<{ code: string }>("create", { name });
-  rememberCrew(res?.code ?? null);
+  const res = await request<{ code: string }>("create", { name });
+  if (res.ok) rememberCrew(res.data.code);
   return res;
 };
 
 export const joinCrew = async (code: string, name: string) => {
-  const res = await call<{ ok: true; code: string }>("join", { code, name });
-  if (res) rememberCrew(res.code);
+  const res = await request<{ ok: true; code: string }>("join", { code, name });
+  if (res.ok) rememberCrew(res.data.code);
   return res;
 };
 

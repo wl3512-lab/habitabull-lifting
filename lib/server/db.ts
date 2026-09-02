@@ -16,7 +16,15 @@ const URL_ = process.env.SUPABASE_URL ?? "";
 const KEY = process.env.SUPABASE_SERVICE_KEY ?? "";
 const BUCKET = "crew-photos";
 
-export const configured = () => Boolean(URL_ && KEY);
+/**
+ * The values `.env.example` ships with. A copied template is *not* a
+ * configured backend, and treating it as one turns "you have not set this up"
+ * into "something went wrong" — the least useful sentence a server can say.
+ */
+const PLACEHOLDERS = new Set(["https://your-project.supabase.co", "your-service-role-key"]);
+
+export const configured = () =>
+  Boolean(URL_ && KEY) && !PLACEHOLDERS.has(URL_) && !PLACEHOLDERS.has(KEY);
 
 const headers = {
   apikey: KEY,
