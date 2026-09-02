@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
 import Crew from "@/components/Crew";
@@ -18,6 +18,7 @@ import Today from "@/components/Today";
 import YourData from "@/components/YourData";
 import WeekSetup from "@/components/WeekSetup";
 import { challengeFor } from "@/lib/crew";
+import type { Challenge } from "@/lib/types";
 import * as f from "./fixtures";
 
 /**
@@ -27,7 +28,15 @@ import * as f from "./fixtures";
  * images — so the gallery cannot drift out of date the way a folder of
  * screenshots does. Each frame is clipped to 390 × 844, which is the artboard
  * and the only size the app is designed at.
+ *
+ * `?shot=<n>` renders exactly one frame, bare, filling the viewport — no
+ * caption, no rounded device, no gallery around it. That is how the stills in
+ * redesign-screens/ are produced (see scripts/shoot.mjs), so a still is the
+ * same render as the gallery rather than a photograph of it that ages badly.
  */
+
+/** The frame being captured, or null when the whole gallery is showing. */
+const Shot = createContext<string | null>(null);
 
 const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
   .toISOString()
@@ -47,6 +56,22 @@ function Frame({
   tab?: "today" | "calendar" | "progress" | "crew";
   children: ReactNode;
 }) {
+  const shot = useContext(Shot);
+
+  // Capture mode: this frame alone, square-cornered, filling the viewport, so
+  // the file is the screen and not a picture of a phone on a page.
+  if (shot !== null) {
+    if (shot !== n) return null;
+    return (
+      <div data-shot={n} className="flex h-[844px] w-[390px] flex-col overflow-hidden bg-ground">
+        <div className="flex h-full w-full flex-col overflow-y-auto no-scrollbar">
+          {children}
+          {tab && <TabBar active={tab} onChange={f.noop} />}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <figure className="flex w-[390px] shrink-0 flex-col">
       <figcaption className="mb-2.5">
@@ -66,6 +91,7 @@ function Frame({
 }
 
 function NotBuilt({ n, name, why }: { n: string; name: string; why: string }) {
+  if (useContext(Shot) !== null) return null;
   return (
     <figure className="flex w-[390px] shrink-0 flex-col">
       <figcaption className="mb-2.5">
@@ -82,6 +108,8 @@ function NotBuilt({ n, name, why }: { n: string; name: string; why: string }) {
 }
 
 function Group({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
+  // In capture mode the group is only a container; at most one child renders.
+  if (useContext(Shot) !== null) return <>{children}</>;
   return (
     <section className="mt-14 first:mt-0">
       <h2 className="statement text-[34px] text-fg">{title}</h2>
@@ -91,47 +119,13 @@ function Group({ title, sub, children }: { title: string; sub: string; children:
   );
 }
 
-export default function Frames() {
-  const [scale, setScale] = useState(1);
-  const challenge = challengeFor(f.profile, undefined);
-
+/**
+ * Every frame, declared once. The gallery and the still-capture route render
+ * the same call, so a screenshot can never show a screen the gallery does not.
+ */
+function gallery(challenge: Challenge) {
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-deep">
-      <div className="mx-auto max-w-[1600px] px-8 py-10">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="label text-cyan">HabitaBull</p>
-            <h1 className="statement mt-2 text-[52px] text-fg">Every screen at once</h1>
-            <p className="mt-1.5 max-w-[62ch] text-[17px] text-dim">
-              The real components against stand-in data — not exported images, so this cannot
-              drift out of date. Each frame is clipped to 390 × 844, the only size the app is
-              designed at. Screens scroll inside their own frame.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="label text-dim">Size</span>
-            {[0.6, 0.8, 1].map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setScale(s)}
-                aria-pressed={scale === s}
-                className={`head h-11 rounded-full border px-4 text-[15px] transition-colors ${
-                  scale === s
-                    ? "border-cyan bg-cyan text-ground"
-                    : "border-line-strong text-dim hover:border-fg"
-                }`}
-              >
-                {Math.round(s * 100)}%
-              </button>
-            ))}
-          </div>
-        </header>
-
-        <div
-          className="mt-10 origin-top-left"
-          style={{ zoom: scale }}
-        >
+    <>
           <Group title="Setup" sub="Two screens, then you lift.">
             <Frame n="00" name="Welcome" note="The 2023 cyan field, kept for exactly one screen. Dark-on-cyan is 8:1; the original white wordmark was 2.23:1.">
               <Onboarding onDone={f.noop} />
@@ -370,6 +364,67 @@ export default function Frames() {
             Photos are stored per browser, so the calendar and day-detail frames show their
             empty photo state here unless you have added some in this browser.
           </p>
+    </>
+  );
+}
+
+export default function Frames() {
+  const [scale, setScale] = useState(1);
+  const [shot, setShot] = useState<string | null>(null);
+  const challenge = challengeFor(f.profile, undefined);
+
+  // Read on the client only: the page stays static, and there is no Suspense
+  // boundary to add for one query parameter.
+  useEffect(() => {
+    setShot(new URLSearchParams(window.location.search).get("shot"));
+  }, []);
+
+  if (shot !== null) {
+    return (
+      <Shot.Provider value={shot}>
+        <div className="fixed inset-0 z-50 bg-ground">{gallery(challenge)}</div>
+      </Shot.Provider>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-auto bg-deep">
+      <div className="mx-auto max-w-[1600px] px-8 py-10">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="label text-cyan">HabitaBull</p>
+            <h1 className="statement mt-2 text-[52px] text-fg">Every screen at once</h1>
+            <p className="mt-1.5 max-w-[62ch] text-[17px] text-dim">
+              The real components against stand-in data — not exported images, so this cannot
+              drift out of date. Each frame is clipped to 390 × 844, the only size the app is
+              designed at. Screens scroll inside their own frame.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="label text-dim">Size</span>
+            {[0.6, 0.8, 1].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setScale(s)}
+                aria-pressed={scale === s}
+                className={`head h-11 rounded-full border px-4 text-[15px] transition-colors ${
+                  scale === s
+                    ? "border-cyan bg-cyan text-ground"
+                    : "border-line-strong text-dim hover:border-fg"
+                }`}
+              >
+                {Math.round(s * 100)}%
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <div
+          className="mt-10 origin-top-left"
+          style={{ zoom: scale }}
+        >
+          {gallery(challenge)}
         </div>
       </div>
     </div>

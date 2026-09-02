@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "smoke": "node scripts/smoke-crew.mjs"
+    "smoke": "node scripts/smoke-crew.mjs",
+    "shoot": "node scripts/shoot.mjs"
   },
   "dependencies": {
     "next": "16.3.3",
