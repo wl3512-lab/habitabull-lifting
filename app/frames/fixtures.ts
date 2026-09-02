@@ -118,6 +118,9 @@ export const goal = { exerciseId: "back-squat", targetWeight: 185, targetDate: i
 
 export const state: AppState = { profile, routines, sessions, goal, challenge: undefined };
 
+/** Skipped the "why" at onboarding, and has not trained yet. */
+export const noReasonProfile: Profile = { ...profile, motivation: undefined };
+
 /** A profile that has trained in the evening while claiming "after work". */
 export const driftProfile: Profile = { ...profile, anchors: ["afterwork"] };
 

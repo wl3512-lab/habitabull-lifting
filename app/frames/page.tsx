@@ -289,6 +289,23 @@ function gallery(challenge: Challenge) {
                 onOpenDay={f.noop}
               />
             </Frame>
+            <Frame n="01f" name="Today · reason skipped" tab="today" note="The why is skippable, and skipping it used to leave the screen with nothing personal on it and no way back — the editor lived inside a card that did not render. It invites rather than requires: the reason only works if it is hers.">
+              <Today
+                profile={f.noReasonProfile}
+                routine={f.routines[0]}
+                sessions={[]}
+                today={f.lastSession.date}
+                goal={null}
+                onStart={f.noop}
+                onConstraints={f.noop}
+                onExercise={f.noop}
+                onProfile={f.noop}
+                onSetUpWeek={f.noop}
+                onEditRoutine={f.noop}
+                onGoal={f.noop}
+                onOpenDay={f.noop}
+              />
+            </Frame>
             <Frame n="16" name="After the workout" note="Optional and one tap away. The celebration is never gated behind a form.">
               <AfterWorkout
                 session={{ ...f.lastSession, note: "Felt strong. Go up 5 lb next time." }}

@@ -134,7 +134,7 @@ export default function Today({
    * quiet. After a gap it comes up above everything, because that is the day it
    * was written for. The model never touches the text either way.
    */
-  const motivationCard = profile.motivation ? (
+  const motivationCard = (
     <section className="rounded-2xl bg-card p-[18px]">
       {raised && (
         <div className="mb-3 flex justify-center">
@@ -143,16 +143,18 @@ export default function Today({
       )}
       <div className="flex items-baseline justify-between gap-3">
         <p className="label text-dim">You workout because</p>
-        <button
-          type="button"
-          onClick={() => {
-            setWhyDraft(profile.motivation ?? "");
-            setEditingWhy(true);
-          }}
-          className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
-        >
-          Change
-        </button>
+        {profile.motivation && !editingWhy && (
+          <button
+            type="button"
+            onClick={() => {
+              setWhyDraft(profile.motivation ?? "");
+              setEditingWhy(true);
+            }}
+            className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          >
+            Change
+          </button>
+        )}
       </div>
       {editingWhy ? (
         <div className="mt-2.5">
@@ -185,16 +187,43 @@ export default function Today({
             </button>
           </div>
         </div>
-      ) : (
+      ) : profile.motivation ? (
         <blockquote className="statement mt-2 text-[26px] leading-tight text-fg">
           &ldquo;{profile.motivation}&rdquo;
         </blockquote>
+      ) : (
+        /*
+          Skipped at onboarding, and until now that left this screen with
+          nothing personal on it at all — no reason and, before a first
+          workout, no goal either. The way back was only ever the Change
+          button on a card that did not render.
+
+          It teaches what the card becomes rather than apologising for being
+          empty, and it stays an invitation: the deck's whole point (p9,
+          I Am Sober) is that the reason has to be hers, and a required field
+          is the fastest way to get an answer nobody meant.
+        */
+        <>
+          <p className="mt-2 text-[17px] leading-snug text-dim">
+            One line, in your words. It comes back on the days you would rather not.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setWhyDraft("");
+              setEditingWhy(true);
+            }}
+            className="head tap mt-2.5 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          >
+            Write your reason
+          </button>
+        </>
       )}
-      {mood === "return" && !editingWhy && (
+      {mood === "return" && profile.motivation && !editingWhy && (
         <p className="mt-2.5 text-[15px] text-dim">Still true. The gap does not undo it.</p>
       )}
     </section>
-  ) : null;
+  );
 
   // What today came to, once it is finished.
   const todaySession = sessions.find((s) => s.date === today && s.completedAt);
