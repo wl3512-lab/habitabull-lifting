@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
 import Crew from "@/components/Crew";
@@ -33,10 +33,14 @@ import * as f from "./fixtures";
  * caption, no rounded device, no gallery around it. That is how the stills in
  * redesign-screens/ are produced (see scripts/shoot.mjs), so a still is the
  * same render as the gallery rather than a photograph of it that ages badly.
+ *
+ * `&scroll=<px>` scrolls that frame before it is captured. A phone screen is
+ * often taller than 844, and a still that can only ever show the top of one
+ * leaves the bottom half of the app undocumented.
  */
 
-/** The frame being captured, or null when the whole gallery is showing. */
-const Shot = createContext<string | null>(null);
+/** The frame being captured and how far down, or null when the gallery shows. */
+const Shot = createContext<{ n: string; scroll: number } | null>(null);
 
 const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
   .toISOString()
@@ -61,15 +65,8 @@ function Frame({
   // Capture mode: this frame alone, square-cornered, filling the viewport, so
   // the file is the screen and not a picture of a phone on a page.
   if (shot !== null) {
-    if (shot !== n) return null;
-    return (
-      <div data-shot={n} className="flex h-[844px] w-[390px] flex-col overflow-hidden bg-ground">
-        <div className="flex h-full w-full flex-col overflow-y-auto no-scrollbar">
-          {children}
-          {tab && <TabBar active={tab} onChange={f.noop} />}
-        </div>
-      </div>
-    );
+    if (shot.n !== n) return null;
+    return <Captured n={n} scroll={shot.scroll} tab={tab}>{children}</Captured>;
   }
 
   return (
@@ -87,6 +84,43 @@ function Frame({
         </div>
       </div>
     </figure>
+  );
+}
+
+/** One frame, alone, scrolled to wherever the capture asked for. */
+function Captured({
+  n,
+  scroll,
+  tab,
+  children,
+}: {
+  n: string;
+  scroll: number;
+  tab?: "today" | "calendar" | "progress" | "crew";
+  children: ReactNode;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const [settled, setSettled] = useState(scroll === 0);
+
+  useEffect(() => {
+    if (!box.current || scroll === 0) return;
+    box.current.scrollTop = scroll;
+    // The capture waits on data-ready, so a screenshot can never land between
+    // the render and the scroll.
+    requestAnimationFrame(() => setSettled(true));
+  }, [scroll]);
+
+  return (
+    <div
+      data-shot={n}
+      data-ready={settled ? "yes" : "no"}
+      className="flex h-[844px] w-[390px] flex-col overflow-hidden bg-ground"
+    >
+      <div ref={box} className="flex h-full w-full flex-col overflow-y-auto no-scrollbar">
+        {children}
+        {tab && <TabBar active={tab} onChange={f.noop} />}
+      </div>
+    </div>
   );
 }
 
@@ -370,13 +404,15 @@ function gallery(challenge: Challenge) {
 
 export default function Frames() {
   const [scale, setScale] = useState(1);
-  const [shot, setShot] = useState<string | null>(null);
+  const [shot, setShot] = useState<{ n: string; scroll: number } | null>(null);
   const challenge = challengeFor(f.profile, undefined);
 
   // Read on the client only: the page stays static, and there is no Suspense
   // boundary to add for one query parameter.
   useEffect(() => {
-    setShot(new URLSearchParams(window.location.search).get("shot"));
+    const q = new URLSearchParams(window.location.search);
+    const n = q.get("shot");
+    if (n !== null) setShot({ n, scroll: Number(q.get("scroll") ?? 0) || 0 });
   }, []);
 
   if (shot !== null) {

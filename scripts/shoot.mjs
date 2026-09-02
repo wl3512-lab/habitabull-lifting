@@ -35,6 +35,8 @@ const ONLY = flag("only")?.split(",").map((s) => s.trim());
  * for anything already linked in the docs.
  */
 const SHOTS = [
+  // [frame id, filename, scroll px]. A screen taller than 844 gets a second
+  // still rather than going undocumented below the fold.
   ["00", "00-welcome"],
   ["02", "02-onboarding-why"],
   ["03", "03-week-setup"],
@@ -57,6 +59,10 @@ const SHOTS = [
   ["10", "10-crew"],
   ["10b", "10b-crew-joined"],
   ["10c", "10c-crew-join"],
+  ["11", "11a-calendar-photos", 620],
+  ["08", "08a-progress-consistency", 560],
+  ["14", "14a-routine-add-a-lift", 900],
+  ["17b", "17b2-day-detail-crew-photos", 700],
 ];
 
 /**
@@ -95,15 +101,17 @@ function main() {
   let ok = 0;
   const failed = [];
 
-  for (const [id, name] of wanted) {
+  for (const [id, name, scroll] of wanted) {
     const file = `${OUT}/${name}.png`;
-    ab("open", `http://localhost:${PORT}/frames?shot=${encodeURIComponent(id)}`);
+    const q = `shot=${encodeURIComponent(id)}${scroll ? `&scroll=${scroll}` : ""}`;
+    ab("open", `http://localhost:${PORT}/frames?${q}`);
 
     // The frame is client-rendered from the query string, so wait for it
     // rather than for a fixed delay that is either flaky or wasteful.
     let present = false;
     for (let i = 0; i < 40 && !present; i++) {
-      present = ab("eval", `!!document.querySelector('[data-shot]')`).includes("true");
+      present = ab("eval", `document.querySelector('[data-shot]')?.dataset.ready === 'yes'`)
+        .includes("true");
       if (!present) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
     }
     if (!present) {
