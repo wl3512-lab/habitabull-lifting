@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { EQUIPMENT, MUSCLES, parseLocally, sanitize } from "@/lib/constraints";
+import { alternativesFor } from "@/lib/engine";
+import { byId } from "@/lib/exercises";
 import { parseAvailability } from "@/lib/schedule";
+import type { Equipment, Muscle } from "@/lib/types";
 
 /**
  * Free text in, structured constraints out.
@@ -88,15 +91,101 @@ function sanitizeAvailability(raw: unknown) {
   };
 }
 
+/**
+ * "I don't know what I want to do for biceps."
+ *
+ * The model picks from a shortlist we build; it does not know any exercise we
+ * have not just handed it, and the id it returns is checked against that same
+ * shortlist before it leaves this file. A hallucinated "cable crossover" is
+ * dropped and the picker's own first choice is returned instead, which is
+ * exactly what the screen would have shown anyway.
+ *
+ * It never returns a weight, a set count or a rep count. Adding the lift runs
+ * the same rules engine as adding it by hand.
+ */
+function pickSystem(muscle: string, options: { id: string; name: string }[]) {
+  return `A gym-goer is choosing a ${muscle} exercise and has asked for help.
+
+Choose ONE from this list. These are the only exercises that exist:
+${options.map((o) => `${o.id} = ${o.name}`).join("\n")}
+
+Return ONLY JSON, no prose, no markdown fence:
+{"id": "<one id from the list>", "why": "<one short sentence, under 15 words>"}
+
+Write "why" in second person, plainly, about what the movement is like. Never
+mention sets, reps, weights or numbers. Never invent an exercise.`;
+}
+
 export async function POST(request: Request) {
   let text = "";
   let intent = "constraints";
+  let muscle: Muscle | null = null;
+  let equipment: Equipment[] = [];
+  let exclude: string[] = [];
   try {
     const body = await request.json();
     text = typeof body?.text === "string" ? body.text.slice(0, 500) : "";
     if (body?.intent === "availability") intent = "availability";
+    if (body?.intent === "pick") {
+      intent = "pick";
+      const muscles: readonly string[] = MUSCLES;
+      const kit: readonly string[] = EQUIPMENT;
+      muscle = muscles.includes(body?.muscle) ? (body.muscle as Muscle) : null;
+      equipment = Array.isArray(body?.equipment)
+        ? (body.equipment.filter((e: unknown) => typeof e === "string" && kit.includes(e)) as Equipment[])
+        : [];
+      exclude = Array.isArray(body?.exclude)
+        ? body.exclude.filter((x: unknown) => typeof x === "string").slice(0, 30)
+        : [];
+    }
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+
+  if (intent === "pick") {
+    if (!muscle) return NextResponse.json({ error: "Bad request" }, { status: 400 });
+
+    const options = alternativesFor(muscle, equipment, exclude);
+    if (options.length === 0) return NextResponse.json({ id: null, why: null, source: "local" });
+
+    // What the screen would have suggested on its own, and what we fall back to.
+    const local = () =>
+      NextResponse.json({ id: options[0].id, why: options[0].cue, source: "local" });
+    if (!text.trim()) return local();
+
+    try {
+      const res = await fetch(PROXY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          input: {
+            prompt: text,
+            system_prompt: pickSystem(muscle, options.map((o) => ({ id: o.id, name: o.name }))),
+            max_completion_tokens: 120,
+          },
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return local();
+
+      const raw = extractJson(readOutput(await res.json())) as Record<string, unknown> | null;
+      const id = typeof raw?.id === "string" ? raw.id : "";
+
+      // The rail. An id we did not offer is not an exercise, whatever it sounds
+      // like, and a lift the app cannot load or explain is worse than no answer.
+      if (!options.some((o) => o.id === id)) {
+        console.warn(`[generate:pick] discarded id ${JSON.stringify(id)} for ${muscle}`);
+        return local();
+      }
+
+      const why = typeof raw?.why === "string" ? raw.why.replace(/\s+/g, " ").trim().slice(0, 120) : "";
+      // No numbers in the sentence either: the engine owns every one of those.
+      const clean = /\d/.test(why) ? "" : why;
+      return NextResponse.json({ id, why: clean || byId(id)?.cue || null, source: "ai" });
+    } catch {
+      return local();
+    }
   }
 
   if (intent === "availability") {

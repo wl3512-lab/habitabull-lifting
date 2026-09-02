@@ -526,7 +526,17 @@ describe("favourites", () => {
   });
 
   it("says nothing when there is no real alternative", () => {
-    expect(suggestFrom(["plank"], ["bodyweight"])).toEqual([]);
+    // Hamstrings have nothing you can do with no equipment at all, so there is
+    // genuinely nothing to offer. This used to be asserted with a starred
+    // plank, which only held while the plank was the sole core lift in the
+    // library — that is a fact about a thin library, not a rule.
+    expect(suggestFrom(["romanian-deadlift"], [])).toEqual([]);
+  });
+
+  it("now has something to offer the person who stars a plank", () => {
+    const out = suggestFrom(["plank"], ["bodyweight"]);
+    expect(out.length).toBeGreaterThan(0);
+    expect(byId(out[0].tryThis)!.primary).toBe("core");
   });
 
   it("ignores a favourite that is not a real lift", () => {

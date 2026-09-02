@@ -19,6 +19,13 @@ export interface Exercise {
    * for ten is the clearest sign nobody looked at the programme.
    */
   heavy?: boolean;
+  /**
+   * Reps are seconds. True for planks and holds, false for a weighted crunch —
+   * which is why this is a property of the lift and not of the muscle. Core
+   * used to mean "30 seconds" everywhere, and that was fine only while the
+   * single core lift was a plank.
+   */
+  hold?: boolean;
   cue: string;
   /** How to do it, in order. Shown on the exercise screen. */
   steps: string[];

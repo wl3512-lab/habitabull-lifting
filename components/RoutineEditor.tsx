@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Pill } from "./ui";
-import { alternativesFor, generateRoutine, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
+import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
 import { byId, nameOf } from "@/lib/exercises";
 import type { Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
@@ -37,18 +37,63 @@ export default function RoutineEditor({
   profile,
   routines,
   onSave,
+  initialAdding = null,
   onBack,
 }: {
   profile: Profile;
   routines: Routine[];
   onSave: (r: Routine[]) => void;
+  /** Opens straight into the picker, so /frames can show it. */
+  initialAdding?: Muscle | null;
   onBack: () => void;
 }) {
   const days = [...routines].sort((a, b) => a.day - b.day);
   const [dayIndex, setDayIndex] = useState(0);
   const [draft, setDraft] = useState<Routine[]>(days);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [adding, setAdding] = useState<Muscle | null>(null);
+  const [adding, setAdding] = useState<Muscle | null>(initialAdding);
+  const [ask, setAsk] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [suggested, setSuggested] = useState<{ id: string; why: string } | null>(null);
+
+  /**
+   * "I don't know what I want to do for biceps."
+   *
+   * The model only ever picks from the same shortlist the buttons above show,
+   * and the server checks its answer against that list before it comes back —
+   * so the worst case is the app suggesting what it would have suggested
+   * anyway. It never proposes a weight or a rep count; adding the lift runs
+   * the rules engine exactly as tapping the name does.
+   */
+  async function askAi() {
+    if (!adding || asking) return;
+    setAsking(true);
+    setSuggested(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intent: "pick",
+          text: ask,
+          muscle: adding,
+          equipment: profile.equipment,
+          exclude: used,
+        }),
+      });
+      const out = (await res.json()) as { id?: string; why?: string };
+      if (out.id) setSuggested({ id: out.id, why: out.why ?? "" });
+    } catch {
+      // Offline is not an error state here — the list is still on screen.
+    }
+    setAsking(false);
+  }
+
+  function closeAdd() {
+    setAdding(null);
+    setAsk("");
+    setSuggested(null);
+  }
 
   const routine = draft[dayIndex];
   if (!routine) {
@@ -98,12 +143,16 @@ export default function RoutineEditor({
       ...routine.exercises,
       {
         exerciseId: id,
-        sets: 3,
-        reps: meta.increment === 0 ? 30 : 8,
+        // repsFor, not a rule retyped here. `increment === 0 ? 30 : 8` gave
+        // thirty reps to every unloaded lift — push-ups and bodyweight squats
+        // included — and hard-coded eight for everyone regardless of level.
+        // Reps have one owner in this app and it is the engine.
+        sets: LEVEL_SETS[profile.level],
+        reps: repsFor(meta, profile.level),
         weight: startingWeight(meta, profile.level),
       },
     ]);
-    setAdding(null);
+    closeAdd();
     setOpenId(id);
   };
 
@@ -306,7 +355,7 @@ export default function RoutineEditor({
             <p className="label text-dim">Pick a {adding} lift</p>
             <button
               type="button"
-              onClick={() => setAdding(null)}
+              onClick={closeAdd}
               className="head tap shrink-0 text-[15px] text-cyan"
             >
               Cancel
@@ -323,6 +372,54 @@ export default function RoutineEditor({
                 {a.name}
               </button>
             ))}
+          </div>
+
+          {/*
+            For the person who does not know the names yet. It sits under the
+            list, not instead of it: someone who knows what they want should
+            never have to talk to anything.
+          */}
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="label text-dim">Not sure?</p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void askAi();
+              }}
+              className="mt-2.5 flex items-center gap-2.5"
+            >
+              <input
+                value={ask}
+                onChange={(e) => setAsk(e.target.value)}
+                maxLength={200}
+                placeholder={`Something for ${adding} that is easy on the wrists`}
+                aria-label={`Ask for help choosing a ${adding} lift`}
+                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+              />
+              <button
+                type="submit"
+                disabled={!ask.trim() || asking}
+                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+              >
+                {asking ? "…" : "Ask"}
+              </button>
+            </form>
+
+            {suggested && byId(suggested.id) && (
+              <div role="status" className="mt-3 rounded-xl bg-raise/50 p-3.5">
+                <p className="head text-[17px] text-fg">{nameOf(suggested.id)}</p>
+                {suggested.why && (
+                  <p className="mt-1 text-[15px] leading-snug text-dim">{suggested.why}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => add(suggested.id)}
+                  className="head tap mt-2 text-[15px] text-cyan transition-opacity hover:opacity-70"
+                >
+                  Add it
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ) : (

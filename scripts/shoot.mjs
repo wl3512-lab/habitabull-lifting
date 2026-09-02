@@ -57,6 +57,7 @@ const SHOTS = [
   ["—", "07-goal"],
   ["18", "18-your-data"],
   ["14", "14-routine-editor"],
+  ["14b", "14b-add-a-lift-ask", 1120],
   ["10", "10-crew"],
   ["10b", "10b-crew-joined"],
   ["10c", "10c-crew-join"],

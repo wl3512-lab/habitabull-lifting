@@ -16,7 +16,7 @@ const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fri
 /** Starting load as a fraction of an untrained bodyweight-ish baseline, in lb. */
 const BASE_LOAD: Record<Level, number> = { new: 45, returning: 65, experienced: 95 };
 
-const LEVEL_SETS: Record<Level, number> = { new: 3, returning: 3, experienced: 4 };
+export const LEVEL_SETS: Record<Level, number> = { new: 3, returning: 3, experienced: 4 };
 /**
  * Working reps for the compounds. Ten was too many for a novice squat and far
  * too many for a novice deadlift; the accessories are where higher reps belong.
@@ -30,7 +30,8 @@ const LEVEL_REPS: Record<Level, number> = { new: 8, returning: 6, experienced: 5
  * screen said 3×8 for the same lift on the same day.
  */
 export function repsFor(ex: Exercise, level: Level): number {
-  if (ex.primary === "core") return 30;
+  // Seconds, for anything you hold. A machine crunch is a rep like any other.
+  if (ex.hold) return 30;
   if (ex.heavy) return Math.min(5, LEVEL_REPS[level]);
   return ex.compound ? LEVEL_REPS[level] : LEVEL_REPS[level] + 4;
 }

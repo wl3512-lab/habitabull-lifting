@@ -370,6 +370,15 @@ function gallery(challenge: Challenge) {
                 onBack={f.noop}
               />
             </Frame>
+<Frame n="14b" name="Add a lift · ask" note="For the person who does not know the names yet. The model only picks from the same shortlist the buttons show, and the server checks its answer against that list — the worst case is it suggesting what the screen would have suggested anyway. ">
+              <RoutineEditor
+                initialAdding="core"
+                profile={f.profile}
+                routines={f.routines}
+                onSave={f.noop}
+                onBack={f.noop}
+              />
+            </Frame>
             <Frame n="10" name="Crew" tab="crew" note="A target, not a ranking, and no invented people. Beginners quit leaderboards, not gyms.">
               <Crew
                 profile={f.profile}

@@ -227,7 +227,7 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Elbows drifting forward and back.", "Leaning your bodyweight onto the bar."],
   },
   {
-    id: "plank", name: "Plank", equipment: "bodyweight", primary: "core", increment: 0, compound: false,
+    id: "plank", name: "Plank", equipment: "bodyweight", primary: "core", increment: 0, compound: false, hold: true,
     cue: "Squeeze everything. Reps here are seconds.",
     steps: [
       "Elbows under the shoulders, forearms on the floor.",
@@ -247,6 +247,217 @@ export const EXERCISES: Exercise[] = [
       "Let it swing back down and go straight into the next rep.",
     ],
     mistakes: ["Squatting the bell up instead of hinging.", "Lifting it with the arms and shoulders."],
+  },
+  // ── Machines and dumbbells ────────────────────────────────────────────────
+  //
+  // The library was barbell-first, which left two holes. Core had exactly one
+  // entry, so "Pick a core lift" offered a single plank and, once that plank
+  // was already in the day, nothing at all. And a gym-goer whose kit is
+  // machines and dumbbells — the most common way anyone actually trains, and
+  // the least intimidating way to start — could not fill a week.
+  //
+  // Everything loaded moves in 2.5, machines included, matching the two that
+  // were already here. Some pin stacks only step in 5s and need an add-on
+  // magnet for the half — but one progression step across the whole app is
+  // worth more than being right about plate sizes, and "up 2.5" is the rule
+  // the rest of the product states.
+  {
+    id: "ab-crunch-machine", name: "Ab Crunch Machine", equipment: "machine", primary: "core", increment: 2.5, compound: false,
+    cue: "Pull with your ribs, not your arms. The handles just come along.",
+    steps: [
+      "Set the seat so the pad sits on your chest, not your throat.",
+      "Grip the handles lightly and put your feet under the rollers.",
+      "Curl your ribs down toward your hips — a short range, not a bend at the waist.",
+      "Let it back up under control until you feel the stretch, and go again.",
+    ],
+    mistakes: ["Hauling on the handles with the arms.", "Going for a huge range; the abs move a short distance."],
+  },
+  {
+    id: "ab-slider", name: "Sliding Ab Trainer", equipment: "machine", primary: "core", increment: 0, compound: false,
+    cue: "Push the floor away and let the hips travel last.",
+    steps: [
+      "Kneel on the pad and take the handles on the rail.",
+      "Brace as if you are about to be poked in the stomach.",
+      "Slide out only as far as you can keep your back flat.",
+      "Pull yourself back with your stomach, not your arms.",
+    ],
+    mistakes: ["Sliding out past the point where the lower back arches.", "Letting the hips sag and the neck crane up."],
+  },
+  {
+    id: "roman-chair-leg-raise", name: "Roman Chair Leg Raise", equipment: "machine", primary: "core", increment: 0, compound: false,
+    cue: "Curl the hips up. Lifting the legs alone is mostly hip flexor.",
+    steps: [
+      "Forearms on the pads, back against the rest, shoulders down.",
+      "Start with the legs hanging straight and still.",
+      "Raise the knees and tuck the hips slightly under at the top.",
+      "Lower slowly. Stopping the swing is most of the work.",
+    ],
+    mistakes: ["Swinging the legs up and using the bounce.", "Shrugging into the pads instead of keeping the shoulders down."],
+  },
+  {
+    id: "back-extension", name: "Back Extension", equipment: "machine", primary: "core", increment: 2.5, compound: false,
+    cue: "Hinge and rise. This is the back of the core, and it counts.",
+    steps: [
+      "Set the pad just below the hip bones so you can bend freely.",
+      "Cross your arms on your chest and keep the chin tucked.",
+      "Lower by folding at the hips with the back flat.",
+      "Squeeze the glutes to come up, and stop in line with your legs.",
+    ],
+    mistakes: ["Arching past straight at the top.", "Rounding the back on the way down to reach further."],
+  },
+  {
+    id: "ab-wheel", name: "Ab Wheel", equipment: "bodyweight", primary: "core", increment: 0, compound: false,
+    cue: "Roll out only as far as the back stays flat. That distance grows.",
+    steps: [
+      "Kneel with the wheel under your shoulders.",
+      "Tuck the hips under slightly and brace hard.",
+      "Roll forward in a straight line, ribs pulled down.",
+      "Roll back by pulling the hips toward the heels.",
+    ],
+    mistakes: ["Rolling out until the lower back dips.", "Bending at the hips instead of holding one line."],
+  },
+  {
+    id: "leg-press", name: "Leg Press", equipment: "machine", primary: "quads", increment: 2.5, compound: true,
+    cue: "Push through the whole foot and stop short of locking out.",
+    steps: [
+      "Feet on the platform about hip width, toes slightly out.",
+      "Lower until the knees are near the chest, back flat on the pad.",
+      "Press through the middle of the foot.",
+      "Stop just before the knees lock, and go again.",
+    ],
+    mistakes: ["Letting the lower back lift off the pad at the bottom.", "Snapping the knees straight at the top."],
+  },
+  {
+    id: "leg-extension", name: "Leg Extension", equipment: "machine", primary: "quads", increment: 2.5, compound: false,
+    cue: "Straighten under control and pause at the top.",
+    steps: [
+      "Line the knee joint up with the machine's pivot.",
+      "Pad on the shin just above the ankle.",
+      "Straighten the legs and hold for a beat.",
+      "Lower slowly rather than letting the stack drop.",
+    ],
+    mistakes: ["Kicking the weight up with a swing of the hips.", "Letting the stack slam down between reps."],
+  },
+  {
+    id: "lying-leg-curl", name: "Lying Leg Curl", equipment: "machine", primary: "hamstrings", increment: 2.5, compound: false,
+    cue: "Curl the heels toward your backside, hips staying down.",
+    steps: [
+      "Line the knees up just past the edge of the pad.",
+      "Roller on the back of the ankles, hips pressed into the bench.",
+      "Curl the heels up as far as they will go.",
+      "Lower slowly and stop just before the weight rests.",
+    ],
+    mistakes: ["Lifting the hips to help the weight up.", "Cutting the range short at the bottom."],
+  },
+  {
+    id: "dumbbell-hip-thrust", name: "Dumbbell Hip Thrust", equipment: "dumbbell", primary: "glutes", increment: 2.5, compound: false,
+    cue: "Ribs down, then squeeze the glutes until the hips are level.",
+    steps: [
+      "Upper back on a bench, feet flat, dumbbell across the hips.",
+      "Tuck the chin and keep the ribs pulled down.",
+      "Drive through the heels until the body is one line from knee to shoulder.",
+      "Lower under control without resting the hips down.",
+    ],
+    mistakes: ["Arching the lower back instead of finishing with the glutes.", "Pushing off the toes rather than the heels."],
+  },
+  {
+    id: "glute-kickback-machine", name: "Glute Kickback", equipment: "machine", primary: "glutes", increment: 2.5, compound: false,
+    cue: "One leg at a time, and the working side does the work.",
+    steps: [
+      "Set the pad against the sole or the back of the thigh.",
+      "Hold the handles and keep the hips square to the machine.",
+      "Push the leg back and squeeze at the end.",
+      "Return slowly, then finish all the reps before swapping sides.",
+    ],
+    mistakes: ["Twisting the hips to get more range.", "Arching the lower back at the end of the push."],
+  },
+  {
+    id: "chest-press-machine", name: "Chest Press", equipment: "machine", primary: "chest", increment: 2.5, compound: true,
+    cue: "Handles level with the middle of the chest, shoulders back.",
+    steps: [
+      "Set the seat so the handles sit at mid-chest.",
+      "Shoulder blades pulled back and down against the pad.",
+      "Press out until the arms are nearly straight.",
+      "Come back until you feel the chest stretch, then press again.",
+    ],
+    mistakes: ["Letting the shoulders roll forward at the end of the press.", "Setting the seat high so the handles press down from the neck."],
+  },
+  {
+    id: "pec-deck", name: "Pec Deck", equipment: "machine", primary: "chest", increment: 2.5, compound: false,
+    cue: "Hug, do not push. The elbows travel, the hands just hold on.",
+    steps: [
+      "Seat set so the handles are level with the chest.",
+      "A soft bend in the elbows, kept the whole way.",
+      "Bring the arms together and pause where the chest is tightest.",
+      "Open slowly to a stretch you can control.",
+    ],
+    mistakes: ["Straightening and bending the elbows to press instead of fly.", "Opening so far the shoulders take the stretch."],
+  },
+  {
+    id: "dumbbell-fly", name: "Dumbbell Fly", equipment: "dumbbell", primary: "chest", increment: 2.5, compound: false,
+    cue: "Wide arc, soft elbows, and lighter than you think.",
+    steps: [
+      "Lie back with the dumbbells above the chest, palms facing each other.",
+      "Keep a fixed soft bend in the elbows.",
+      "Open the arms out until the chest stretches.",
+      "Bring them back over the chest along the same arc.",
+    ],
+    mistakes: ["Going heavy and turning it into a clumsy press.", "Dropping the elbows below the bench and straining the shoulder."],
+  },
+  {
+    id: "seated-row-machine", name: "Seated Row", equipment: "machine", primary: "back", increment: 2.5, compound: true,
+    cue: "Lead with the elbows and finish with the shoulder blades.",
+    steps: [
+      "Chest against the pad, feet planted, back straight.",
+      "Take the handles with the arms long and the shoulders relaxed forward.",
+      "Pull the elbows back and squeeze the shoulder blades together.",
+      "Let the arms straighten fully before the next rep.",
+    ],
+    mistakes: ["Leaning back to move the stack.", "Shrugging the shoulders up toward the ears."],
+  },
+  {
+    id: "shoulder-press-machine", name: "Shoulder Press", equipment: "machine", primary: "shoulders", increment: 2.5, compound: true,
+    cue: "Press up, not forward, and keep the ribs down.",
+    steps: [
+      "Set the seat so the handles start at shoulder height.",
+      "Back flat against the pad, feet on the floor.",
+      "Press up until the arms are nearly straight.",
+      "Lower under control back to shoulder height.",
+    ],
+    mistakes: ["Arching the lower back off the pad to finish the press.", "Stopping halfway down and cutting the range short."],
+  },
+  {
+    id: "dumbbell-lateral-raise", name: "Lateral Raise", equipment: "dumbbell", primary: "shoulders", increment: 2.5, compound: false,
+    cue: "Up to shoulder height, no higher, and lighter than feels right.",
+    steps: [
+      "Stand with the dumbbells at your sides, a soft bend in the elbows.",
+      "Lift out to the sides, leading with the elbows.",
+      "Stop when the arms are level with the shoulders.",
+      "Lower slowly. The way down is the part that works.",
+    ],
+    mistakes: ["Swinging the weight up with the hips.", "Going above shoulder height and handing the work to the traps."],
+  },
+  {
+    id: "dumbbell-hammer-curl", name: "Hammer Curl", equipment: "dumbbell", primary: "arms", increment: 2.5, compound: false,
+    cue: "Palms face each other the whole way, elbows pinned.",
+    steps: [
+      "Stand tall with a dumbbell in each hand, thumbs forward.",
+      "Keep the elbows at your sides.",
+      "Curl up without turning the wrists.",
+      "Lower all the way down before the next rep.",
+    ],
+    mistakes: ["Swinging the body to start the curl.", "Letting the elbows drift forward at the top."],
+  },
+  {
+    id: "preacher-curl-machine", name: "Preacher Curl", equipment: "machine", primary: "arms", increment: 2.5, compound: false,
+    cue: "Upper arms stay flat on the pad from first rep to last.",
+    steps: [
+      "Set the seat so your armpits rest at the top of the pad.",
+      "Take the handles with the arms nearly straight.",
+      "Curl up until the forearms are vertical.",
+      "Lower slowly and straighten fully at the bottom.",
+    ],
+    mistakes: ["Lifting the elbows off the pad to get more range.", "Stopping short at the bottom, which is where it is hardest."],
   },
 ];
 
