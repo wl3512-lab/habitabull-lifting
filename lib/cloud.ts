@@ -70,7 +70,11 @@ export function crewCode(): string | null {
 function rememberCrew(code: string | null) {
   try {
     if (code) window.localStorage.setItem(CREW_KEY, code);
-    else window.localStorage.removeItem(CREW_KEY);
+    else {
+      window.localStorage.removeItem(CREW_KEY);
+      // A new crew has been told nothing yet.
+      window.localStorage.removeItem(SENT_KEY);
+    }
   } catch {
     // Blocked storage costs a button, not the feature.
   }
@@ -139,8 +143,44 @@ export const fetchCrew = async () => {
   return res;
 };
 
-/** Push the days she has trained, so the crew sees presence and nothing else. */
-export const pushCheckins = (days: string[]) => call<{ ok: true }>("checkin", { days });
+/**
+ * Push the days she has trained, so the crew sees presence and nothing else.
+ *
+ * Only what the server has not already been told. Sending the whole history on
+ * every launch is correct — the upsert is idempotent — but it costs bandwidth
+ * proportional to how long someone has been using the app, forever, which is
+ * exactly backwards: the loyal user pays the most. The acknowledged set lives
+ * beside the crew code and is cleared when she leaves.
+ */
+const SENT_KEY = "habitabull.checkins";
+
+function acknowledged(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(SENT_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export async function pushCheckins(days: string[]) {
+  if (!enabled()) return null;
+  const sent = acknowledged();
+  const fresh = days.filter((d) => !sent.has(d));
+  if (fresh.length === 0) return { ok: true } as const;
+
+  const res = await call<{ ok: true }>("checkin", { days: fresh });
+  // Only a confirmed write may be remembered, or a dropped request would
+  // silently lose a day forever.
+  if (res) {
+    try {
+      window.localStorage.setItem(SENT_KEY, JSON.stringify([...sent, ...fresh]));
+    } catch {
+      // Unremembered means re-sent next time. Wasteful, never wrong.
+    }
+  }
+  return res;
+}
 
 export interface CrewDay {
   photos: CrewPhoto[];
@@ -148,16 +188,54 @@ export interface CrewDay {
   trained: { id: string; name: string; mine: boolean }[];
 }
 
-/** Everyone's shared photos for one day, with reactions already counted. */
-export const fetchDay = (day: string) => call<CrewDay>("day", { day });
+/**
+ * Everyone's shared photos for one day, with reactions already counted.
+ *
+ * Today and the calendar's day view both want today, and opening one from the
+ * other asked twice for the same answer. In-flight requests are shared and the
+ * result is held very briefly — long enough to cover a navigation, far too
+ * short to show anyone a stale like.
+ */
+const inFlight = new Map<string, Promise<CrewDay | null>>();
+const FRESH_MS = 3000;
+let last: { day: string; at: number; value: CrewDay | null } | null = null;
+
+export function fetchDay(day: string, force = false): Promise<CrewDay | null> {
+  if (!force && last && last.day === day && Date.now() - last.at < FRESH_MS) {
+    return Promise.resolve(last.value);
+  }
+  const pending = inFlight.get(day);
+  if (pending && !force) return pending;
+
+  const req = call<CrewDay>("day", { day }).then((value) => {
+    last = { day, at: Date.now(), value };
+    inFlight.delete(day);
+    return value;
+  });
+  inFlight.set(day, req);
+  return req;
+}
+
+/** After acting on a day, the cached copy is a lie. */
+export const invalidateDay = () => {
+  last = null;
+  inFlight.clear();
+};
+
+/** Every write to a day makes the cached copy of it a lie. */
+async function mutateDay<T>(path: string, body: unknown): Promise<T | null> {
+  const res = await call<T>(path, body);
+  invalidateDay();
+  return res;
+}
 
 export const sharePhoto = (day: string, dataUrl: string, caption?: string) =>
-  call<{ id: string }>("share", { day, dataUrl, caption });
+  mutateDay<{ id: string }>("share", { day, dataUrl, caption });
 
-export const unsharePhoto = (photoId: string) => call<{ ok: true }>("unshare", { photoId });
+export const unsharePhoto = (photoId: string) => mutateDay<{ ok: true }>("unshare", { photoId });
 
 export const likePhoto = (photoId: string, on: boolean) =>
-  call<{ ok: true }>("like", { photoId, on });
+  mutateDay<{ ok: true }>("like", { photoId, on });
 
 export const replyToPhoto = (photoId: string, body: string) =>
-  call<{ ok: true }>("reply", { photoId, body });
+  mutateDay<{ ok: true }>("reply", { photoId, body });

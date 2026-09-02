@@ -388,7 +388,7 @@ export default function Today({
               rows={2}
               autoFocus
               placeholder="Only dumbbells today, and my shoulder is tweaked"
-              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim focus:outline-none"
+              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <div className="mt-2.5 flex gap-2">
               <Pill

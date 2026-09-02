@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { likePhoto, replyToPhoto, unsharePhoto, type CrewPhoto } from "@/lib/cloud";
 
 /**
@@ -15,7 +16,18 @@ import { likePhoto, replyToPhoto, unsharePhoto, type CrewPhoto } from "@/lib/clo
  * Both actions are optimistic. A like that waits on a round trip feels broken
  * on gym wifi, and the worst case of getting it wrong is a heart that comes
  * back unfilled.
+ *
+ * It is a dialog, and it behaves like one. Saying `aria-modal` while leaving
+ * the rest of the app tabbable is worse than not saying it, because assistive
+ * technology believes the claim: focus is trapped, the app behind is `inert`,
+ * and closing puts focus back on the thumbnail that opened it. It also renders
+ * inside the device rather than the viewport, so on a desktop it stays within
+ * the phone instead of taking over the browser window.
  */
+
+/** Everything a keyboard can land on, in order. */
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 export default function CrewPost({
   photo,
   onClose,
@@ -37,16 +49,39 @@ export default function CrewPost({
   const sheet = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Escape closes, and focus moves into the sheet so a keyboard is not left
-    // behind on the calendar underneath it.
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const returnTo = document.activeElement as HTMLElement | null;
+    const behind = document.getElementById("app-scroll");
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") return onClose();
+      if (e.key !== "Tab" || !sheet.current) return;
+      const stops = [...sheet.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      if (stops.length === 0) return;
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      // Wrap at both ends. Without this, Tab walks out of a dialog that has
+      // just told a screen reader nothing else exists.
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === sheet.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
     window.addEventListener("keydown", onKey);
     sheet.current?.focus();
+    behind?.setAttribute("inert", "");
     const prior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       window.removeEventListener("keydown", onKey);
+      behind?.removeAttribute("inert");
       document.body.style.overflow = prior;
+      // Back to the thumbnail she came from, not the top of the page.
+      returnTo?.focus?.();
     };
   }, [onClose]);
 
@@ -85,14 +120,16 @@ export default function CrewPost({
     }
   }
 
-  return (
+  const sheetEl = (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`${photo.memberName}'s photo`}
       ref={sheet}
       tabIndex={-1}
-      className="fixed inset-0 z-50 flex justify-center bg-ground/95 backdrop-blur-sm outline-none"
+      // Fixed on a phone, absolute inside the device on a desktop. No blur:
+      // under a 95% scrim it costs a compositing pass to be 5% visible.
+      className="fixed inset-0 z-50 flex justify-center bg-ground/95 outline-none desk:absolute"
     >
       <div className="no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
         <div className="flex items-center justify-between gap-4">
@@ -193,4 +230,9 @@ export default function CrewPost({
       </div>
     </div>
   );
+
+  // Before hydration there is no device element; render in place rather than
+  // not at all.
+  const host = typeof document === "undefined" ? null : document.getElementById("device");
+  return host ? createPortal(sheetEl, host) : sheetEl;
 }

@@ -168,10 +168,13 @@ export default function DayDetail({
         <button
           type="button"
           onClick={() => setOpen(mineShared)}
+          // The name says what pressing it does. "Your photo" describes the
+          // picture, which a button is not.
+          aria-label="Open the photo you shared"
           className="mt-5 block w-full overflow-hidden rounded-2xl bg-card"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mineShared.url} alt="Your photo" className="aspect-[4/5] w-full object-cover" />
+          <img src={mineShared.url} alt="" className="aspect-[4/5] w-full object-cover" />
         </button>
       )}
 
@@ -252,7 +255,9 @@ export default function DayDetail({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={p.url}
-                    alt={`${p.memberName}'s photo`}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="aspect-[4/5] w-full rounded-xl object-cover"
                   />
                   <span className="head mt-1.5 block truncate text-[15px] text-dim">

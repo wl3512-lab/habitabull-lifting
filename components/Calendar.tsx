@@ -225,13 +225,18 @@ export default function Calendar({
                 </div>
               ))}
               {rows.flat().map((c, i) => (
+                // A leading blank in the month grid is spacing, not a control.
+                // Rendering it as a disabled, nameless button puts an unlabelled
+                // stop in the accessibility tree for nothing.
+                c.iso === null ? (
+                  <div key={`pad-${i}`} aria-hidden className="min-h-12" />
+                ) : (
                 <button
-                  key={c.iso ?? `pad-${i}`}
+                  key={c.iso}
                   type="button"
-                  disabled={!c.iso}
-                  onClick={() => c.iso && onOpenDay(c.iso)}
-                  aria-label={c.iso ? `${c.day} ${MONTHS[month]}${c.trained ? ", trained" : ""}` : undefined}
-                  className="flex flex-col items-center py-0.5"
+                  onClick={() => onOpenDay(c.iso!)}
+                  aria-label={`${c.day} ${MONTHS[month]}${c.trained ? ", trained" : ""}`}
+                  className="flex min-h-12 flex-col items-center justify-center py-0.5"
                 >
                   <span
                     className={`grid h-9 w-9 place-items-center rounded-full text-[15px] ${
@@ -253,6 +258,7 @@ export default function Calendar({
                     className={`mt-0.5 h-1 w-1 rounded-full ${c.hasPhoto ? "bg-cyan" : "bg-transparent"}`}
                   />
                 </button>
+                )
               ))}
             </div>
 

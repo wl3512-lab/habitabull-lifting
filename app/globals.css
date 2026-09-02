@@ -24,7 +24,7 @@
     ground — fine for separating two surfaces, not enough to show someone where
     a button ends. Anything you can press gets this instead, at 3.01:1.
   */
-  --color-line-strong: #596578;
+  --color-line-strong: #6a788f; /* control boundaries: 3:1 on every surface a control sits on */
 
   /* Text. No pure white — #F4F6F7 is cooled toward the brand hue. */
   --color-fg: #f4f6f7;
@@ -143,9 +143,23 @@ body {
   layout back. This app is used one-handed, mid-set, with wet hands — an
   under-sized target is not a technicality here.
 */
+/*
+  A 44px hit area on a control drawn smaller. Padding grows the target and the
+  matching negative margin gives the space back, so nothing moves.
+
+  The padding alone only guarantees the height. A short label like "Edit" is
+  ~27px wide and lands at 43px even with 8px either side, so the box is also
+  floored outright — measured, not assumed. `inline-flex` is what lets
+  min-width apply to what is usually an inline element.
+*/
 .tap {
   padding: 12px 8px;
   margin: -12px -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* Phones do not show a scrollbar track. Inside the device frame, neither do we. */

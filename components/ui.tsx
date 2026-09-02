@@ -125,8 +125,10 @@ export function GoalBar({
         aria-label={caption ? `${caption} — ${p}% there` : `${p}% there`}
       >
         <div
-          className="h-full rounded-full bg-cyan transition-[width] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
-          style={{ width: `${p}%` }}
+          // scaleX, not width: animating width lays the page out again on
+          // every frame of the fill.
+          className="h-full w-full origin-left rounded-full bg-cyan transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+          style={{ transform: `scaleX(${p / 100})` }}
         />
       </div>
       {(caption || trailing) && (

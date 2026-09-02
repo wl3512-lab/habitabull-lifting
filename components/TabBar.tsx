@@ -32,7 +32,10 @@ export default function TabBar({
   return (
     <nav
       aria-label="Main"
-      className="sticky bottom-0 z-20 border-t border-line bg-ground/95 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-sm"
+      // No backdrop blur. Under a 95% opaque bar it contributes about five
+      // percent, and on a sticky element it re-composites on every scroll
+      // frame — the most expensive way in the app to render almost nothing.
+      className="sticky bottom-0 z-20 border-t border-line bg-ground/95 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
     >
       <ul className="mx-auto flex w-full max-w-[430px]">
         {TABS.map((t) => {

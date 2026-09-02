@@ -80,9 +80,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         drawn at.
       */}
       <body className="bg-ground desk:grid desk:min-h-dvh desk:place-items-center desk:overflow-auto desk:bg-deep desk:p-8">
-        <div className="flex min-h-dvh w-full flex-col bg-ground desk:h-[844px] desk:min-h-0 desk:w-[390px] desk:shrink-0 desk:overflow-hidden desk:rounded-[44px] desk:shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-20px_rgb(0_0_0/0.7)]">
+        {/*
+          `relative` and the id are the anchor for anything that covers the
+          whole app — a dialog fixed to the viewport would spill out of the
+          device on a desktop and undo the one rule this layout exists to keep.
+        */}
+        <div
+          id="device"
+          className="relative flex min-h-dvh w-full flex-col bg-ground desk:h-[844px] desk:min-h-0 desk:w-[390px] desk:shrink-0 desk:overflow-hidden desk:rounded-[44px] desk:shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-20px_rgb(0_0_0/0.7)]"
+        >
           {/* Scrolls inside the device on desktop; the page itself scrolls on a phone. */}
-          <div className="flex flex-1 flex-col desk:overflow-y-auto desk:no-scrollbar">
+          <div id="app-scroll" className="flex flex-1 flex-col desk:overflow-y-auto desk:no-scrollbar">
             {children}
           </div>
         </div>

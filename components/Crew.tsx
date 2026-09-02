@@ -167,8 +167,8 @@ export default function Crew({
 
         <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-raise" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${done} of ${challenge.target} sessions this month`}>
           <div
-            className="h-full rounded-full bg-green transition-[width] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
-            style={{ width: `${pct}%` }}
+            className="h-full w-full origin-left rounded-full bg-green transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+            style={{ transform: `scaleX(${pct / 100})` }}
           />
         </div>
 

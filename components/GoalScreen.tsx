@@ -163,7 +163,7 @@ export default function GoalScreen({
                 value={date}
                 min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDate(e.target.value)}
-                className="tabular head mt-2 h-12 w-full rounded-xl bg-raise px-4 text-[19px] text-fg focus:outline-none"
+                className="tabular head mt-2 h-12 w-full rounded-xl bg-raise px-4 text-[19px] text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
               />
             </div>
           </div>

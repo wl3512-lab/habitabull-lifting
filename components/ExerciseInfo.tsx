@@ -121,8 +121,13 @@ export default function ExerciseInfo({
         <ul className="mt-3 flex flex-col gap-3">
           {ex.mistakes.map((m) => (
             <li key={m} className="flex items-center gap-3.5">
-              {/* A leading marker, not a stripe down the side of the row. */}
-              <span aria-hidden className="h-5 w-[3px] shrink-0 rounded-full bg-orange" />
+              {/*
+                A leading marker, not a stripe down the side of the row — and
+                not orange. Three of these next to the orange "Got it" is four
+                orange things on a screen that is allowed one, and the button
+                is the one. `line-strong` reaches 3:1 on this card's ground.
+              */}
+              <span aria-hidden className="h-5 w-[3px] shrink-0 rounded-full bg-dim" />
               <span className="text-[16px] leading-snug text-fg">{m}</span>
             </li>
           ))}

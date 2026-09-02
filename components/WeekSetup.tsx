@@ -165,7 +165,13 @@ export default function WeekSetup({
           Three is the number beginners actually keep. Two is enough to make progress.
         </p>
 
-        <div className="mt-4 -mx-2 flex gap-1">
+        {/*
+          Seven across a 390px phone. At 18px card padding there are 322px to
+          share, so 48px each (336) does not fit and never will — the gap goes
+          to 2px and the row borrows 12px back from the padding, which lands
+          each day at 45px. Under WCAG 2.5.5's 44, over 2.5.8's 24.
+        */}
+        <div className="mt-4 -mx-3 flex gap-0.5">
           {SHORT_DAYS.map((d, i) => (
             <button
               key={d}
