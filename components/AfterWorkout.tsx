@@ -5,7 +5,7 @@ import { Pill, Stat } from "./ui";
 import { crewCode, enabled, sharePhoto } from "@/lib/cloud";
 import { nameOf } from "@/lib/exercises";
 import { addPhoto, listPhotos, photoData } from "@/lib/photos";
-import type { Session } from "@/lib/types";
+import type { Profile, Session } from "@/lib/types";
 
 /**
  * The session, written down (deck p29/p30: "option to write notes", "option to
@@ -20,33 +20,45 @@ import type { Session } from "@/lib/types";
  * "because he can write anything he wants" — a mood picker or a tag list would
  * be the app deciding what is worth saying.
  *
- * Sharing is one switch, off every time. This is the only place a photo can
- * reach the crew, and it is deliberately a decision she makes about *this*
- * photo rather than a setting she turns on once and forgets — the difference
- * between choosing to be seen and having been opted in.
+ * Sharing is one switch. It remembers where she left it, because somebody who
+ * shares every session should not re-tick the same box three times a week —
+ * but remembering a position is not the same as a setting she turns on once
+ * and forgets. The switch only exists on screen when a photo does, it sits
+ * beside that photo naming exactly what will travel, and she passes it on the
+ * way to Save. A checkbox she can see is the difference between choosing to be
+ * seen and having been opted in; a preference buried on the crew screen would
+ * be invisible at the only moment it matters.
  */
 export default function AfterWorkout({
   session,
   records,
+  profile,
+  onProfile,
   onSave,
   onSkip,
 }: {
   session: Session;
   records: string[];
+  profile: Profile;
+  onProfile: (p: Profile) => void;
   onSave: (note: string | undefined) => void;
   onSkip: () => void;
 }) {
+  const remembered = profile.sharePhotos === true;
   const [note, setNote] = useState(session.note ?? "");
   const [photoCount, setPhotoCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [share, setShare] = useState(false);
+  const [share, setShare] = useState(remembered);
   const [saving, setSaving] = useState(false);
   // Only a photo added on this screen can be shared from it.
   const [added, setAdded] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const hasCrew = enabled() && Boolean(crewCode());
+  // The switch is drawn and remembered on the same condition, so a remembered
+  // "on" can never survive into a session where nothing was there to tick.
+  const canShare = hasCrew && added.length > 0;
 
   useEffect(() => {
     listPhotos().then((all) => setPhotoCount(all.filter((p) => p.date === session.date).length));
@@ -84,9 +96,14 @@ export default function AfterWorkout({
    * cannot leave her believing the crew saw something they did not — but the
    * workout is saved either way, because a network is never a reason to lose a
    * session.
+   *
+   * The switch's position is remembered only when the switch was on screen to
+   * be moved. A session with no photo had nothing to decide, and should not
+   * quietly rewrite a decision made on the last one.
    */
   async function finish() {
     const text = note.trim() || undefined;
+    if (canShare && share !== remembered) onProfile({ ...profile, sharePhotos: share });
     if (share && added.length > 0) {
       setSaving(true);
       const data = await photoData(added[added.length - 1]);
@@ -164,7 +181,7 @@ export default function AfterWorkout({
         />
       </div>
 
-      {hasCrew && added.length > 0 && (
+      {canShare && (
         <label className="mt-2.5 flex cursor-pointer items-center gap-3.5 rounded-2xl bg-card p-[18px]">
           {/*
             A native checkbox paints a light grey box that belongs to no part of

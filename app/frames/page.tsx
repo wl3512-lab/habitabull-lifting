@@ -330,6 +330,8 @@ function gallery(challenge: Challenge) {
               <AfterWorkout
                 session={{ ...f.lastSession, note: "Felt strong. Go up 5 lb next time." }}
                 records={["back-squat"]}
+                profile={f.profile}
+                onProfile={f.noop}
                 onSave={f.noop}
                 onSkip={f.noop}
               />

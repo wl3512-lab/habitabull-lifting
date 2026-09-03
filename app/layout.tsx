@@ -24,8 +24,18 @@ const barlow = Barlow({
 
 export const metadata: Metadata = {
   title: "HabitaBull Lifting",
-  description: "Lift. Log it. Come back.",
+  description: "Most people quit by week three. This one is built for coming back.",
   applicationName: "HabitaBull Lifting",
+  // The Crew screen sends a link to invite somebody; without this it previewed
+  // as nothing at all, which is a poor first impression of a product whose
+  // whole pitch is that it takes you seriously.
+  openGraph: {
+    title: "HabitaBull Lifting",
+    description: "Most people quit by week three. This one is built for coming back.",
+    images: [{ url: "/og.png", width: 1200, height: 630 }],
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", images: ["/og.png"] },
   // Home-screen install: full screen, no browser chrome over the thumb zone,
   // and — the real reason — storage that iOS will not evict after seven idle
   // days. See app/manifest.ts.

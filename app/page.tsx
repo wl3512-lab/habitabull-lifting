@@ -244,6 +244,8 @@ export default function Page() {
         <AfterWorkout
           session={finished}
           records={records}
+          profile={profile}
+          onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
           onSave={(note?: string) => {
             setState((s) => ({
               ...s,

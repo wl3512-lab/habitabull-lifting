@@ -109,6 +109,14 @@ export interface Profile {
   /** Whether the week is published for the crew to copy. Default on. */
   shareWeek?: boolean;
   /**
+   * How the share switch on the after-workout screen was left last time, so
+   * somebody who shares every session is not re-ticking the same box three
+   * times a week. Default off, and unlike `shareWeek` this is a remembered
+   * position rather than a permission: the switch is still on screen beside
+   * the photo it governs, and nothing uploads without her passing it.
+   */
+  sharePhotos?: boolean;
+  /**
    * When in the day she can train, as routine anchors rather than clock times.
    * Routine-anchored cues form habits faster than time-based ones and survive a
    * week that moves.

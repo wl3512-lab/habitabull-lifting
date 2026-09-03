@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" role="img" aria-label="HabitaBull">
+  <title>HabitaBull</title>
+  <!--
+    The horns, and the head by its absence.
+
+    One horn is drawn and mirrored about x=50. The outer edge leaves the base
+    almost horizontally, turns up through the shoulder of the curve, and runs
+    to a point; the inner edge returns on a tighter radius, so the form is
+    thickest where it would meet the skull and comes to a tip.
+
+    The notch between the two bases is the head. Drawing it would make this an
+    illustration; leaving it out makes it a mark, and it is the reason this
+    reads as a bull rather than as a pair of tusks or a crescent.
+
+    Symmetric, though the artwork's three-quarter view is not. A stamp has to
+    be square-on or the asymmetry reads as a mistake once it is small.
+  -->
+  <g fill="currentColor">
+    <path d="M45 54C32 53 18 47 10 33C5 23 4 11 8 2C13 13 17 26 24 34C31 41 38 45 47 46Z"/>
+    <path d="M45 54C32 53 18 47 10 33C5 23 4 11 8 2C13 13 17 26 24 34C31 41 38 45 47 46Z"
+          transform="translate(100,0) scale(-1,1)"/>
+  </g>
+</svg>
