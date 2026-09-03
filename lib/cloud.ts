@@ -18,6 +18,8 @@ import { deviceId } from "./joincode";
 export interface CrewMember {
   id: string;
   name: string;
+  /** Whether this row is the person asking. */
+  mine: boolean;
   /** Days this member trained, ISO dates. Never what they lifted. */
   days: string[];
 }

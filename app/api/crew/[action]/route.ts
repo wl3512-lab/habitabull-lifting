@@ -177,6 +177,9 @@ async function members(device: string) {
     members: rows.map((m) => ({
       id: m.id,
       name: m.name,
+      // Which row is the person asking. The roster reads "you" from this
+      // rather than trying to match on a display name two people can share.
+      mine: m.id === me.id,
       days: (m.checkins ?? []).map((c) => c.day).sort(),
     })),
   });

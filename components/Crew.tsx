@@ -115,7 +115,27 @@ export default function Crew({
   // Monday, so "this week" means the same thing here as on the calendar.
   const monday = new Date(now);
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  const weekStart = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const weekStart = iso(monday);
+  const todayIso = iso(now);
+  // Monday-first, matching the calendar and the home screen's week strip.
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return { iso: iso(d) };
+  });
+  const meId = roster.find((m) => m.mine)?.id ?? null;
+
+  async function copyCode() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(formatCode(code));
+      setShared("copied");
+    } catch {
+      setShared("idle");
+    }
+  }
 
   const done = challengeDone(sessions, challenge);
   const pct = challengePercent(done, challenge.target);
@@ -237,28 +257,97 @@ export default function Crew({
           </p>
         </section>
       ) : code ? (
-        <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="label text-dim">Who&apos;s in</p>
-            <p className="tabular head shrink-0 text-[15px] text-cyan">{formatCode(code)}</p>
-          </div>
-          <ul className="mt-3 flex flex-col gap-2.5">
-            {roster.map((m) => {
-              const week = m.days.filter((d) => d >= weekStart).length;
-              return (
-                <li key={m.id} className="flex items-baseline justify-between gap-3">
-                  <span className="head truncate text-[17px] text-fg">{m.name}</span>
-                  <span className="tabular shrink-0 text-[15px] text-dim">
-                    {week === 0 ? "not yet this week" : `${week} this week`}
-                  </span>
+        <>
+          {/*
+            A week each, drawn the same way as "This week" on the home screen,
+            because it is the same fact about the same seven days.
+
+            It used to read "1 this week" / "1 this week" / "not yet this week",
+            which is a leaderboard with extra steps — a column of counts sorts
+            itself in the reader's head no matter what the subtitle above it
+            promises. Dots carry rhythm without carrying a score: you can see
+            that Maya trains Monday and Thursday and that Sam has had a quiet
+            week, and there is no number to be behind on.
+          */}
+          <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="label text-dim">Who&apos;s in</p>
+              <p className="tabular head shrink-0 text-[15px] text-cyan">{formatCode(code)}</p>
+            </div>
+
+            {/* Labelled once, not per person: seven identical rows of letters
+                would be noise, and one row orients all of them. */}
+            <ul className="mt-3 flex gap-1.5" aria-hidden>
+              {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                <li key={i} className="flex-1 text-center text-[12px] text-dim">
+                  {d}
                 </li>
-              );
-            })}
-          </ul>
-          <p className="mt-3.5 border-t border-line pt-3.5 text-[15px] text-dim">
-            Read them the code and they&apos;re in.
-          </p>
-        </section>
+              ))}
+            </ul>
+
+            <ul className="mt-2 flex flex-col gap-4">
+              {roster.map((m) => {
+                const trainedToday = m.days.includes(todayIso);
+                return (
+                  <li key={m.id}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="head truncate text-[17px] text-fg">
+                        {m.name}
+                        {m.id === meId && <span className="text-dim"> · you</span>}
+                      </span>
+                      {trainedToday && (
+                        <span className="head shrink-0 text-[15px] text-green">in today</span>
+                      )}
+                    </div>
+                    <ul className="mt-2 flex gap-1.5" aria-hidden>
+                      {weekDays.map((d) => (
+                        <li
+                          key={d.iso}
+                          className={`h-2.5 flex-1 rounded-full ${
+                            m.days.includes(d.iso)
+                              ? "bg-green"
+                              : d.iso === todayIso
+                                ? "bg-line-strong"
+                                : "bg-raise"
+                          }`}
+                        />
+                      ))}
+                    </ul>
+                    <p className="sr-only">
+                      {m.name} trained {m.days.filter((d) => d >= weekStart).length} times this week.
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          {/* Adding someone is the point of the screen, not a footnote on it. */}
+          <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+            <p className="label text-dim">Add someone</p>
+            <p className="mt-2 text-[17px] leading-snug text-fg">
+              Read them the code, or send it.
+            </p>
+            <button
+              type="button"
+              onClick={() => void copyCode()}
+              aria-label={`Copy the crew code ${formatCode(code)}`}
+              className="tabular statement mt-3 w-full rounded-xl bg-raise py-4 text-center text-[30px] tracking-[0.1em] text-cyan transition-colors hover:bg-line"
+            >
+              {formatCode(code)}
+            </button>
+            <div className="mt-2.5">
+              <Pill variant="ghost" onClick={share}>
+                Send the code
+              </Pill>
+            </div>
+            {shared === "copied" && (
+              <p role="status" className="mt-2.5 text-center text-[15px] text-dim">
+                Copied. Paste it wherever they&apos;ll see it.
+              </p>
+            )}
+          </section>
+        </>
       ) : (
         <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Train with someone</p>
@@ -317,13 +406,19 @@ export default function Crew({
       )}
 
       <div className="mt-auto pt-8">
-        <Pill variant="ghost" onClick={share}>
-          Send this to someone
-        </Pill>
-        {shared === "copied" && (
-          <p className="mt-2.5 text-center text-[15px] text-dim">
-            Copied. Paste it wherever they&apos;ll see it.
-          </p>
+        {/* Sharing lives in the Add someone card once there is a crew; a second
+            copy of the same action down here was the screen asking twice. */}
+        {!code && (
+          <>
+            <Pill variant="ghost" onClick={share}>
+              Send this to someone
+            </Pill>
+            {shared === "copied" && (
+              <p className="mt-2.5 text-center text-[15px] text-dim">
+                Copied. Paste it wherever they&apos;ll see it.
+              </p>
+            )}
+          </>
         )}
         {code && (
           <button

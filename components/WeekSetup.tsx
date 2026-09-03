@@ -49,6 +49,7 @@ export default function WeekSetup({
   const [text, setText] = useState("");
   const [asking, setAsking] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [telling, setTelling] = useState(false);
   const [count, setCount] = useState(profile.trainingDays.length || 3);
   const [days, setDays] = useState<number[]>(profile.trainingDays.length ? profile.trainingDays : placeDays(3));
   const [anchors, setAnchors] = useState<Anchor[] | undefined>(profile.anchors);
@@ -121,24 +122,63 @@ export default function WeekSetup({
         Roughly is fine. A day you keep beats an hour you miss.
       </p>
 
-      {/* The way in for anyone who cannot answer the chips below. */}
+      {/*
+        The way in for anyone who cannot answer the chips below — closed until
+        it is asked for. An open textarea sitting on the screen is a keyboard
+        waiting to cover it, and most people answer this with the chips and
+        never need to type a word.
+      */}
       <div className="mt-6 rounded-2xl bg-card p-[18px]">
-        <label htmlFor="free" className="label block text-dim">
-          Or just tell me
-        </label>
-        <textarea
-          id="free"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={2}
-          placeholder="Free most evenings, but Wednesdays are bad"
-          className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
-        />
-        <div className="mt-2.5">
-          <Pill variant="ghost" onClick={askAi} disabled={asking || !text.trim()}>
-            {asking ? "Working it out…" : "Work out my week"}
-          </Pill>
-        </div>
+        {telling ? (
+          <>
+            <label htmlFor="free" className="label block text-dim">
+              Tell me about your week
+            </label>
+            <textarea
+              id="free"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={2}
+              autoFocus
+              placeholder="Free most evenings, but Wednesdays are bad"
+              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+            />
+            <div className="mt-2.5 flex items-center gap-2.5">
+              <Pill
+                size="sm"
+                className="h-12 flex-1"
+                onClick={askAi}
+                disabled={asking || !text.trim()}
+              >
+                {asking ? "Working it out…" : "Work out my week"}
+              </Pill>
+              <button
+                type="button"
+                onClick={() => {
+                  setTelling(false);
+                  setText("");
+                }}
+                className="head h-12 shrink-0 px-4 text-[15px] text-dim transition-colors hover:text-fg"
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setTelling(true)}
+            className="flex w-full items-baseline justify-between gap-3 text-left"
+          >
+            <span>
+              <span className="label block text-dim">Not sure?</span>
+              <span className="mt-1.5 block text-[17px] leading-snug text-fg">
+                Just tell me about your week and I&apos;ll work it out.
+              </span>
+            </span>
+            <span className="head shrink-0 text-[15px] text-cyan">Type it</span>
+          </button>
+        )}
         {offline && (
           <p className="mt-2 text-[15px] text-dim">Worked that out offline.</p>
         )}

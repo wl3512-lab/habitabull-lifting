@@ -193,9 +193,10 @@ export const crewDay: CrewDay = {
 export const crew: { code: string; members: CrewMember[] } = {
   code: "K4M9TX",
   members: [
-    { id: "m-me", name: "Cathy", days: [iso(1), iso(4), iso(8)] },
-    { id: "m-1", name: "Maya", days: [iso(1), iso(6)] },
-    { id: "m-2", name: "Sam", days: [] },
+    // A week each with a different shape, so the strip shows what it is for.
+    { id: "m-me", name: "Cathy", mine: true, days: [iso(0), iso(2), iso(5)] },
+    { id: "m-1", name: "Maya", mine: false, days: [iso(0), iso(3)] },
+    { id: "m-2", name: "Sam", mine: false, days: [iso(4)] },
   ],
 };
 
