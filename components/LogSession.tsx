@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Bull from "./Bull";
+import Bull, { BULL } from "./Bull";
 import RestTimer from "./RestTimer";
 import SetRow from "./SetRow";
 import { Pill } from "./ui";
@@ -241,7 +241,7 @@ export default function LogSession({
           />
         ) : (
           <div className="rise flex flex-col items-center pt-4">
-            <Bull size={132} react say={line(allDone ? "done" : "midset", doneSets)} />
+            <Bull size={BULL.speak} react say={line(allDone ? "done" : "midset", doneSets)} />
           </div>
         )}
       </div>

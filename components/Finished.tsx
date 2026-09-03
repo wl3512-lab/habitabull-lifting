@@ -1,6 +1,6 @@
 "use client";
 
-import Bull from "./Bull";
+import Bull, { BULL } from "./Bull";
 import Streak from "./Streak";
 import { Pill, Stat } from "./ui";
 import { nameOf } from "@/lib/exercises";
@@ -96,7 +96,7 @@ export default function Finished({
 
           {/* 180 × 218 in the Figma. */}
           <div className="rise mt-4 flex flex-col items-center">
-            <Bull size={180} react />
+            <Bull size={BULL.hero} react />
           </div>
 
           <h1 className="statement mt-5 text-center text-[42px] text-ground">
@@ -143,7 +143,7 @@ export default function Finished({
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="rise flex flex-col items-center text-fg">
-        <Bull size={168} react />
+        <Bull size={BULL.hero} react />
         {/*
           Always the plain line here. Reaching this branch means nothing was
           beaten — on a first session every lift is a record by definition, and
@@ -181,7 +181,7 @@ export default function Finished({
         <div className="mt-8 rounded-2xl border border-line-strong p-[18px]">
           <p className="label text-cyan">Keep this</p>
           <p className="mt-1.5 text-[17px] leading-snug text-fg">
-            Add HabitaBull to your home screen.
+            Add HabitaBull Lifting to your home screen.
           </p>
           <p className="mt-1 text-[15px] leading-snug text-dim">
             Everything you log lives in this browser, and phones clear that for sites

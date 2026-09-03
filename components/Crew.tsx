@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Bull from "./Bull";
+import Bull, { BULL } from "./Bull";
 import { Pill } from "./ui";
 import {
   createCrew,
@@ -129,12 +129,12 @@ export default function Crew({
 
   async function share() {
     const text = code
-      ? `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Join my crew with ${formatCode(code)}.`
-      : `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Come do it with me.`;
+      ? `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull Lifting. Join my crew with ${formatCode(code)}.`
+      : `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull Lifting. Come do it with me.`;
     const url = typeof window === "undefined" ? "" : window.location.origin;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "HabitaBull", text, url });
+        await navigator.share({ title: "HabitaBull Lifting", text, url });
         setShared("idle");
         return;
       }
@@ -159,7 +159,7 @@ export default function Crew({
       {/* Somebody is here either way. */}
       {roster.length <= 1 && (
         <div className="mt-4 flex justify-center">
-          <Bull size={104} />
+          <Bull size={BULL.companion} />
         </div>
       )}
       <p className="mt-1.5 text-[17px] text-dim">

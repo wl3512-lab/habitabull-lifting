@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Bull from "./Bull";
+import Bull, { BULL } from "./Bull";
 import CrewToday from "./CrewToday";
 import { Card, GoalBar, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
@@ -140,7 +140,7 @@ export default function Today({
     <section className="rounded-2xl bg-card p-[18px]">
       {raised && (
         <div className="mb-3 flex justify-center">
-          <Bull size={72} />
+          <Bull size={BULL.inline} />
         </div>
       )}
       <div className="flex items-baseline justify-between gap-3">
@@ -540,7 +540,7 @@ export default function Today({
             className="mt-3 block w-full rounded-2xl border border-line-strong p-[18px] text-center transition-colors hover:bg-raise/50"
           >
             <span className="mb-3 flex justify-center">
-              <Bull size={96} />
+              <Bull size={BULL.companion} />
             </span>
             <span className="head block text-[19px] text-fg">Nothing here yet</span>
             <span className="mt-1 block text-[15px] leading-snug text-dim">
@@ -609,7 +609,7 @@ export default function Today({
         // He turns up where there is something to react to, and "not today,
         // and that is fine" is the sentence this whole product is arguing for.
         <Card className="mt-8 flex flex-col items-center p-[18px] text-center">
-          <Bull size={112} />
+          <Bull size={BULL.companion} />
           <h2 className="head mt-3 text-[17px] text-fg">Nothing here.</h2>
           <p className="mt-1 text-[15px] text-dim">
             Rest is part of progress. If you want to train anyway, pull up your next session.

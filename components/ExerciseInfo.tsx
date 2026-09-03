@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import Bull, { BULL } from "./Bull";
 import { Pill } from "./ui";
 import { byId } from "@/lib/exercises";
 import type { Profile, Session } from "@/lib/types";
@@ -86,14 +86,7 @@ export default function ExerciseInfo({
 
       {/* He says it. The bubble is his, not the screen's. */}
       <div className="mt-5 flex items-end gap-2">
-        <Image
-          src="/mascot.png"
-          alt=""
-          width={96}
-          height={115}
-          priority
-          className="w-[96px] shrink-0"
-        />
+        <Bull size={BULL.speak} className="shrink-0" />
         <div className="relative flex-1 rounded-2xl rounded-bl-sm bg-cyan px-5 py-4">
           <p className="aside text-[24px] text-ground">{ex.cue}</p>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import Bull, { BULL } from "./Bull";
 import { Pill } from "./ui";
 import { placeDays } from "@/lib/schedule";
 import type { Equipment, Profile } from "@/lib/types";
@@ -65,18 +65,29 @@ export default function Onboarding({
     return (
       <div className="flex flex-1 flex-col bg-cyan text-ground">
         <main className="rise mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-10">
-          {/* 206 × 250 in the Figma. He is the screen, not an ornament on it. */}
-          <Image
-            src="/mascot.png"
-            alt=""
-            width={206}
-            height={246}
-            priority
-            className="mx-auto w-[206px] max-w-full"
-          />
-          <h1 className="mt-3 text-center text-ground">
-            <span className="aside block text-[28px]">Welcome to</span>
-            <span className="statement block text-[58px]">HabitaBull!</span>
+          {/*
+            Through <Bull>, not a hand-rolled <Image>. Two screens carried the
+            artwork's height themselves and both were wrong the moment the
+            drawing changed shape — the component owns the ratio now.
+
+            The Figma drew him at 206. The 2026 bull is a denser silhouette
+            than the 2023 one, so 206 read as 53% of the screen and pushed the
+            wordmark and the name field down it.
+          */}
+          <Bull size={BULL.hero} className="mt-2" />
+          {/*
+            `.statement`, not `.display`. The display face uppercases, and
+            "HABITABULL" throws away the capital B in the middle of the name —
+            the camel case is the identity, not a styling accident.
+
+            "Lifting" is tucked under the wordmark rather than floating a line
+            below it: tracked out to the wordmark's width, tight leading, so
+            the two read as one lockup instead of two headings.
+          */}
+          <h1 className="mt-4 text-center text-ground">
+            <span className="aside block text-[24px] leading-none opacity-80">Welcome to</span>
+            <span className="statement mt-1.5 block text-[54px] leading-[0.92]">HabitaBull</span>
+            <span className="head block text-[15px] uppercase tracking-[0.34em]">Lifting</span>
           </h1>
 
           <label htmlFor="name" className="head mt-9 block text-[17px] text-ground">

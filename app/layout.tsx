@@ -23,15 +23,15 @@ const barlow = Barlow({
 });
 
 export const metadata: Metadata = {
-  title: "HabitaBull",
+  title: "HabitaBull Lifting",
   description: "Lift. Log it. Come back.",
-  applicationName: "HabitaBull",
+  applicationName: "HabitaBull Lifting",
   // Home-screen install: full screen, no browser chrome over the thumb zone,
   // and — the real reason — storage that iOS will not evict after seven idle
   // days. See app/manifest.ts.
   appleWebApp: {
     capable: true,
-    title: "HabitaBull",
+    title: "HabitaBull Lifting",
     // "default", not "black-translucent": translucent puts the web view under
     // the status bar, and every screen here carries a fixed top padding rather
     // than a safe-area inset. Let iOS keep the clock out of the headline.

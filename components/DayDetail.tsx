@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Bull from "./Bull";
+import Bull, { BULL } from "./Bull";
 import CrewPost from "./CrewPost";
 import { Pill } from "./ui";
 import { enabled, fetchDay, sharePhoto, type CrewDay, type CrewPhoto } from "@/lib/cloud";
@@ -299,7 +299,7 @@ export default function DayDetail({
       */}
       {!trained && photos.length === 0 && alsoTrained.length === 0 && (
         <div className="mt-8 flex flex-col items-center">
-          <Bull size={120} />
+          <Bull size={BULL.companion} />
           <p className="mt-3 text-center text-[17px] text-dim">
             Nothing here. Rest is part of progress.
           </p>
