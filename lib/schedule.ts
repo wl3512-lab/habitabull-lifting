@@ -33,7 +33,7 @@ export const anchorOf = (id: Anchor) => ANCHORS.find((a) => a.id === id)!;
  * the week allows. Four sessions cannot all be non-consecutive in seven days;
  * the standard answer is two pairs rather than a run of four.
  */
-export function placeDays(count: number): number[] {
+export function placeDays(count: number, today?: number): number[] {
   const n = Math.max(1, Math.min(7, Math.round(count)));
   const layouts: Record<number, number[]> = {
     1: [3],
@@ -44,7 +44,20 @@ export function placeDays(count: number): number[] {
     6: [1, 2, 3, 4, 5, 6],
     7: [0, 1, 2, 3, 4, 5, 6],
   };
-  return layouts[n];
+  const base = layouts[n];
+  if (today === undefined) return base;
+
+  /*
+    Rotate the pattern so the first session is today.
+
+    Signing up on a Thursday and being told "Rest day" is the app's first
+    sentence to someone who came to lift. The shape is what matters — three
+    sessions, non-consecutive, spread across the week — and every rotation of
+    it keeps that shape, so starting the pattern on the day they arrived costs
+    nothing and lets them train immediately.
+  */
+  const shift = (((today - base[0]) % 7) + 7) % 7;
+  return base.map((d) => (d + shift) % 7).sort((a, b) => a - b);
 }
 
 /** True when no two chosen days sit next to each other, wrapping the week. */

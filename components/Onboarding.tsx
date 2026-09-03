@@ -54,7 +54,8 @@ export default function Onboarding({
     onDone({
       name: name.trim(),
       level: "new",
-      trainingDays: placeDays(3),
+      // Starting today, so the first thing the app says is not "rest".
+      trainingDays: placeDays(3, new Date().getDay()),
       equipment: ["barbell", "dumbbell", "machine", "bodyweight"] as Equipment[],
       motivation: motivation.trim() || undefined,
       createdAt: new Date().toISOString(),

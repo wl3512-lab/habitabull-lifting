@@ -221,3 +221,38 @@ describe("multiple anchors", () => {
     expect(anchorLabel(undefined)).toBeNull();
   });
 });
+
+describe("placeDays starting today", () => {
+  const DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+  it("includes today whatever day it is", () => {
+    // Signing up on a Thursday and being told "Rest day" was the app's first
+    // sentence to someone who came to lift.
+    for (const today of DAYS) {
+      expect(placeDays(3, today)).toContain(today);
+    }
+  });
+
+  it.each(DAYS)("keeps three non-consecutive days when starting on day %i", (today) => {
+    const days = placeDays(3, today);
+    expect(days).toHaveLength(3);
+    expect(hasBackToBack(days)).toBe(false);
+  });
+
+  it("keeps the shape for every count", () => {
+    for (const n of [1, 2, 3, 4, 5, 6, 7]) {
+      for (const today of DAYS) {
+        const days = placeDays(n, today);
+        expect(days).toHaveLength(placeDays(n).length);
+        expect(new Set(days).size).toBe(days.length);
+        expect(days).toContain(today);
+        expect(days).toEqual([...days].sort((a, b) => a - b));
+      }
+    }
+  });
+
+  it("is unchanged when no day is given", () => {
+    expect(placeDays(3)).toEqual([1, 3, 5]);
+    expect(placeDays(2)).toEqual([1, 4]);
+  });
+});
