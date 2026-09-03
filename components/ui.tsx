@@ -26,8 +26,9 @@ export function Pill({
   size = "lg",
   variant = "primary",
   className = "",
+  href,
   ...props
-}: ButtonProps) {
+}: ButtonProps & { href?: string }) {
   const dims =
     size === "lg" ? "h-14 w-full px-8 text-[17px]" : "h-10 px-5 text-[13px]";
   const skin = {
@@ -36,13 +37,28 @@ export function Pill({
     onCyan: "border-ground bg-ground text-fg hover:bg-ground/90",
     onOrange: "border-ground bg-ground text-orange hover:bg-ground/90",
   }[variant];
-  return (
-    <button
-      type="button"
-      className={`head rounded-full border transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-[0.985] disabled:opacity-35 disabled:active:scale-100 ${dims} ${skin} ${className}`}
-      {...props}
-    />
-  );
+  const shape = `head rounded-full border transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-[0.985] disabled:opacity-35 disabled:active:scale-100 ${dims} ${skin} ${className}`;
+
+  /*
+    With an href it is a link, because a link is what it is. window.open from a
+    click handler is one popup blocker away from doing nothing at all and
+    saying nothing about it, and an anchor also gives long-press, cmd-click and
+    copy-link for free.
+  */
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${shape} grid place-items-center`}
+      >
+        {props.children}
+      </a>
+    );
+  }
+
+  return <button type="button" className={shape} {...props} />;
 }
 
 export function Card({

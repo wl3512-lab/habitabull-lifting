@@ -120,3 +120,40 @@ export function buildIcs(
 
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }
+
+/**
+ * The same event as a Google Calendar link.
+ *
+ * A downloaded .ics is the honest, portable answer and stays the default — it
+ * works offline, on every platform, and outlives the app being deleted. But a
+ * file download is a miserable experience on an Android phone, and Google
+ * Calendar is what most of the people this was built for actually use, so
+ * there is a second door.
+ *
+ * Google's template URL takes one start time and a recurrence rule; the rule
+ * is the same RRULE the .ics carries, so the two cannot drift.
+ */
+export function googleUrl(
+  profile: Pick<Profile, "trainingDays" | "trainingMinute" | "motivation" | "anchors">,
+  now = new Date()
+): string | null {
+  const { trainingDays } = profile;
+  if (!trainingDays.length) return null;
+
+  const anchor = primaryAnchor(profile.anchors);
+  const minute = anchor ? anchorOf(anchor).minute : profile.trainingMinute ?? 18 * 60;
+  const start = firstOccurrence(trainingDays, minute, now);
+  const end = new Date(start.getTime() + 45 * 60000);
+  const byday = [...trainingDays].sort((a, b) => a - b).map((d) => BYDAY[d]).join(",");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: "Training — HabitaBull",
+    // Local wall-clock on both ends, no Z: the hour survives a timezone change,
+    // exactly as the .ics floating time does.
+    dates: `${local(start)}/${local(end)}`,
+    recur: `RRULE:FREQ=WEEKLY;BYDAY=${byday}`,
+    details: profile.motivation ? `You said: ${profile.motivation}` : "Showing up is the whole thing.",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}

@@ -11,7 +11,7 @@ import {
   yearCounts,
 } from "@/lib/calendar";
 import { addPhoto, deletePhoto, listPhotos, photoUrl, type PhotoMeta } from "@/lib/photos";
-import { buildIcs } from "@/lib/ics";
+import { buildIcs, googleUrl } from "@/lib/ics";
 import type { Profile, Session } from "@/lib/types";
 
 const DAY_HEADS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -149,7 +149,14 @@ export default function Calendar({
 
   const shift = (n: number) => setCursor(new Date(year, month + n, 1));
 
-  const reminderReady = profile.trainingDays.length > 0 && profile.trainingMinute !== undefined;
+  /*
+    Training days are the only thing a reminder actually needs. This used to
+    also demand an explicit clock time, which hid the button from everyone who
+    answered "whenever I can" — the people most likely to need a nudge. buildIcs
+    has always handled a missing time by taking the hour from their chosen slot,
+    or 18:00, so the gate was stricter than the thing it was gating.
+  */
+  const reminderReady = profile.trainingDays.length > 0;
 
   function saveReminder() {
     const ics = buildIcs(profile);
@@ -158,8 +165,15 @@ export default function Calendar({
     const a = document.createElement("a");
     a.href = url;
     a.download = "habitabull-training.ics";
+    // Firefox ignores a click on an anchor that is not in the document, and a
+    // silent no-op is the worst possible outcome for a button whose entire job
+    // is to hand over a file.
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    // Revoking in the same tick can cancel the download on Safari.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   return (
@@ -410,16 +424,35 @@ export default function Calendar({
               Put your training days in the calendar you already look at, with a
               nudge fifteen minutes before.
             </p>
-            <div className="mt-3">
+            <p className="mt-1.5 text-[15px] leading-snug text-dim">
+              {profile.trainingMinute === undefined && (profile.anchors?.length ?? 0) === 0
+                ? "You said whenever you can, so it lands at six and you can drag it."
+                : "It repeats weekly, and you can move it whenever you like."}
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {/*
+                Google first because it is what most people actually open, and
+                a link beats a downloaded file on a phone. The file stays for
+                Apple Calendar, Outlook, and anyone who wants it to keep working
+                after this app is gone.
+              */}
+              {/*
+                Two doors to the same event, weighted the same. Which one is
+                right depends on the phone in your hand, not on what the app
+                would prefer — and this screen is for looking at, so it does
+                not get a loud action.
+              */}
+              <Pill variant="ghost" href={googleUrl(profile) ?? undefined}>
+                Add to Google Calendar
+              </Pill>
               <Pill variant="ghost" onClick={saveReminder}>
-                Add to my calendar
+                Download for Apple or Outlook
               </Pill>
             </div>
           </>
         ) : (
           <p className="mt-2 text-[15px] text-dim">
-            Set your training days and time in setup and this becomes a calendar
-            reminder.
+            Pick your training days in setup and this becomes a calendar reminder.
           </p>
         )}
       </section>

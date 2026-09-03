@@ -51,6 +51,24 @@ export default function Finished({
   //
   // Only when there was something to beat. On a first session everything is a
   // record by definition, and "you beat it by 70 lb" would be a lie.
+  /**
+   * Say it once, on the day there is finally something to lose.
+   *
+   * Everything this app knows lives in one browser, and iOS clears
+   * script-writable storage after seven idle days for a site that was never
+   * added to the home screen — which is the exact user this product is for.
+   * The manifest has always been ready for it and nothing ever asked.
+   *
+   * Only after the first session, only when not already installed, and never
+   * again: a prompt on the way in is asking for commitment before there is
+   * anything to protect, and a prompt every time is nagging.
+   */
+  const justStarted = sessions.filter((x) => x.completedAt).length === 1;
+  const installed =
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(display-mode: standalone)").matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true);
+
   const prior = sessions.filter((s) => s.date !== session.date);
   const best = records
     .map((id) => {
@@ -157,6 +175,19 @@ export default function Finished({
             </li>
           ))}
         </ul>
+      )}
+
+      {justStarted && !installed && (
+        <div className="mt-8 rounded-2xl border border-line-strong p-[18px]">
+          <p className="label text-cyan">Keep this</p>
+          <p className="mt-1.5 text-[17px] leading-snug text-fg">
+            Add HabitaBull to your home screen.
+          </p>
+          <p className="mt-1 text-[15px] leading-snug text-dim">
+            Everything you log lives in this browser, and phones clear that for sites
+            you have not saved. Share, then Add to Home Screen.
+          </p>
+        </div>
       )}
 
       <div className="mt-auto pt-10">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIcs, escapeText, firstOccurrence, foldLine } from "./ics";
+import { buildIcs, escapeText, firstOccurrence, foldLine, googleUrl } from "./ics";
 
 const profile = {
   trainingDays: [1, 3, 5],
@@ -110,5 +110,59 @@ describe("buildIcs", () => {
   it("sorts days regardless of the order they were tapped", () => {
     const ics = buildIcs({ ...profile, trainingDays: [5, 1, 3] }, now)!;
     expect(ics).toContain("BYDAY=MO,WE,FR");
+  });
+});
+
+describe("googleUrl", () => {
+  const now = new Date(2026, 8, 2, 9, 0); // Wednesday
+
+  it("returns null only when there are no training days", () => {
+    expect(googleUrl({ trainingDays: [], trainingMinute: 1110 }, now)).toBeNull();
+  });
+
+  it("carries the same recurrence rule as the .ics, so the two cannot drift", () => {
+    const url = googleUrl(profile, now)!;
+    const recur = new URL(url).searchParams.get("recur");
+    expect(recur).toBe("RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR");
+    expect(buildIcs(profile, now)).toContain(recur!.replace("RRULE:", "RRULE:"));
+  });
+
+  it("starts at the same moment the .ics does", () => {
+    const dates = new URL(googleUrl(profile, now)!).searchParams.get("dates")!;
+    const [start] = dates.split("/");
+    expect(buildIcs(profile, now)).toContain(`DTSTART:${start}`);
+  });
+
+  it("books 45 minutes", () => {
+    const [start, end] = new URL(googleUrl(profile, now)!).searchParams.get("dates")!.split("/");
+    const mins = (s: string) => Number(s.slice(9, 11)) * 60 + Number(s.slice(11, 13));
+    expect(mins(end) - mins(start)).toBe(45);
+  });
+
+  it("uses local wall-clock, never UTC, so the hour survives a timezone change", () => {
+    expect(new URL(googleUrl(profile, now)!).searchParams.get("dates")).not.toContain("Z");
+  });
+
+  it("quotes her reason without the app rewriting it", () => {
+    const url = googleUrl({ ...profile, motivation: "It clears my head." }, now)!;
+    expect(new URL(url).searchParams.get("details")).toBe("You said: It clears my head.");
+  });
+
+  it("still builds when no time was ever set — the whenever-I-can case", () => {
+    const url = googleUrl({ trainingDays: [1], trainingMinute: undefined, anchors: [] }, now);
+    expect(url).not.toBeNull();
+    expect(new URL(url!).searchParams.get("recur")).toBe("RRULE:FREQ=WEEKLY;BYDAY=MO");
+  });
+
+  it("takes its hour from the slot she chose", () => {
+    const url = googleUrl({ trainingDays: [3], trainingMinute: undefined, anchors: ["wake"] }, now)!;
+    expect(new URL(url).searchParams.get("dates")).toMatch(/^\d{8}T0700/);
+  });
+
+  it("is a real Google Calendar template link", () => {
+    const url = new URL(googleUrl(profile, now)!);
+    expect(url.origin + url.pathname).toBe("https://calendar.google.com/calendar/render");
+    expect(url.searchParams.get("action")).toBe("TEMPLATE");
+    expect(url.searchParams.get("text")).toContain("HabitaBull");
   });
 });
