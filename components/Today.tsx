@@ -252,7 +252,15 @@ export default function Today({
    * and full body is already selected there, so agreeing costs a tap and
    * changing it costs the same tap.
    */
-  const unchosen = Boolean(routine) && !profile.planChosen && sessions.length === 0;
+  /*
+    Deliberately not gated on there being a routine for today. `placeDays`
+    spreads three sessions across the week, so somebody who signs up on a
+    Thursday was landing on "Rest day / Train anyway" as the very first thing
+    the app ever said to them — told to rest before they had done anything.
+    Whether today happens to be a scheduled day is a fact about a schedule
+    nobody has agreed to yet.
+  */
+  const unchosen = !profile.planChosen && sessions.length === 0;
 
   const seen = observedAnchor(sessions);
   const stated = profile.anchors;
