@@ -20,9 +20,11 @@ const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
  * largest control on it starts a workout, because the research found people
  * want to log before they will set anything up.
  *
- * No mascot here on purpose. He shows up where there is something to react to:
- * a finished session, a new best, a comeback. A bull on the daily home is
- * decoration, and decoration is the thing this redesign kept cutting.
+ * The mascot earns his place here rather than decorating it: beside her reason
+ * on a training day, on the first run when there is no plan yet, and on a rest
+ * day, where "not today, and that is fine" is the sentence this whole product
+ * is arguing for. He is still absent from the ordinary mid-week home screen
+ * with a plan already on it, because there he would be decoration.
  */
 export default function Today({
   profile,

@@ -90,7 +90,7 @@ export default function ExerciseInfo({
           src="/mascot.png"
           alt=""
           width={96}
-          height={116}
+          height={115}
           priority
           className="w-[96px] shrink-0"
         />

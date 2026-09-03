@@ -70,7 +70,7 @@ export default function Onboarding({
             src="/mascot.png"
             alt=""
             width={206}
-            height={250}
+            height={246}
             priority
             className="mx-auto w-[206px] max-w-full"
           />

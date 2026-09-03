@@ -11,7 +11,11 @@ import Image from "next/image";
  * The trimmed artwork's aspect, which is also the Figma's: 206 × 250 on the
  * welcome screen, 180 × 218 on the PR. `size` is his width.
  */
-const RATIO = 824 / 1000;
+// The artwork's own aspect. Get this wrong and every <Bull size={n}> stretches.
+// The 2026 drawing is 531 x 634 after its background was cut and the canvas
+// trimmed; the 2023 one it replaced was 824 x 1000, which is why this is a
+// constant and not a guess.
+const RATIO = 531 / 634;
 
 export default function Bull({
   size = 132,
