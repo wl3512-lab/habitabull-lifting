@@ -23,6 +23,7 @@ import {
   rebuildDay,
 } from "@/lib/engine";
 import { enabled, pushCheckins } from "@/lib/cloud";
+import { setCustomExercises } from "@/lib/exercises";
 import { challengeFor } from "@/lib/crew";
 import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
 import type { Constraints } from "@/lib/constraints";
@@ -243,6 +244,19 @@ export default function Page() {
       <RoutineEditor
         profile={profile}
         routines={routines}
+        onAddCustom={(e) => {
+          /*
+            The registry is filled here, not left to `save`. It is a module
+            variable, so changing it does not re-render anything — and setState
+            alone meant the new lift rendered as its own raw id
+            ("custom-cable-crossover-mtluc…") until something else happened to
+            refresh the screen. Registering first means the render setState
+            causes already resolves the name.
+          */
+          const next = [...(state.customExercises ?? []), e];
+          setCustomExercises(next);
+          setState((s) => ({ ...s, customExercises: next }));
+        }}
         onSave={(r: Routine[]) => {
           // Saving the plan is the moment she has actually chosen it, so the
           // first-run prompt retires.
@@ -269,9 +283,12 @@ export default function Page() {
             profile: p,
             routines: generateRoutine(p.level, p.trainingDays, p.equipment),
           }));
-          setView("today");
+          // First time through, days are only half the answer — go straight on
+          // to what each day is, rather than dropping her back on a home screen
+          // that still says nothing is planned.
+          setView(profile.planChosen ? "today" : "routine");
         }}
-        onSkip={() => setView("today")}
+        onSkip={() => setView(profile.planChosen ? "today" : "routine")}
       />
     );
   }

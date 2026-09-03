@@ -259,6 +259,12 @@ export default function Today({
     the app ever said to them — told to rest before they had done anything.
     Whether today happens to be a scheduled day is a fact about a schedule
     nobody has agreed to yet.
+
+    And "Build your workout" goes to the day picker, not the day-type editor.
+    It used to open the editor with Monday, Thursday and Saturday already
+    chosen by placeDays and no way to change them — the app had made the
+    schedule and was calling it building. Choosing when you can train comes
+    before choosing what each day is.
   */
   const unchosen = !profile.planChosen && sessions.length === 0;
 
@@ -437,7 +443,7 @@ export default function Today({
             </Pill>
           </>
         ) : (
-          <Pill onClick={unchosen ? onEditRoutine : onStart}>
+          <Pill onClick={unchosen ? onSetUpWeek : onStart}>
             {unchosen ? "Build your workout" : routine ? "Start workout" : "Train anyway"}
           </Pill>
         )}
@@ -528,14 +534,17 @@ export default function Today({
           <p className="label text-dim">Today&apos;s lifts</p>
           <button
             type="button"
-            onClick={onEditRoutine}
-            className="mt-3 block w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
+            onClick={onSetUpWeek}
+            className="mt-3 block w-full rounded-2xl border border-line-strong p-[18px] text-center transition-colors hover:bg-raise/50"
           >
+            <span className="mb-3 flex justify-center">
+              <Bull size={96} />
+            </span>
             <span className="head block text-[19px] text-fg">Nothing here yet</span>
             <span className="mt-1 block text-[15px] leading-snug text-dim">
-              Pick the shape of each day — leg day, push day, cardio, or full body, which
-              is already chosen and is where most people should start. Or describe the
-              week you want and the app will build it.
+              Say which days you can train, then what each one is — leg day, push day,
+              cardio, or full body, which is where most people should start. Or describe
+              the week you want and the app will build it.
             </span>
             <span className="head mt-2.5 block text-[15px] text-cyan">Build your workout →</span>
           </button>
@@ -595,10 +604,13 @@ export default function Today({
           </ul>
         </section>
       ) : (
-        <Card className="mt-8 p-[18px]">
-          <h2 className="head text-[17px] text-fg">Nothing scheduled today</h2>
+        // He turns up where there is something to react to, and "not today,
+        // and that is fine" is the sentence this whole product is arguing for.
+        <Card className="mt-8 flex flex-col items-center p-[18px] text-center">
+          <Bull size={112} />
+          <h2 className="head mt-3 text-[17px] text-fg">Nothing here.</h2>
           <p className="mt-1 text-[15px] text-dim">
-            Rest is part of it. If you want to train anyway, pull up your next session.
+            Rest is part of progress. If you want to train anyway, pull up your next session.
           </p>
         </Card>
       )}

@@ -1,4 +1,5 @@
-import type { AppState, Session } from "./types";
+import { setCustomExercises } from "./exercises";
+import type { AppState, Exercise, Session } from "./types";
 
 const KEY = "habitabull.v1";
 
@@ -16,7 +17,12 @@ export function load(): AppState {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return EMPTY;
     const parsed = JSON.parse(raw) as Partial<AppState>;
+    // Into the registry before anything reads byId, so a custom lift is
+    // indistinguishable from a built-in one from the first render.
+    const customExercises = sane(parsed.customExercises);
+    setCustomExercises(customExercises);
     return {
+      customExercises,
       profile: parsed.profile ?? null,
       routines: parsed.routines ?? [],
       sessions: parsed.sessions ?? [],
@@ -29,8 +35,32 @@ export function load(): AppState {
   }
 }
 
+/**
+ * A stored custom lift is as untrusted as an imported one: it came from
+ * localStorage, which anything on the origin can write. Anything missing a
+ * field the app will dereference is dropped rather than crashing a render
+ * somewhere far away from here.
+ */
+function sane(list: unknown): Exercise[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter(
+    (e): e is Exercise =>
+      Boolean(e) &&
+      typeof e === "object" &&
+      typeof (e as Exercise).id === "string" &&
+      typeof (e as Exercise).name === "string" &&
+      typeof (e as Exercise).primary === "string" &&
+      typeof (e as Exercise).equipment === "string" &&
+      typeof (e as Exercise).increment === "number" &&
+      typeof (e as Exercise).cue === "string" &&
+      Array.isArray((e as Exercise).steps) &&
+      Array.isArray((e as Exercise).mistakes)
+  );
+}
+
 export function save(state: AppState): void {
   if (typeof window === "undefined") return;
+  setCustomExercises(state.customExercises ?? []);
   try {
     window.localStorage.setItem(KEY, JSON.stringify(state));
   } catch {

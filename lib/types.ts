@@ -156,4 +156,6 @@ export interface AppState {
   /** Set once the user has declined to set a goal, so we stop asking. */
   goalDismissed?: boolean;
   challenge?: Challenge;
+  /** Lifts somebody added that the library does not have. */
+  customExercises?: Exercise[];
 }

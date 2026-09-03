@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Bull from "./Bull";
 import { Pill } from "./ui";
 import {
   createCrew,
@@ -155,6 +156,12 @@ export default function Crew({
       <h1 className="statement mt-2 text-[44px] text-fg">
         {roster.length > 1 ? `${roster.length} of you.` : "Just you, for now."}
       </h1>
+      {/* Somebody is here either way. */}
+      {roster.length <= 1 && (
+        <div className="mt-4 flex justify-center">
+          <Bull size={104} />
+        </div>
+      )}
       <p className="mt-1.5 text-[17px] text-dim">
         No rankings. No weights. Just who turned up.
       </p>

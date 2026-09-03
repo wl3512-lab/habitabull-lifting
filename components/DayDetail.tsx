@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Bull from "./Bull";
 import CrewPost from "./CrewPost";
 import { Pill } from "./ui";
 import { enabled, fetchDay, sharePhoto, type CrewDay, type CrewPhoto } from "@/lib/cloud";
@@ -291,10 +292,18 @@ export default function DayDetail({
         </section>
       )}
 
+      {/*
+        A rest day gets the bull too. He turns up where there is something to
+        react to, and "you did not train and that is fine" is something to
+        react to — it is the sentence the whole product is arguing for.
+      */}
       {!trained && photos.length === 0 && alsoTrained.length === 0 && (
-        <p className="mt-5 text-[17px] text-dim">
-          Nothing here. Rest is part of it.
-        </p>
+        <div className="mt-8 flex flex-col items-center">
+          <Bull size={120} />
+          <p className="mt-3 text-center text-[17px] text-dim">
+            Nothing here. Rest is part of progress.
+          </p>
+        </div>
       )}
 
       <div className="mt-auto pt-8">

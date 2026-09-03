@@ -140,6 +140,27 @@ Prefer full-body when they are new or unsure — training everything twice a wee
 matters more than the split. Never mention sets, reps, weights or numbers.`;
 }
 
+/**
+ * "Cable crossover." What is that?
+ *
+ * The model reads a lift's name and says which muscle it trains and what it is
+ * done with — two enums the app already understands. It writes no coaching:
+ * every built-in entry's cue and steps were written by a person, and having a
+ * language model improvise form advice for an arbitrary barbell movement is
+ * the one place in this product where being wrong could injure somebody.
+ */
+const CLASSIFY_SYSTEM = `You identify a strength exercise from its name.
+
+Return ONLY JSON, no prose, no markdown fence:
+{"muscle": "...", "equipment": "...", "compound": true|false}
+
+"muscle" is the main one it trains. Allowed values only: ${MUSCLES.join(", ")}.
+"equipment" is what it is done with. Allowed values only: ${EQUIPMENT.join(", ")}.
+"compound" is true when several joints move together, false for an isolation.
+
+Never invent form advice, sets, reps or weights. If the name is not an exercise
+you recognise, still answer with your best guess from the allowed values.`;
+
 export async function POST(request: Request) {
   let text = "";
   let intent = "constraints";
@@ -153,6 +174,7 @@ export async function POST(request: Request) {
       intent = "week";
       bodyCount = body?.count;
     }
+    if (body?.intent === "classify") intent = "classify";
     text = typeof body?.text === "string" ? body.text.slice(0, 500) : "";
     if (body?.intent === "availability") intent = "availability";
     if (body?.intent === "pick") {
@@ -169,6 +191,47 @@ export async function POST(request: Request) {
     }
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+
+  if (intent === "classify") {
+    const name = text.trim().slice(0, 40);
+    // Unknown things are arms and dumbbells: the most common answer, and the
+    // safest place to land something the app could not identify.
+    const local = () =>
+      NextResponse.json({ muscle: "arms", equipment: "dumbbell", compound: false, source: "local" });
+    if (!name) return NextResponse.json({ error: "Bad request" }, { status: 400 });
+
+    try {
+      const res = await fetch(PROXY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          input: { prompt: name, system_prompt: CLASSIFY_SYSTEM, max_completion_tokens: 80 },
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return local();
+
+      const raw = extractJson(readOutput(await res.json())) as Record<string, unknown> | null;
+      const muscles: readonly string[] = MUSCLES;
+      const kit: readonly string[] = EQUIPMENT;
+      const muscle = typeof raw?.muscle === "string" && muscles.includes(raw.muscle) ? raw.muscle : null;
+      const equipment = typeof raw?.equipment === "string" && kit.includes(raw.equipment) ? raw.equipment : null;
+
+      if (!muscle || !equipment) {
+        console.warn(`[generate:classify] discarded ${JSON.stringify(raw)} for ${JSON.stringify(name)}`);
+        return local();
+      }
+      return NextResponse.json({
+        muscle,
+        equipment,
+        compound: raw?.compound === true,
+        source: "ai",
+      });
+    } catch {
+      return local();
+    }
   }
 
   if (intent === "week") {

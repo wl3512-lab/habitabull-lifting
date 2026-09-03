@@ -1,4 +1,4 @@
-import { EXERCISES, byId } from "./exercises";
+import { allExercises, byId } from "./exercises";
 import { templateOf, defaultTemplates, type TemplateId } from "./templates";
 import type { Equipment, Exercise, Goal, Level, Muscle, PlannedExercise, Routine, Session } from "./types";
 
@@ -70,7 +70,7 @@ export function pickExercise(
   exclude: Set<string>,
   favourites: string[] = []
 ): Exercise | null {
-  const usable = EXERCISES.filter(
+  const usable = allExercises().filter(
     (e) => e.primary === muscle && equipment.includes(e.equipment) && !exclude.has(e.id)
   );
   if (usable.length === 0) return null;
@@ -365,7 +365,7 @@ export function alternativesFor(
   const kit = new Set<Equipment>([...equipment, "bodyweight"]);
   const skip = new Set(exclude);
   const starred = new Set(favourites);
-  return EXERCISES.filter((e) => e.primary === muscle && kit.has(e.equipment) && !skip.has(e.id)).sort(
+  return allExercises().filter((e) => e.primary === muscle && kit.has(e.equipment) && !skip.has(e.id)).sort(
     (a, b) =>
       Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
       Number(b.compound) - Number(a.compound) ||

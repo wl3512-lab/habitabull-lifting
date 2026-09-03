@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
-import { byId, nameOf } from "@/lib/exercises";
-import type { Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
+import { byId, makeCustomExercise, nameOf } from "@/lib/exercises";
+import type { Equipment, Exercise, Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
 
 const FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -37,12 +37,15 @@ export default function RoutineEditor({
   profile,
   routines,
   onSave,
+  onAddCustom,
   initialAdding = null,
   onBack,
 }: {
   profile: Profile;
   routines: Routine[];
   onSave: (r: Routine[]) => void;
+  /** A lift the library does not have, added by hand. */
+  onAddCustom?: (e: Exercise) => void;
   /** Opens straight into the picker, so /frames can show it. */
   initialAdding?: Muscle | null;
   onBack: () => void;
@@ -58,6 +61,52 @@ export default function RoutineEditor({
   const [weekAsk, setWeekAsk] = useState("");
   const [weekBusy, setWeekBusy] = useState(false);
   const [weekWhy, setWeekWhy] = useState<string | null>(null);
+  const [ownName, setOwnName] = useState("");
+  const [ownBusy, setOwnBusy] = useState(false);
+
+  /**
+   * A lift the library has never heard of.
+   *
+   * Thirty-nine entries is a lot and still not everything — somebody's gym has
+   * a machine nobody else's does, and a plan you cannot write down is a plan
+   * you stop using. The model reads the name and says which muscle it trains
+   * and what it is done with: two enums this app already understands, checked
+   * on the server, defaulting to arms-and-dumbbell when it cannot tell.
+   *
+   * It writes no coaching. Every built-in cue and step was written by a person,
+   * and having a model improvise form advice for an arbitrary barbell movement
+   * is the one place here where being wrong could hurt somebody.
+   */
+  async function addOwn() {
+    const name = ownName.trim();
+    if (!name || ownBusy || !onAddCustom) return;
+    setOwnBusy(true);
+
+    let muscle: Muscle = adding ?? "arms";
+    let equipment: Equipment = profile.equipment[0] ?? "dumbbell";
+    let compound = false;
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "classify", text: name }),
+      });
+      const out = (await res.json()) as { muscle?: Muscle; equipment?: Equipment; compound?: boolean };
+      // Only the server's validated enums land here; if it is offline the
+      // guesses above stand and she can still add the lift.
+      if (out.muscle) muscle = out.muscle;
+      if (out.equipment) equipment = out.equipment;
+      compound = out.compound === true;
+    } catch {
+      // Offline. Her lift still gets added, filed where she was standing.
+    }
+
+    const made = makeCustomExercise(name, muscle, equipment, compound);
+    onAddCustom(made);
+    setOwnName("");
+    setOwnBusy(false);
+    add(made.id, made);
+  }
 
   /**
    * "Build me a week."
@@ -181,8 +230,12 @@ export default function RoutineEditor({
     setOpenId(to);
   };
 
-  const add = (id: string) => {
-    const meta = byId(id);
+  /**
+   * `meta` is passed explicitly when the lift was just invented, because the
+   * registry `byId` reads is repopulated by storage on the next commit — so a
+   * brand-new custom id does not resolve yet and the add silently did nothing.
+   */
+  const add = (id: string, meta = byId(id)) => {
     if (!meta) return;
     write([
       ...routine.exercises,
@@ -225,7 +278,9 @@ export default function RoutineEditor({
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-start justify-between gap-4">
-        <p className="label text-cyan">Edit your week</p>
+        <p className="label text-cyan">
+          {profile.planChosen ? "Edit your week" : "Build your week"}
+        </p>
         <button
           type="button"
           onClick={onBack}
@@ -487,7 +542,44 @@ export default function RoutineEditor({
               </button>
             </form>
 
-            {suggested && byId(suggested.id) && (
+            {/*
+            Adding a lift the app does not have. Under the shortlist and under
+            the ask, because it is the last resort of the three, not the first.
+          */}
+          {onAddCustom && (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="label text-dim">Not listed?</p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void addOwn();
+                }}
+                className="mt-2.5 flex items-center gap-2.5"
+              >
+                <input
+                  value={ownName}
+                  onChange={(e) => setOwnName(e.target.value)}
+                  maxLength={40}
+                  placeholder="Cable crossover"
+                  aria-label="The name of a lift to add yourself"
+                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                />
+                <button
+                  type="submit"
+                  disabled={!ownName.trim() || ownBusy}
+                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-raise px-5 text-[15px] text-cyan transition-opacity disabled:opacity-30"
+                >
+                  {ownBusy ? "…" : "Add"}
+                </button>
+              </form>
+              <p className="mt-2 text-[15px] leading-snug text-dim">
+                Type the name and it gets filed for you. There is no form guidance for a
+                lift you added — that part only exists where a person wrote it.
+              </p>
+            </div>
+          )}
+
+          {suggested && byId(suggested.id) && (
               <div role="status" className="mt-3 rounded-xl bg-raise/50 p-3.5">
                 <p className="head text-[17px] text-fg">{nameOf(suggested.id)}</p>
                 {suggested.why && (

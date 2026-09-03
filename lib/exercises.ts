@@ -1,4 +1,4 @@
-import type { Exercise } from "./types";
+import type { Equipment, Exercise, Muscle } from "./types";
 
 /**
  * Deliberately small. The deck's tutorial slide lists back squat, deadlift and
@@ -461,6 +461,66 @@ export const EXERCISES: Exercise[] = [
   },
 ];
 
-export const byId = (id: string) => EXERCISES.find((e) => e.id === id);
+/**
+ * Lifts somebody added themselves.
+ *
+ * Held in a module registry rather than threaded through every component,
+ * because `byId` and `nameOf` are called from a dozen places and a custom lift
+ * has to be indistinguishable from a built-in one at every single one of them.
+ * Storage repopulates this on load; nothing else writes to it.
+ */
+let custom: Exercise[] = [];
+
+export function setCustomExercises(list: Exercise[]) {
+  custom = list;
+}
+
+/** Everything the app can offer, built-in and added. */
+export const allExercises = (): Exercise[] => [...EXERCISES, ...custom];
+
+export const isCustom = (id: string) => custom.some((e) => e.id === id);
+
+export const byId = (id: string) =>
+  EXERCISES.find((e) => e.id === id) ?? custom.find((e) => e.id === id);
 
 export const nameOf = (id: string) => byId(id)?.name ?? id;
+
+/**
+ * Turn a typed name into a lift the rest of the app can use.
+ *
+ * No coaching is invented for it. Every built-in entry carries a cue, ordered
+ * steps and the mistakes people actually make, and those were written by a
+ * person — having a language model improvise form advice for an arbitrary
+ * barbell movement is the one place in this product where being wrong could
+ * hurt somebody. It says plainly that this one is theirs instead.
+ */
+export function makeCustomExercise(
+  name: string,
+  primary: Muscle,
+  equipment: Equipment,
+  compound: boolean
+): Exercise {
+  const clean = name.replace(/\s+/g, " ").trim().slice(0, 40);
+  const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return {
+    // Time alone is not unique — two lifts added in the same millisecond
+    // collided, and a duplicate id would quietly make one of them unreachable.
+    id: `custom-${slug || "lift"}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    name: clean,
+    equipment,
+    primary,
+    increment: equipment === "bodyweight" ? 0 : 2.5,
+    compound,
+    cue: "Your lift, your form. Take the first set lighter than you think.",
+    steps: [
+      "This one is yours — the app has no coaching written for it.",
+      "Set up the way you already know it.",
+      "Start lighter than your working weight and find the groove.",
+      "Stop the set while the last rep still looks like the first.",
+    ],
+    mistakes: [
+      "Going straight to a working weight on a movement you are still learning.",
+      "Chasing the number when the form has already gone.",
+    ],
+  };
+}
