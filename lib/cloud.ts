@@ -218,6 +218,15 @@ export function fetchDay(day: string, force = false): Promise<CrewDay | null> {
   return req;
 }
 
+/**
+ * What the crew has posted lately, newest first.
+ *
+ * A photo used to be reachable only through the calendar day it was taken on,
+ * which means guessing when somebody trained in order to find out that they
+ * did.
+ */
+export const fetchFeed = () => call<{ photos: CrewPhoto[] }>("feed", {});
+
 /** After acting on a day, the cached copy is a lie. */
 export const invalidateDay = () => {
   last = null;

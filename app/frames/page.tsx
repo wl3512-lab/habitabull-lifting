@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
 import Crew from "@/components/Crew";
+import CrewPost from "@/components/CrewPost";
 import DayDetail from "@/components/DayDetail";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
@@ -420,6 +421,21 @@ function gallery(challenge: Challenge) {
                 crewPreview={f.crew}
                 onChallenge={f.noop}
               />
+            </Frame>
+            <Frame n="10d" name="Crew · what they posted" tab="crew" note="A photo used to be reachable only by opening the exact calendar day it was taken on — you had to guess when somebody trained in order to find out that they did. Photo, name, and their own words: a caption here is the note written after the session, not a line composed for an audience.">
+              <Crew
+                profile={f.profile}
+                sessions={f.sessions}
+                challenge={{ month: new Date().toISOString().slice(0, 7), target: 12 }}
+                crewPreview={f.crew}
+                feedPreview={f.crewFeed}
+                onChallenge={f.noop}
+              />
+            </Frame>
+            <Frame n="10e" name="A post, opened" note="The whole interaction: say you saw it, or say something. Two counts on the screen and both are of people, never of weight. Replies read as a conversation rather than a comment section — there is no threading, because a gym app does not need a forum.">
+              <div className="relative h-full w-full">
+                <CrewPost photo={f.crewFeed[1]} preview framed onClose={f.noop} onChanged={f.noop} />
+              </div>
             </Frame>
             <Frame n="10c" name="Crew · join" note="Six characters with no O, I, L or U in the alphabet, because the failure mode is reading a code out across a gym floor.">
               <Crew

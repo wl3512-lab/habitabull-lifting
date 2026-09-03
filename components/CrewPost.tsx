@@ -33,12 +33,15 @@ export default function CrewPost({
   onClose,
   onChanged,
   preview = false,
+  framed = false,
 }: {
   photo: CrewPhoto;
   onClose: () => void;
   onChanged: () => void;
   /** /frames renders this against fixtures; nothing should reach the network. */
   preview?: boolean;
+  /** Render inside the surrounding box rather than over the device. */
+  framed?: boolean;
 }) {
   const [liked, setLiked] = useState(photo.likedByMe);
   const [likes, setLikes] = useState(photo.likes);
@@ -49,6 +52,9 @@ export default function CrewPost({
   const sheet = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // A framed copy is a picture of the dialog, not the dialog: it must not
+    // grab focus, lock the page, or make the gallery around it inert.
+    if (framed) return;
     const returnTo = document.activeElement as HTMLElement | null;
     const behind = document.getElementById("app-scroll");
 
@@ -83,7 +89,7 @@ export default function CrewPost({
       // Back to the thumbnail she came from, not the top of the page.
       returnTo?.focus?.();
     };
-  }, [onClose]);
+  }, [onClose, framed]);
 
   async function toggleLike() {
     const next = !liked;
@@ -129,7 +135,9 @@ export default function CrewPost({
       tabIndex={-1}
       // Fixed on a phone, absolute inside the device on a desktop. No blur:
       // under a 95% scrim it costs a compositing pass to be 5% visible.
-      className="fixed inset-0 z-50 flex justify-center bg-ground/95 outline-none desk:absolute"
+      className={`z-50 flex justify-center bg-ground/95 outline-none ${
+        framed ? "absolute inset-0" : "fixed inset-0 desk:absolute"
+      }`}
     >
       <div className="no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
         <div className="flex items-center justify-between gap-4">
@@ -233,6 +241,7 @@ export default function CrewPost({
 
   // Before hydration there is no device element; render in place rather than
   // not at all.
+  if (framed) return sheetEl;
   const host = typeof document === "undefined" ? null : document.getElementById("device");
   return host ? createPortal(sheetEl, host) : sheetEl;
 }

@@ -1,4 +1,4 @@
-import type { CrewDay, CrewMember } from "@/lib/cloud";
+import type { CrewDay, CrewMember, CrewPhoto } from "@/lib/cloud";
 import type { AppState, Profile, Routine, Session } from "@/lib/types";
 
 /**
@@ -199,5 +199,35 @@ export const crew: { code: string; members: CrewMember[] } = {
     { id: "m-2", name: "Sam", mine: false, days: [iso(4)] },
   ],
 };
+
+/**
+ * What the crew posted lately. Captions are the note somebody wrote after the
+ * session, not a line composed for an audience — that is the whole difference
+ * between this and a social feed.
+ */
+export const crewFeed: CrewPhoto[] = [
+  {
+    id: "f-1", memberId: "m-1", memberName: "Maya", mine: false, day: iso(0),
+    url: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20500%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%235b4a2e%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23241d12%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22400%22%20height%3D%22500%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ctext%20x%3D%22200%22%20y%3D%22262%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.62%22%20text-anchor%3D%22middle%22%3EMaya%3C%2Ftext%3E%3C%2Fsvg%3E",
+    caption: "First time back after the flu. Took everything down 10 lb.",
+    likes: 2, likedByMe: true,
+    replies: [{ id: "fr-1", memberName: "Cathy", mine: true, body: "Sensible. Glad you're back." }],
+  },
+  {
+    id: "f-2", memberId: "m-me", memberName: "You", mine: true, day: iso(0),
+    url: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20500%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%231d5f6b%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230f2a33%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22400%22%20height%3D%22500%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ctext%20x%3D%22200%22%20y%3D%22262%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.62%22%20text-anchor%3D%22middle%22%3Eyour%20photo%3C%2Ftext%3E%3C%2Fsvg%3E",
+    caption: "Squats moved today.",
+    likes: 3, likedByMe: false,
+    replies: [
+      { id: "fr-2", memberName: "Maya", mine: false, body: "That bar speed. Go on." },
+      { id: "fr-3", memberName: "Sam", mine: false, body: "See you Friday" },
+    ],
+  },
+  {
+    id: "f-3", memberId: "m-2", memberName: "Sam", mine: false, day: iso(2),
+    url: "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20500%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%233a2a4d%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23181121%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22400%22%20height%3D%22500%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Ctext%20x%3D%22200%22%20y%3D%22262%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2226%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.62%22%20text-anchor%3D%22middle%22%3ESam%3C%2Ftext%3E%3C%2Fsvg%3E",
+    likes: 0, likedByMe: false, replies: [],
+  },
+];
 
 export const noop = () => {};

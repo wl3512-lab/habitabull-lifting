@@ -81,6 +81,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ action: string
         return await checkin(device, body);
       case "day":
         return await day(device, body);
+      case "feed":
+        return await feed(device);
       case "share":
         return await share(device, body);
       case "unshare":
@@ -219,6 +221,30 @@ interface PhotoRow {
   }[];
 }
 
+/** One row, shaped for the client. Shared by the day view and the feed. */
+async function shapePhoto(p: PhotoRow, day: string, meId: string) {
+  const reactions = p.reactions ?? [];
+  return {
+    id: p.id,
+    memberId: p.member_id,
+    memberName: p.members?.name ?? "Someone",
+    mine: p.member_id === meId,
+    day,
+    url: await signObject(p.path),
+    caption: p.caption ?? undefined,
+    likes: reactions.filter((r) => r.kind === "like").length,
+    likedByMe: reactions.some((r) => r.kind === "like" && r.member_id === meId),
+    replies: reactions
+      .filter((r) => r.kind === "reply" && r.body)
+      .map((r) => ({
+        id: r.id,
+        memberName: r.members?.name ?? "Someone",
+        mine: r.member_id === meId,
+        body: r.body as string,
+      })),
+  };
+}
+
 /**
  * Everyone's shared photos for one day, with their reactions already counted.
  *
@@ -250,33 +276,36 @@ async function day(device: string, body: Record<string, unknown>) {
       `&order=created_at.asc`
   );
 
-  const photos = await Promise.all(
-    rows.map(async (p) => {
-      const reactions = p.reactions ?? [];
-      return {
-        id: p.id,
-        memberId: p.member_id,
-        memberName: p.members?.name ?? "Someone",
-        mine: p.member_id === me.id,
-        day: body.day as string,
-        url: await signObject(p.path),
-        caption: p.caption ?? undefined,
-        likes: reactions.filter((r) => r.kind === "like").length,
-        likedByMe: reactions.some((r) => r.kind === "like" && r.member_id === me.id),
-        replies: reactions
-          .filter((r) => r.kind === "reply" && r.body)
-          .map((r) => ({
-            id: r.id,
-            memberName: r.members?.name ?? "Someone",
-            mine: r.member_id === me.id,
-            body: r.body as string,
-          })),
-      };
-    })
-  );
+  const photos = await Promise.all(rows.map((p) => shapePhoto(p, body.day as string, me.id)));
 
   // A photo whose object has gone is not a broken image on someone's calendar.
   return NextResponse.json({ photos: photos.filter((p) => p.url), trained });
+}
+
+/**
+ * What the crew has posted lately, newest first.
+ *
+ * Without this a photo is only reachable by opening the exact calendar day it
+ * was taken on — you would have to guess when somebody trained in order to see
+ * that they did. The same rows the day view returns, not filtered by date.
+ */
+async function feed(device: string) {
+  const me = await whoami(device);
+  if (!me) return NextResponse.json({ photos: [] });
+
+  const crew = await select<{ id: string }>("members", `crew_id=eq.${me.crew_id}&select=id`);
+  const ids = crew.map((m) => m.id).filter(isUuid);
+  if (!ids.length) return NextResponse.json({ photos: [] });
+
+  const rows = await select<PhotoRow & { day: string }>(
+    "photos",
+    `member_id=in.(${ids.join(",")})` +
+      `&select=id,member_id,day,path,caption,members(name),reactions(id,kind,body,member_id,members(name))` +
+      `&order=created_at.desc&limit=24`
+  );
+
+  const photos = await Promise.all(rows.map((p) => shapePhoto(p, p.day, me.id)));
+  return NextResponse.json({ photos: photos.filter((p) => p.url) });
 }
 
 async function share(device: string, body: Record<string, unknown>) {

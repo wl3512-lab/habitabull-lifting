@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Bull, { BULL } from "./Bull";
 import { Pill } from "./ui";
+import CrewPost from "./CrewPost";
 import {
   createCrew,
   enabled,
   fetchCrew,
+  fetchFeed,
   joinCrew,
   leaveCrew,
   type CrewMember,
+  type CrewPhoto,
 } from "@/lib/cloud";
 import {
   challengeDone,
@@ -48,6 +51,7 @@ export default function Crew({
   challenge,
   onChallenge,
   crewPreview,
+  feedPreview,
 }: {
   profile: Profile;
   sessions: Session[];
@@ -55,10 +59,14 @@ export default function Crew({
   onChallenge: (c: Challenge) => void;
   /** Supplied instead of fetched, so /frames can show a crew statically. */
   crewPreview?: { code: string | null; members: CrewMember[] };
+  /** Supplied instead of fetched, so /frames can show posts statically. */
+  feedPreview?: CrewPhoto[];
 }) {
   const [shared, setShared] = useState<"idle" | "copied" | "failed">("idle");
   const [code, setCode] = useState<string | null>(crewPreview?.code ?? null);
   const [roster, setRoster] = useState<CrewMember[]>(crewPreview?.members ?? []);
+  const [feed, setFeed] = useState<CrewPhoto[]>(feedPreview ?? []);
+  const [open, setOpen] = useState<CrewPhoto | null>(null);
   const [entry, setEntry] = useState("");
   const [trouble, setTrouble] = useState<"none" | "no-such-crew" | "unreachable">("none");
   const [busy, setBusy] = useState(false);
@@ -69,6 +77,7 @@ export default function Crew({
       setCode(res?.code ?? null);
       setRoster(res?.members ?? []);
     });
+    fetchFeed().then((res) => setFeed(res?.photos ?? []));
   }, [crewPreview]);
 
   useEffect(load, [load]);
@@ -126,6 +135,12 @@ export default function Crew({
     return { iso: iso(d) };
   });
   const meId = roster.find((m) => m.mine)?.id ?? null;
+
+  const dayLabel = (d: string) => {
+    if (d === todayIso) return "Today";
+    const date = new Date(d + "T00:00:00");
+    return date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  };
 
   async function copyCode() {
     if (!code) return;
@@ -322,6 +337,60 @@ export default function Crew({
             </ul>
           </section>
 
+          {/*
+            What they posted. A photo used to be reachable only by opening the
+            exact calendar day it was taken on, which means guessing when
+            somebody trained in order to find out that they did.
+
+            Photo, name, and their own words — a caption here is the note they
+            wrote after the session, not something composed for an audience.
+            No counts on the tiles: the number of likes is not what this is for.
+          */}
+          {feed.length > 0 && (
+            <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+              <p className="label text-dim">What they posted</p>
+              <ul className="mt-3 flex flex-col gap-3">
+                {feed.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => setOpen(p)}
+                      className="flex w-full items-center gap-3.5 rounded-xl bg-raise/50 p-2.5 text-left transition-colors hover:bg-raise"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={p.url}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-16 w-[52px] shrink-0 rounded-lg object-cover"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="head block truncate text-[17px] text-fg">
+                          {p.mine ? "You" : p.memberName}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[15px] text-dim">
+                          {p.caption || dayLabel(p.day)}
+                        </span>
+                        {(p.likes > 0 || p.replies.length > 0) && (
+                          <span className="mt-1 block text-[14px] text-cyan">
+                            {[
+                              p.likes > 0 && `${p.likes} ${p.likes === 1 ? "like" : "likes"}`,
+                              p.replies.length > 0 &&
+                                `${p.replies.length} ${p.replies.length === 1 ? "reply" : "replies"}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* Adding someone is the point of the screen, not a footnote on it. */}
           <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
             <p className="label text-dim">Add someone</p>
@@ -403,6 +472,15 @@ export default function Crew({
             {busy ? "One moment…" : "Or start one and get a code"}
           </button>
         </section>
+      )}
+
+      {open && (
+        <CrewPost
+          photo={open}
+          preview={Boolean(feedPreview)}
+          onClose={() => setOpen(null)}
+          onChanged={load}
+        />
       )}
 
       <div className="mt-auto pt-8">
