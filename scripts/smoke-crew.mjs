@@ -98,6 +98,39 @@ async function main() {
   const again = await call(A, "checkin", { days: [today] });
   check("checking in twice on one day is not an error", again.status === 200, JSON.stringify(again.json));
 
+  // ── sharing a plan ─────────────────────────────────────────────────────────
+  const plan = [
+    { day: 1, label: "Push day", exercises: ["chest-press-machine", "pec-deck"] },
+    { day: 4, label: "Pull day", exercises: ["lat-pulldown", "db-curl"] },
+  ];
+  const published = await call(A, "publish", { plan });
+  check("A can publish a week", published.status === 200, JSON.stringify(published.json));
+
+  const seenPlan = await call(B, "members");
+  const aRow = seenPlan.json?.members?.find((m) => m.name === "Smoke A");
+  check("B can see A's plan", Array.isArray(aRow?.plan) && aRow.plan.length === 2, JSON.stringify(aRow?.plan));
+  check(
+    "the plan carries lifts and no numbers",
+    !/weight|reps|sets|\b\d+\s*lb/i.test(JSON.stringify(aRow?.plan ?? {})),
+    JSON.stringify(aRow?.plan)
+  );
+  check("B is told which row is their own", seenPlan.json?.members?.find((m) => m.name === "Smoke B")?.mine === true);
+
+  const junk = await call(A, "publish", {
+    plan: [{ day: 99, label: "x".repeat(300), exercises: [] }, { day: 2, label: "Legs", exercises: ["leg-press"] }],
+  });
+  const afterJunk = (await call(B, "members")).json?.members?.find((m) => m.name === "Smoke A")?.plan;
+  check(
+    "a malformed day is dropped and a good one kept",
+    junk.status === 200 && afterJunk?.length === 1 && afterJunk[0].day === 2,
+    JSON.stringify(afterJunk)
+  );
+
+  const withdrawn = await call(A, "publish", { plan: null });
+  const afterWithdraw = (await call(B, "members")).json?.members?.find((m) => m.name === "Smoke A")?.plan;
+  check("A can withdraw it", withdrawn.status === 200 && !afterWithdraw, JSON.stringify(afterWithdraw));
+  await call(A, "publish", { plan });
+
   // ── sharing ────────────────────────────────────────────────────────────────
   const shared = await call(A, "share", {
     day: today,
@@ -134,6 +167,16 @@ async function main() {
   } else {
     check("the signed URL really serves the image", false, "no url on the photo");
   }
+
+  // ── the feed ───────────────────────────────────────────────────────────────
+  const feedB = await call(B, "feed");
+  check(
+    "B's feed carries A's photo without knowing the date",
+    feedB.json?.photos?.some((p) => p.id === photoId),
+    JSON.stringify(feedB.json)
+  );
+  const strangerFeed = await call("c".repeat(31) + "3", "feed");
+  check("someone in no crew has an empty feed", strangerFeed.json?.photos?.length === 0);
 
   // ── reactions ──────────────────────────────────────────────────────────────
   await call(B, "like", { photoId, on: true });

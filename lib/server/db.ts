@@ -60,6 +60,13 @@ export const upsert = <T>(table: string, row: object, conflict: string) =>
     body: JSON.stringify(row),
   });
 
+export const update = <T>(table: string, query: string, patch: object) =>
+  rest<T[]>(`${table}?${query}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(patch),
+  });
+
 export const remove = (table: string, query: string) =>
   rest<null>(`${table}?${query}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
 

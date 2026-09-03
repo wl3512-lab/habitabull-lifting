@@ -35,6 +35,13 @@ create table if not exists members (
 );
 create index if not exists members_crew on members(crew_id);
 
+-- A shared plan: which lifts, and what shape each day is. Never a weight, a
+-- rep or a set — those are performance, and performance is what the 2023
+-- leaderboard got wrong. Someone copying this gets the exercise selection and
+-- their own engine's loads, which is the only honest way to hand a beginner
+-- somebody else's programme.
+alter table members add column if not exists plan jsonb;
+
 -- ── check-ins ────────────────────────────────────────────────────────────────
 -- One row per member per day. No load, no reps, on purpose.
 create table if not exists checkins (

@@ -65,6 +65,8 @@ const SHOTS = [
   ["10c", "10c-crew-join"],
   ["10d", "10d-crew-feed", 620],
   ["10e", "10e-post-opened"],
+  ["10f", "10f-friend-opened"],
+  ["10g", "10g-copy-workout"],
   ["11", "11a-calendar-photos", 620],
   ["08", "08a-progress-consistency", 560],
   ["14", "14a-routine-add-a-lift", 900],

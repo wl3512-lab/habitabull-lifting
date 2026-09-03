@@ -194,9 +194,16 @@ export const crew: { code: string; members: CrewMember[] } = {
   code: "K4M9TX",
   members: [
     // A week each with a different shape, so the strip shows what it is for.
-    { id: "m-me", name: "Cathy", mine: true, days: [iso(0), iso(2), iso(5)] },
-    { id: "m-1", name: "Maya", mine: false, days: [iso(0), iso(3)] },
-    { id: "m-2", name: "Sam", mine: false, days: [iso(4)] },
+    { id: "m-me", name: "Cathy", mine: true, days: [iso(0), iso(2), iso(5)], plan: null },
+    {
+      id: "m-1", name: "Maya", mine: false, days: [iso(0), iso(3)],
+      // Shared: which lifts and what shape the day is. No weight anywhere.
+      plan: [
+        { day: 1, label: "Push day", exercises: ["chest-press-machine", "shoulder-press-machine", "pec-deck", "preacher-curl-machine"] },
+        { day: 4, label: "Pull day", exercises: ["lat-pulldown", "seated-row-machine", "db-curl", "back-extension"] },
+      ],
+    },
+    { id: "m-2", name: "Sam", mine: false, days: [iso(4)], plan: null },
   ],
 };
 

@@ -15,6 +15,13 @@ import { deviceId } from "./joincode";
  * check membership before touching anything.
  */
 
+/** A day of somebody's shared plan: which lifts, never how much. */
+export interface SharedDay {
+  day: number;
+  label: string;
+  exercises: string[];
+}
+
 export interface CrewMember {
   id: string;
   name: string;
@@ -22,6 +29,13 @@ export interface CrewMember {
   mine: boolean;
   /** Days this member trained, ISO dates. Never what they lifted. */
   days: string[];
+  /**
+   * Their plan, if they chose to share it. Exercise names and the shape of
+   * each day — programming, not performance. Copying it gives you their
+   * selection and your own engine's loads, which is the only honest way to
+   * hand somebody else's programme to a beginner.
+   */
+  plan: SharedDay[] | null;
 }
 
 export interface CrewReply {
@@ -154,6 +168,16 @@ export const fetchCrew = async () => {
  * exactly backwards: the loyal user pays the most. The acknowledged set lives
  * beside the crew code and is cleared when she leaves.
  */
+/**
+ * Share the week for the crew to copy, or pass null to withdraw it.
+ *
+ * Day labels and exercise ids only. No weight, no set, no rep — what crosses
+ * is which lifts somebody does, never how much they lift, and anyone copying
+ * it gets their own engine's numbers.
+ */
+export const publishPlan = (plan: SharedDay[] | null) =>
+  call<{ ok: true; shared: boolean }>("publish", { plan });
+
 const SENT_KEY = "habitabull.checkins";
 
 function acknowledged(): Set<string> {

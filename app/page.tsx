@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
 import DayDetail from "@/components/DayDetail";
+import CopyWorkout from "@/components/CopyWorkout";
 import Crew from "@/components/Crew";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
@@ -22,14 +23,15 @@ import {
   personalRecord,
   rebuildDay,
 } from "@/lib/engine";
-import { enabled, pushCheckins } from "@/lib/cloud";
+import { enabled, publishPlan, pushCheckins } from "@/lib/cloud";
 import { setCustomExercises } from "@/lib/exercises";
 import { challengeFor } from "@/lib/crew";
 import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
+import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -40,6 +42,7 @@ export default function Page() {
   // Where an exercise detail screen returns to, so it can open from anywhere.
   const [detail, setDetail] = useState<{ id: string; from: View } | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
+  const [copying, setCopying] = useState<{ day: SharedDay; from: string } | null>(null);
 
   useEffect(() => {
     setState(load());
@@ -56,6 +59,31 @@ export default function Page() {
     on the completed count rather than on every keystroke of a live session, so
     a workout in progress is nobody's business until it is finished.
   */
+  /*
+    Publish the week for the crew to copy. It carries the day labels and the
+    exercise ids and nothing else — no weight, no set, no rep — so what crosses
+    is which lifts she does, never how much she lifts. Anyone copying it gets
+    their own engine's numbers.
+
+    On by default inside a crew she joined by reading somebody a code, with an
+    off switch on that screen. Silent is the wrong default for a photo; a list
+    of exercise names is not the same kind of thing.
+  */
+  const planKey = JSON.stringify(
+    state.routines.map((r) => [r.day, r.label, r.exercises.map((e) => e.exerciseId)])
+  );
+  useEffect(() => {
+    if (!ready || !enabled() || state.profile?.shareWeek === false) return;
+    void publishPlan(
+      state.routines.map((r) => ({
+        day: r.day,
+        label: r.label,
+        exercises: r.exercises.map((e) => e.exerciseId),
+      }))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, planKey, state.profile?.shareWeek]);
+
   const completed = state.sessions.filter((s) => s.completedAt).length;
   useEffect(() => {
     if (!ready || !enabled()) return;
@@ -293,6 +321,32 @@ export default function Page() {
     );
   }
 
+  if (view === "copy" && copying) {
+    return (
+      <CopyWorkout
+        source={copying.day}
+        from={copying.from}
+        routines={routines}
+        profile={profile}
+        onDone={(next: Routine[]) => {
+          // Copying a day is choosing a plan, so the first-run prompt retires
+          // the same way saving the editor does.
+          setState((s) => ({
+            ...s,
+            routines: next,
+            profile: s.profile ? { ...s.profile, planChosen: true } : s.profile,
+          }));
+          setCopying(null);
+          setView("today");
+        }}
+        onCancel={() => {
+          setCopying(null);
+          setView("crew");
+        }}
+      />
+    );
+  }
+
   if (view === "crew") {
     // Regenerated here rather than on a timer: the month can turn while the
     // app sits open on a phone that never gets closed.
@@ -303,6 +357,11 @@ export default function Page() {
         sessions={sessions}
         challenge={challenge}
         onChallenge={(c: Challenge) => setState((s) => ({ ...s, challenge: c }))}
+        onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
+        onCopyWorkout={(day, from) => {
+          setCopying({ day, from });
+          setView("copy");
+        }}
       />,
       "crew"
     );

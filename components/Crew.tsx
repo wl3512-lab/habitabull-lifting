@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Bull, { BULL } from "./Bull";
 import { Pill } from "./ui";
 import CrewPost from "./CrewPost";
+import FriendSheet from "./FriendSheet";
 import {
   createCrew,
   enabled,
@@ -13,6 +14,7 @@ import {
   leaveCrew,
   type CrewMember,
   type CrewPhoto,
+  type SharedDay,
 } from "@/lib/cloud";
 import {
   challengeDone,
@@ -50,23 +52,29 @@ export default function Crew({
   sessions,
   challenge,
   onChallenge,
+  onProfile,
   crewPreview,
   feedPreview,
+  onCopyWorkout,
 }: {
   profile: Profile;
   sessions: Session[];
   challenge: Challenge;
   onChallenge: (c: Challenge) => void;
+  onProfile?: (p: Profile) => void;
   /** Supplied instead of fetched, so /frames can show a crew statically. */
   crewPreview?: { code: string | null; members: CrewMember[] };
   /** Supplied instead of fetched, so /frames can show posts statically. */
   feedPreview?: CrewPhoto[];
+  /** Take one of their days into her own week. */
+  onCopyWorkout?: (day: SharedDay, from: string) => void;
 }) {
   const [shared, setShared] = useState<"idle" | "copied" | "failed">("idle");
   const [code, setCode] = useState<string | null>(crewPreview?.code ?? null);
   const [roster, setRoster] = useState<CrewMember[]>(crewPreview?.members ?? []);
   const [feed, setFeed] = useState<CrewPhoto[]>(feedPreview ?? []);
   const [open, setOpen] = useState<CrewPhoto | null>(null);
+  const [friend, setFriend] = useState<CrewMember | null>(null);
   const [entry, setEntry] = useState("");
   const [trouble, setTrouble] = useState<"none" | "no-such-crew" | "unreachable">("none");
   const [busy, setBusy] = useState(false);
@@ -305,15 +313,21 @@ export default function Crew({
                 const trainedToday = m.days.includes(todayIso);
                 return (
                   <li key={m.id}>
-                    <div className="flex items-baseline justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFriend(m)}
+                      className="flex w-full items-baseline justify-between gap-3 text-left"
+                    >
                       <span className="head truncate text-[17px] text-fg">
                         {m.name}
                         {m.id === meId && <span className="text-dim"> · you</span>}
                       </span>
-                      {trainedToday && (
+                      {trainedToday ? (
                         <span className="head shrink-0 text-[15px] text-green">in today</span>
+                      ) : (
+                        <span className="head shrink-0 text-[15px] text-cyan">See</span>
                       )}
-                    </div>
+                    </button>
                     <ul className="mt-2 flex gap-1.5" aria-hidden>
                       {weekDays.map((d) => (
                         <li
@@ -335,6 +349,25 @@ export default function Crew({
                 );
               })}
             </ul>
+
+            {/* The off switch, where the thing it governs is visible. */}
+            <label className="mt-4 flex cursor-pointer items-center gap-3 border-t border-line pt-3.5">
+              <input
+                type="checkbox"
+                checked={profile.shareWeek !== false}
+                onChange={(e) => onProfile?.({ ...profile, shareWeek: e.target.checked })}
+                className="peer h-5 w-5 shrink-0 appearance-none rounded-md border-2 border-line-strong bg-transparent transition-colors checked:border-cyan checked:bg-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none -ml-[29px] mr-[9px] h-5 w-5 shrink-0 text-center text-[13px] leading-5 text-ground opacity-0 peer-checked:opacity-100"
+              >
+                ✓
+              </span>
+              <span className="flex-1 text-[15px] leading-snug text-dim">
+                Let them copy your week. Which lifts, never how much.
+              </span>
+            </label>
           </section>
 
           {/*
@@ -472,6 +505,17 @@ export default function Crew({
             {busy ? "One moment…" : "Or start one and get a code"}
           </button>
         </section>
+      )}
+
+      {friend && (
+        <FriendSheet
+          member={friend}
+          onClose={() => setFriend(null)}
+          onCopy={(d, name) => {
+            setFriend(null);
+            onCopyWorkout?.(d, name);
+          }}
+        />
       )}
 
       {open && (

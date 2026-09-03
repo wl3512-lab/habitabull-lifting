@@ -8,6 +8,7 @@ import {
   remove,
   select,
   signObject,
+  update,
   upsert,
 } from "@/lib/server/db";
 import {
@@ -83,6 +84,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ action: string
         return await day(device, body);
       case "feed":
         return await feed(device);
+      case "publish":
+        return await publish(device, body);
       case "share":
         return await share(device, body);
       case "unshare":
@@ -164,14 +167,63 @@ async function leaveQuietly(device: string) {
   if (left.length === 0) await remove("crews", `id=eq.${me.crew_id}`);
 }
 
+/** A day of somebody's shared plan. Names and shape, never numbers. */
+interface SharedDay {
+  day: number;
+  label: string;
+  exercises: string[];
+}
+
+/**
+ * Validate a plan before it is stored or handed to anyone.
+ *
+ * The exercise ids are checked against the library rather than trusted, so a
+ * copied plan cannot introduce a lift the copier's app has never heard of —
+ * and a plan is capped so one member cannot make everyone else's crew screen
+ * enormous.
+ */
+function cleanPlan(raw: unknown): SharedDay[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: SharedDay[] = [];
+  for (const d of raw.slice(0, 7)) {
+    if (!d || typeof d !== "object") continue;
+    const o = d as Record<string, unknown>;
+    if (typeof o.day !== "number" || o.day < 0 || o.day > 6) continue;
+    const exercises = Array.isArray(o.exercises)
+      ? o.exercises.filter((e): e is string => typeof e === "string" && e.length <= 60).slice(0, 12)
+      : [];
+    if (!exercises.length) continue;
+    out.push({
+      day: Math.round(o.day),
+      label: typeof o.label === "string" ? o.label.slice(0, 40) : "Training",
+      exercises,
+    });
+  }
+  return out.length ? out : null;
+}
+
+/** Publish, or withdraw, my plan for the crew to copy. */
+async function publish(device: string, body: Record<string, unknown>) {
+  const me = await whoami(device);
+  if (!me) return bad(403, "Not in a crew.");
+  const plan = body.plan === null ? null : cleanPlan(body.plan);
+  await update("members", `id=eq.${me.id}`, { plan });
+  return NextResponse.json({ ok: true, shared: plan !== null });
+}
+
 async function members(device: string) {
   const me = await whoami(device);
   if (!me) return NextResponse.json({ code: null, members: [] });
 
   const crews = await select<{ code: string }>("crews", `id=eq.${me.crew_id}&select=code`);
-  const rows = await select<{ id: string; name: string; checkins: { day: string }[] }>(
+  const rows = await select<{
+    id: string;
+    name: string;
+    plan: SharedDay[] | null;
+    checkins: { day: string }[];
+  }>(
     "members",
-    `crew_id=eq.${me.crew_id}&select=id,name,checkins(day)&order=joined_at.asc`
+    `crew_id=eq.${me.crew_id}&select=id,name,plan,checkins(day)&order=joined_at.asc`
   );
 
   return NextResponse.json({
@@ -179,6 +231,7 @@ async function members(device: string) {
     members: rows.map((m) => ({
       id: m.id,
       name: m.name,
+      plan: cleanPlan(m.plan) ?? null,
       // Which row is the person asking. The roster reads "you" from this
       // rather than trying to match on a display name two people can share.
       mine: m.id === me.id,

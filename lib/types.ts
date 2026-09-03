@@ -106,6 +106,8 @@ export interface Profile {
   /** Set once she has looked at the week and chosen. Until then the app is
       running on its own defaults and says so. */
   planChosen?: boolean;
+  /** Whether the week is published for the crew to copy. Default on. */
+  shareWeek?: boolean;
   /**
    * When in the day she can train, as routine anchors rather than clock times.
    * Routine-anchored cues form habits faster than time-based ones and survive a

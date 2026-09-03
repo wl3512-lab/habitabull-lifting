@@ -4,7 +4,9 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
 import Crew from "@/components/Crew";
+import CopyWorkout from "@/components/CopyWorkout";
 import CrewPost from "@/components/CrewPost";
+import FriendSheet from "@/components/FriendSheet";
 import DayDetail from "@/components/DayDetail";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
@@ -436,6 +438,21 @@ function gallery(challenge: Challenge) {
               <div className="relative h-full w-full">
                 <CrewPost photo={f.crewFeed[1]} preview framed onClose={f.noop} onChanged={f.noop} />
               </div>
+            </Frame>
+            <Frame n="10f" name="A friend, opened" note="Everything the server knows about somebody else, which is not much on purpose: the days they trained and a week they chose to publish. No weight, no rep, no total — the schema has no column for any of it, so this cannot become the leaderboard the 2023 flow had even by accident.">
+              <div className="relative h-full w-full">
+                <FriendSheet member={f.crew.members[1]} framed onClose={f.noop} onCopy={f.noop} />
+              </div>
+            </Frame>
+            <Frame n="10g" name="Copy their workout" note="Copying is not importing. The lifts come across; every weight, set and rep is computed here by the same engine that would have built the day from scratch, for the level of the person copying. Handing a beginner a year-in lifter's loads is the leaderboard again in a different costume.">
+              <CopyWorkout
+                source={f.crew.members[1].plan![0]}
+                from="Maya"
+                routines={f.routines}
+                profile={f.profile}
+                onDone={f.noop}
+                onCancel={f.noop}
+              />
             </Frame>
             <Frame n="10c" name="Crew · join" note="Six characters with no O, I, L or U in the alphabet, because the failure mode is reading a code out across a gym floor.">
               <Crew
