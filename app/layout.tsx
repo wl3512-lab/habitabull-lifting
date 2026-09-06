@@ -97,7 +97,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <div
           id="device"
-          className="relative flex min-h-dvh w-full flex-col bg-ground desk:h-[844px] desk:min-h-0 desk:w-[390px] desk:shrink-0 desk:overflow-hidden desk:rounded-[44px] desk:shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-20px_rgb(0_0_0/0.7)]"
+          className="relative flex min-h-dvh w-full flex-col bg-ground desk:h-[844px] desk:min-h-0 desk:w-[390px] desk:shrink-0 desk:overflow-hidden desk:rounded-device desk:shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-20px_rgb(0_0_0/0.7)]"
         >
           {/* Scrolls inside the device on desktop; the page itself scrolls on a phone. */}
           <div id="app-scroll" className="flex flex-1 flex-col desk:overflow-y-auto desk:no-scrollbar">

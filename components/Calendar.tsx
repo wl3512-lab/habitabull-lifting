@@ -63,7 +63,7 @@ function Thumb({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className="h-full w-full object-cover" />
       ) : null}
-      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ground/90 to-transparent px-2 pb-1.5 pt-5 text-left text-[13px] text-fg">
+      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ground/90 to-transparent px-2 pb-1.5 pt-5 text-left text-caption text-fg">
         {label}
       </span>
     </button>
@@ -185,7 +185,7 @@ export default function Calendar({
       <div className="mt-2 flex items-baseline justify-between gap-3">
         {/* 34px, not the usual 44: "September 2026" plus the toggle has to
             hold one line at 390px, and a wrapped month name reads as a bug. */}
-        <h1 className="statement min-w-0 text-[34px] text-fg">
+        <h1 className="statement min-w-0 text-display text-fg">
           {view === "month" ? MONTHS[month] : year}{" "}
           {view === "month" && <span className="text-dim">{year}</span>}
         </h1>
@@ -197,7 +197,7 @@ export default function Calendar({
               role="tab"
               aria-selected={view === v}
               onClick={() => setView(v)}
-              className={`head h-11 rounded-full px-4 text-[15px] capitalize transition-colors duration-150 ${
+              className={`head h-11 rounded-full px-4 text-body capitalize transition-colors duration-quick ${
                 view === v ? "bg-raise text-fg" : "text-dim hover:text-fg"
               }`}
             >
@@ -215,18 +215,18 @@ export default function Calendar({
                 type="button"
                 onClick={() => shift(-1)}
                 aria-label="Previous month"
-                className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+                className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
               >
                 ←
               </button>
-              <p className="text-[15px] text-dim">
+              <p className="text-body text-dim">
                 {thisMonth} {thisMonth === 1 ? "session" : "sessions"}
               </p>
               <button
                 type="button"
                 onClick={() => shift(1)}
                 aria-label="Next month"
-                className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+                className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
               >
                 →
               </button>
@@ -234,7 +234,7 @@ export default function Calendar({
 
             <div className="mt-3 grid grid-cols-7 gap-y-1">
               {DAY_HEADS.map((d, i) => (
-                <div key={i} className="pb-1 text-center text-[13px] text-dim">
+                <div key={i} className="pb-1 text-center text-caption text-dim">
                   {d}
                 </div>
               ))}
@@ -253,9 +253,9 @@ export default function Calendar({
                   className="flex min-h-12 flex-col items-center justify-center py-0.5"
                 >
                   <span
-                    className={`grid h-9 w-9 place-items-center rounded-full text-[15px] ${
+                    className={`grid h-9 w-9 place-items-center rounded-full text-body ${
                       c.trained
-                        ? "bg-green text-ground"
+                        ? "bg-done text-ground"
                         : c.comeback
                           ? "bg-cyan text-ground"
                           : c.today
@@ -276,9 +276,9 @@ export default function Calendar({
               ))}
             </div>
 
-            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[14px] text-dim">
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-caption text-dim">
               <li className="flex items-center gap-2">
-                <span aria-hidden className="h-3 w-3 rounded-full bg-green" /> Trained
+                <span aria-hidden className="h-3 w-3 rounded-full bg-done" /> Trained
               </li>
               <li className="flex items-center gap-2">
                 <span aria-hidden className="h-3 w-3 rounded-full bg-cyan" /> Came back
@@ -295,10 +295,10 @@ export default function Calendar({
             rules out by name. The line underneath it was already right.
           */}
           <div className="mt-2.5 rounded-2xl bg-card p-[18px]">
-            <p className="statement text-[30px] text-fg">
+            <p className="statement text-display text-fg">
               {weeks} {weeks === 1 ? "week" : "weeks"} running
             </p>
-            <p className="mt-1.5 text-[15px] text-dim">
+            <p className="mt-1.5 text-body text-dim">
               {longest > 0
                 ? `Longest gap you have come back from: ${longest} days. A streak is a nice-to-have, not the score.`
                 : "A streak is a nice-to-have, not the score."}
@@ -312,18 +312,18 @@ export default function Calendar({
               type="button"
               onClick={() => setCursor(new Date(year - 1, month, 1))}
               aria-label="Previous year"
-              className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+              className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
             >
               ←
             </button>
-            <p className="text-[15px] text-dim">
+            <p className="text-body text-dim">
               {counts.reduce((a, b) => a + b, 0)} sessions in {year}
             </p>
             <button
               type="button"
               onClick={() => setCursor(new Date(year + 1, month, 1))}
               aria-label="Next year"
-              className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+              className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
             >
               →
             </button>
@@ -337,13 +337,13 @@ export default function Calendar({
                     setCursor(new Date(year, m, 1));
                     setView("month");
                   }}
-                  className={`w-full rounded-xl p-3 text-left transition-colors duration-150 ${
+                  className={`w-full rounded-xl p-3 text-left transition-colors duration-quick ${
                     n > 0 ? "bg-raise hover:bg-line" : "bg-ground hover:bg-raise/60"
                   }`}
                 >
-                  <span className="block text-[14px] text-dim">{MONTHS[m].slice(0, 3)}</span>
+                  <span className="block text-caption text-dim">{MONTHS[m].slice(0, 3)}</span>
                   <span
-                    className={`tabular statement block text-[24px] ${n > 0 ? "text-fg" : "text-dim/50"}`}
+                    className={`tabular statement block text-title ${n > 0 ? "text-fg" : "text-dim/50"}`}
                   >
                     {n}
                   </span>
@@ -362,7 +362,7 @@ export default function Calendar({
               type="button"
               onClick={() => setCompare(!compare)}
               aria-pressed={compare}
-              className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+              className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
               {compare ? "Show all" : "Compare months"}
             </button>
@@ -376,14 +376,14 @@ export default function Calendar({
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-[15px] text-dim">
+          <p className="mt-2 text-body text-dim">
             Nothing yet. One photo a month is enough to see the thing that daily
             mirrors hide.
           </p>
         )}
 
         {compare && strip.length > 1 && (
-          <p className="mt-2.5 text-[15px] text-dim">
+          <p className="mt-2.5 text-body text-dim">
             One photo per month, oldest first.
           </p>
         )}
@@ -403,7 +403,7 @@ export default function Calendar({
           </Pill>
         </div>
         {failed && (
-          <p className="mt-2 text-[15px] text-dim">
+          <p className="mt-2 text-body text-dim">
             Could not save that one. Private browsing blocks photo storage.
           </p>
         )}
@@ -420,11 +420,11 @@ export default function Calendar({
         <p className="label text-dim">Reminders</p>
         {reminderReady ? (
           <>
-            <p className="mt-2 text-[17px] leading-snug text-fg">
+            <p className="mt-2 text-emphasis leading-snug text-fg">
               Put your training days in the calendar you already look at, with a
               nudge fifteen minutes before.
             </p>
-            <p className="mt-1.5 text-[15px] leading-snug text-dim">
+            <p className="mt-1.5 text-body leading-snug text-dim">
               {profile.trainingMinute === undefined && (profile.anchors?.length ?? 0) === 0
                 ? "You said whenever you can, so it lands at six and you can drag it."
                 : "It repeats weekly, and you can move it whenever you like."}
@@ -451,7 +451,7 @@ export default function Calendar({
             </div>
           </>
         ) : (
-          <p className="mt-2 text-[15px] text-dim">
+          <p className="mt-2 text-body text-dim">
             Pick your training days in setup and this becomes a calendar reminder.
           </p>
         )}
@@ -506,7 +506,7 @@ function Lightbox({
         <button
           type="button"
           onClick={onClose}
-          className="head tap text-[17px] text-fg"
+          className="head tap text-emphasis text-fg"
           autoFocus
         >
           Close
@@ -521,7 +521,7 @@ function Lightbox({
       <button
         type="button"
         onClick={() => onDelete(id)}
-        className="head tap mx-auto mt-4 text-[15px] text-dim transition-colors hover:text-fg"
+        className="head tap mx-auto mt-4 text-body text-dim transition-colors hover:text-fg"
       >
         Delete this photo
       </button>

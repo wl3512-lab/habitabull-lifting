@@ -49,7 +49,7 @@ export default function SetRow({
         onChange={(reps) => onChange({ ...set, reps })}
       />
       {lastTime && (
-        <p className="mt-1 flex items-center gap-2.5 text-[15px] text-dim">
+        <p className="mt-1 flex items-center gap-2.5 text-body text-dim">
           <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-dim" />
           Last time: {lastTime}
         </p>

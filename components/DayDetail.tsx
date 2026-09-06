@@ -107,7 +107,7 @@ export default function DayDetail({
         <button
           type="button"
           onClick={onBack}
-          className="head tap -mt-0.5 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap -mt-0.5 text-body text-cyan transition-opacity hover:opacity-70"
         >
           ‹ {d.toLocaleDateString(undefined, { month: "long" })}
         </button>
@@ -117,19 +117,19 @@ export default function DayDetail({
           aria-label="Close"
           // An explicit square: .tap grows the height but a ✕ is too narrow to
           // reach 44 on padding alone.
-          className="head -mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-[17px] text-dim transition-colors hover:bg-raise hover:text-fg"
+          className="head -mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-emphasis text-dim transition-colors hover:bg-raise hover:text-fg"
         >
           ✕
         </button>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">
+      <h1 className="statement mt-2 text-figure text-fg">
         {d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
       </h1>
-      <p className="mt-1.5 flex items-center gap-2.5 text-[17px] text-dim">
+      <p className="mt-1.5 flex items-center gap-2.5 text-emphasis text-dim">
         <span
           aria-hidden
-          className={`h-2.5 w-2.5 shrink-0 rounded-full ${trained ? "bg-green" : "bg-raise"}`}
+          className={`h-2.5 w-2.5 shrink-0 rounded-full ${trained ? "bg-done" : "bg-raise"}`}
         />
         {trained ? `You trained${session?.label ? ` · ${session.label}` : ""}` : "Rest day"}
       </p>
@@ -190,10 +190,10 @@ export default function DayDetail({
           onClick={() => setOpen(mineShared)}
           className="mt-2.5 flex w-full items-center gap-3 rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
         >
-          <span className="text-[19px] text-cyan" aria-hidden>
+          <span className="text-head text-cyan" aria-hidden>
             {mineShared.likes > 0 ? "♥" : "♡"}
           </span>
-          <span className="flex-1 text-[17px] text-fg">
+          <span className="flex-1 text-emphasis text-fg">
             {mineShared.likes === 0 && mineShared.replies.length === 0
               ? "Shared with your crew"
               : [
@@ -207,7 +207,7 @@ export default function DayDetail({
                   .filter(Boolean)
                   .join(" · ")}
           </span>
-          <span className="head shrink-0 text-[15px] text-cyan">Open</span>
+          <span className="head shrink-0 text-body text-cyan">Open</span>
         </button>
       ) : (
         crew &&
@@ -216,7 +216,7 @@ export default function DayDetail({
             type="button"
             onClick={share}
             disabled={sharing}
-            className="head tap mt-2.5 self-start text-[15px] text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
+            className="head tap mt-2.5 self-start text-body text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
           >
             {sharing ? "Sharing…" : "Share this with your crew"}
           </button>
@@ -226,7 +226,7 @@ export default function DayDetail({
       {session?.note && (
         <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Notes</p>
-          <p className="mt-2 text-[17px] italic leading-snug text-fg">{session.note}</p>
+          <p className="mt-2 text-emphasis italic leading-snug text-fg">{session.note}</p>
         </section>
       )}
 
@@ -239,7 +239,7 @@ export default function DayDetail({
         <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Also trained</p>
           {alsoTrained.length > 0 && (
-            <p className="mt-2 text-[17px] leading-snug text-fg">
+            <p className="mt-2 text-emphasis leading-snug text-fg">
               {nameList(alsoTrained.map((m) => m.name))}
               {alsoTrained.length === 1 ? " was in too." : " were in too."}
             </p>
@@ -261,7 +261,7 @@ export default function DayDetail({
                     decoding="async"
                     className="aspect-[4/5] w-full rounded-xl object-cover"
                   />
-                  <span className="head mt-1.5 block truncate text-[15px] text-dim">
+                  <span className="head mt-1.5 block truncate text-body text-dim">
                     {p.memberName}
                   </span>
                 </button>
@@ -280,8 +280,8 @@ export default function DayDetail({
               const top = done.reduce((a, b) => (b.weight > a.weight ? b : a));
               return (
                 <li key={e.exerciseId} className="flex items-baseline justify-between gap-3">
-                  <span className="head text-[17px] text-fg">{nameOf(e.exerciseId)}</span>
-                  <span className="tabular statement shrink-0 text-[20px] text-cyan">
+                  <span className="head text-emphasis text-fg">{nameOf(e.exerciseId)}</span>
+                  <span className="tabular statement shrink-0 text-head text-cyan">
                     {top.weight > 0 && `${top.weight} lb · `}
                     {done.length} × {top.reps}
                   </span>
@@ -300,7 +300,7 @@ export default function DayDetail({
       {!trained && photos.length === 0 && alsoTrained.length === 0 && (
         <div className="mt-8 flex flex-col items-center">
           <Bull size={BULL.companion} />
-          <p className="mt-3 text-center text-[17px] text-dim">
+          <p className="mt-3 text-center text-emphasis text-dim">
             Nothing here. Rest is part of progress.
           </p>
         </div>

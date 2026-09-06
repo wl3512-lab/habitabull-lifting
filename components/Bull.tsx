@@ -63,7 +63,7 @@ export default function Bull({
         style={{ width: size, height: "auto" }}
       />
       {say && (
-        <p className="head mt-3 max-w-[28ch] text-center text-[17px] leading-snug">{say}</p>
+        <p className="head mt-3 max-w-[28ch] text-center text-emphasis leading-snug">{say}</p>
       )}
     </div>
   );

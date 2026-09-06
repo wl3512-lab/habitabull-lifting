@@ -75,7 +75,7 @@ export default function Stepper({
           onClick={() => bump(-1)}
           aria-label={`Decrease ${label}`}
           disabled={value <= min || typing}
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-[26px] leading-none text-cyan transition-colors duration-150 hover:bg-line active:bg-line disabled:opacity-30"
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-title leading-none text-cyan transition-colors duration-quick hover:bg-line active:bg-line disabled:opacity-30"
         >
           −
         </button>
@@ -95,26 +95,26 @@ export default function Stepper({
               inputMode="decimal"
               autoFocus
               aria-label={`${label} in ${suffix ?? "units"}`}
-              className="tabular statement w-full rounded-xl bg-raise text-center text-[56px] text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
+              className="tabular statement w-full rounded-xl bg-raise text-center text-hero text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
             />
           ) : (
             <button
               type="button"
               onClick={open}
               aria-label={`Type ${label} instead`}
-              className="tabular statement w-full rounded-xl text-center text-[56px] text-fg transition-colors hover:bg-raise/60"
+              className="tabular statement w-full rounded-xl text-center text-hero text-fg transition-colors hover:bg-raise/60"
             >
               {value}
             </button>
           )}
-          {suffix && <span className="-mt-0.5 text-[14px] text-dim">{suffix}</span>}
+          {suffix && <span className="-mt-0.5 text-caption text-dim">{suffix}</span>}
         </div>
         <button
           type="button"
           onClick={() => bump(1)}
           aria-label={`Increase ${label}`}
           disabled={typing}
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-[26px] leading-none text-cyan transition-colors duration-150 hover:bg-line active:bg-line disabled:opacity-30"
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-title leading-none text-cyan transition-colors duration-quick hover:bg-line active:bg-line disabled:opacity-30"
         >
           +
         </button>

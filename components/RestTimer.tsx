@@ -98,16 +98,16 @@ export default function RestTimer({
       </div>
 
       <div className="-mt-[152px] flex flex-col items-center">
-        <p className="tabular statement text-[44px] text-fg">{clock(left)}</p>
-        <p className="text-[15px] text-dim">of {clock(seconds)}</p>
+        <p className="tabular statement text-figure text-fg">{clock(left)}</p>
+        <p className="text-body text-dim">of {clock(seconds)}</p>
       </div>
 
       {nextExerciseId && (
         <div className="mt-[104px] rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Next up</p>
           <div className="mt-1.5 flex items-baseline justify-between gap-3">
-            <span className="head text-[19px] text-fg">{nameOf(nextExerciseId)}</span>
-            <span className="tabular statement shrink-0 text-[20px] text-cyan">
+            <span className="head text-head text-fg">{nameOf(nextExerciseId)}</span>
+            <span className="tabular statement shrink-0 text-head text-cyan">
               {nextWeight ? `${nextWeight} lb × ${nextReps}` : `${nextReps} reps`}
             </span>
           </div>
@@ -119,7 +119,7 @@ export default function RestTimer({
         <button
           type="button"
           onClick={onEnd}
-          className="head tap mt-2.5 block w-full text-center text-[15px] text-dim transition-colors hover:text-fg"
+          className="head tap mt-2.5 block w-full text-center text-body text-dim transition-colors hover:text-fg"
         >
           End the workout here
         </button>

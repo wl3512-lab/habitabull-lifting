@@ -11,6 +11,17 @@
   measures 7.96:1 and the brand memory survives intact. Orange carries the one
   action per screen; green means done. Nothing is red — a missed day is an
   absence, not an error.
+
+  The Oxide pass, 2026-09. The action and done colours were #F97316 and
+  #22C55E, which are Tailwind v3's stock orange-500 and green-500 — the two
+  loudest things in the app, and neither of them a decision. Measured in OKLCH
+  they sat at chroma 0.187 and 0.192 against the cyan's 0.043: about 4.5x. All
+  three were already matched in lightness (74.5 / 70.5 / 72.3%), which is why
+  the palette worked at all; the chroma gap is what made the orange read as
+  imported rather than chosen. The replacements sit at 0.100-0.118, roughly
+  2.5x the cyan, so the set reads as one pigment family.
+
+  Full derivation and the measured table: brand/brand-guide.md.
 */
 @theme inline {
   /* Grounds, darkest to lightest. */
@@ -34,12 +45,73 @@
   --color-cyan: #8eb4bd;
   --color-cyan-soft: #c1d4d9;
 
-  /* The single action colour, and the only "yes" in the system. */
-  --color-orange: #f97316;
-  --color-green: #22c55e;
+  /*
+    The single action colour, and the only "yes" in the system.
+
+    orange is a FILL, not a text colour: on --color-raise it measures 4.45:1,
+    under body AA. If it ever has to be text it goes on ground or card.
+  */
+  --color-action: #d57e5c; /* ink on it 5.89:1 */
+  --color-action-press: #c27151; /* held/pressed. ink on it 4.88:1 */
+  --color-done: #6bb88d; /* 7.50:1 on ground, 6.65 on card */
+
+  /*
+    A fault in the software — a save that failed, a sync that dropped, an
+    import that would not parse. Never user behaviour: a missed day stays an
+    absence, and this must never reach the calendar or the consistency grid.
+    Kept in the oxide family so it belongs to the set rather than arriving as
+    a browser-default red. 5.64:1 on ground, 5.00 on card; 4.26 on raise, so
+    not body text there.
+  */
+  --color-fault: #d9746d;
+
+  /* The mark on dark grounds, sampled from the mascot's horns. 8.75:1 on
+     ground. Never on orange — that pair is 1.49:1. */
+  --color-horn: #b8b898;
+
+  /*
+    Nine steps, down from nineteen ad-hoc pixel values.
+
+    Built around what was already load-bearing rather than imposed on top: 15
+    and 17 carried 206 of roughly 290 call sites and are untouched. The rest
+    fold the neighbours that were doing one job with three values — 12/13/14,
+    19/20/22, 24/26, 30/34, 40/42/44, 52/54/56.
+
+    `emphasis` is 17 and not 16 on purpose. Every text input in the app sits at
+    this step, and iOS Safari zooms the page when a focused field is under
+    16px — so this step is also a floor, and folding 16 upward keeps it.
+  */
+  --text-micro: 11px;
+  --text-caption: 13px;
+  --text-body: 15px;
+  --text-emphasis: 17px;
+  --text-head: 20px;
+  --text-title: 26px;
+  --text-display: 32px;
+  --text-figure: 44px;
+  --text-hero: 56px;
 
   --font-display: var(--font-barlow-condensed), system-ui, sans-serif;
   --font-body: var(--font-barlow), system-ui, sans-serif;
+
+  /*
+    Radius, four values. The app had ten, seven of which were one-offs — three
+    of them (3, 4 and 5px) doing the single job of rounding a grid cell.
+    rounded-xl (12) and rounded-2xl (16) are Tailwind's own and stay as they
+    are; these name the two that are ours.
+  */
+  --radius-tick: 5px; /* consistency-grid cells, legend swatches */
+  --radius-device: 44px; /* the desktop device frame, and nothing else */
+
+  /*
+    One curve, four durations. Anything that answers a tap gets `quick`;
+    nothing animates on its own. Named rather than numeric so the intent
+    survives a change of value.
+  */
+  --duration-instant: 90ms;
+  --duration-quick: 150ms;
+  --duration-standard: 220ms;
+  --duration-deliberate: 300ms;
 
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 
@@ -192,6 +264,21 @@ body {
   70% {
     transform: translateY(2px) rotate(1deg);
   }
+}
+
+/*
+  The set-logged stamp. A quick over-then-settle on the confirmation check, so
+  logging a set lands with a small physical "done" even where the phone cannot
+  buzz — which, on iOS, is everywhere. Paired with .rise on the text beside it.
+*/
+@keyframes stamp {
+  0% { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.stamp {
+  animation: stamp 260ms var(--ease-out-quart) both;
 }
 
 .rise {

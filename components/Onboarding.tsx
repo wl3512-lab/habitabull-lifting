@@ -85,12 +85,12 @@ export default function Onboarding({
             the two read as one lockup instead of two headings.
           */}
           <h1 className="mt-4 text-center text-ground">
-            <span className="aside block text-[24px] leading-none opacity-80">Welcome to</span>
-            <span className="statement mt-1.5 block text-[54px] leading-[0.92]">HabitaBull</span>
-            <span className="head block text-[15px] uppercase tracking-[0.34em]">Lifting</span>
+            <span className="aside block text-title leading-none opacity-80">Welcome to</span>
+            <span className="statement mt-1.5 block text-hero leading-[0.92]">HabitaBull</span>
+            <span className="head block text-body uppercase tracking-[0.34em]">Lifting</span>
           </h1>
 
-          <label htmlFor="name" className="head mt-9 block text-[17px] text-ground">
+          <label htmlFor="name" className="head mt-9 block text-emphasis text-ground">
             What&apos;s your name?
           </label>
           <input
@@ -99,7 +99,7 @@ export default function Onboarding({
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
             autoComplete="given-name"
-            className="statement mt-1 w-full border-b-2 border-ground/70 bg-transparent pb-2 text-[30px] text-ground placeholder:text-ground/75 focus:border-ground focus:outline-none"
+            className="statement mt-1 w-full border-b-2 border-ground/70 bg-transparent pb-2 text-display text-ground placeholder:text-ground/75 focus:border-ground focus:outline-none"
           />
 
           <div className="mt-auto pt-10">
@@ -109,7 +109,7 @@ export default function Onboarding({
             <button
               type="button"
               onClick={finish}
-              className="tap mt-3 block w-full text-center text-[13px] text-ground/75 transition-opacity hover:opacity-100"
+              className="tap mt-3 block w-full text-center text-caption text-ground/75 transition-opacity hover:opacity-100"
             >
               One quick question, then you lift.
             </button>
@@ -126,14 +126,14 @@ export default function Onboarding({
         <button
           type="button"
           onClick={finish}
-          className="head tap shrink-0 text-[15px] text-dim transition-colors hover:text-fg"
+          className="head tap shrink-0 text-body text-dim transition-colors hover:text-fg"
         >
           Skip
         </button>
       </div>
 
-      <h1 className="statement mt-5 text-[44px] text-fg">Why do you lift?</h1>
-      <p className="mt-1.5 text-[17px] text-dim">
+      <h1 className="statement mt-5 text-figure text-fg">Why do you lift?</h1>
+      <p className="mt-1.5 text-emphasis text-dim">
         Your answer, in your words. We show it back to you on the days you don&apos;t feel like
         it — and we never rewrite it.
       </p>
@@ -148,17 +148,17 @@ export default function Onboarding({
         rows={3}
         maxLength={160}
         placeholder="I want to be strong and feel good."
-        className="mt-2 w-full resize-none rounded-2xl bg-card p-[18px] text-[19px] leading-snug text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+        className="mt-2 w-full resize-none rounded-2xl bg-card p-[18px] text-head leading-snug text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
       />
 
-      <p className="mt-4 text-[15px] text-dim">Or start from one of these:</p>
+      <p className="mt-4 text-body text-dim">Or start from one of these:</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {REASONS.map((r) => (
           <button
             key={r}
             type="button"
             onClick={() => setMotivation(r)}
-            className={`head rounded-full border px-4 py-2.5 text-left text-[15px] transition-colors duration-150 ${
+            className={`head rounded-full border px-4 py-2.5 text-left text-body transition-colors duration-quick ${
               motivation === r
                 ? "border-cyan bg-cyan text-ground"
                 : "border-line-strong text-dim hover:border-fg"
@@ -170,7 +170,7 @@ export default function Onboarding({
       </div>
 
       <div className="mt-auto pt-10">
-        <p className="mb-3 text-[15px] text-dim">
+        <p className="mb-3 text-body text-dim">
           Days, times and weights all come after your first session — not before it.
         </p>
         <Pill onClick={finish}>Start my first workout</Pill>

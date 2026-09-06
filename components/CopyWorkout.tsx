@@ -74,18 +74,18 @@ export default function CopyWorkout({
         <button
           type="button"
           onClick={onCancel}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
         >
           Cancel
         </button>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] leading-none text-fg">{source.label}</h1>
-      <p className="mt-2 text-[17px] leading-snug text-dim">
+      <h1 className="statement mt-2 text-figure leading-none text-fg">{source.label}</h1>
+      <p className="mt-2 text-emphasis leading-snug text-dim">
         {lifts.map((e) => nameOf(e.id)).join(", ")}
       </p>
       {missing > 0 && (
-        <p className="mt-1.5 text-[15px] text-dim">
+        <p className="mt-1.5 text-body text-dim">
           {missing} {missing === 1 ? "lift is" : "lifts are"} not in your library and will be
           left out.
         </p>
@@ -100,7 +100,7 @@ export default function CopyWorkout({
               type="button"
               onClick={() => setTarget(i)}
               aria-pressed={i === target}
-              className={`head h-11 min-w-[64px] rounded-full border px-4 text-[15px] transition-colors duration-150 ${
+              className={`head h-11 min-w-[64px] rounded-full border px-4 text-body transition-colors duration-quick ${
                 i === target
                   ? "border-cyan bg-cyan text-ground"
                   : "border-line-strong text-dim hover:border-fg"
@@ -111,7 +111,7 @@ export default function CopyWorkout({
           ))}
         </div>
         {day && (
-          <p className="mt-3 text-[15px] leading-snug text-dim">
+          <p className="mt-3 text-body leading-snug text-dim">
             {SHORT[day.day]} is currently {day.label}, {day.exercises.length}{" "}
             {day.exercises.length === 1 ? "lift" : "lifts"}.
           </p>
@@ -132,18 +132,18 @@ export default function CopyWorkout({
               type="button"
               onClick={() => setMode(id)}
               aria-pressed={mode === id}
-              className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+              className={`rounded-xl border p-3.5 text-left transition-colors duration-quick ${
                 mode === id ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
               }`}
             >
-              <span className="head block text-[17px] text-fg">{title}</span>
-              <span className="block text-[15px] text-dim">{sub}</span>
+              <span className="head block text-emphasis text-fg">{title}</span>
+              <span className="block text-body text-dim">{sub}</span>
             </button>
           ))}
         </div>
       </section>
 
-      <p className="mt-4 text-[15px] leading-snug text-dim">
+      <p className="mt-4 text-body leading-snug text-dim">
         Their lifts, your weights. Everything starts where the app would have started you
         anyway, and moves from there.
       </p>

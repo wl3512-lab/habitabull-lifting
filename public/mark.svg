@@ -1,23 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" role="img" aria-label="HabitaBull">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" role="img" aria-label="HabitaBull">
   <title>HabitaBull</title>
   <!--
-    The horns, and the head by its absence.
+    Head front-on, horns sweeping out and UP.
 
-    One horn is drawn and mirrored about x=50. The outer edge leaves the base
-    almost horizontally, turns up through the shoulder of the curve, and runs
-    to a point; the inner edge returns on a tighter radius, so the form is
-    thickest where it would meet the skull and comes to a tip.
+    Construction: the skull is one rounded mass on the vertical axis; each horn
+    leaves the skull at its widest point (y=46), sweeps outward and down
+    slightly, then turns up to a point. One horn is drawn and mirrored about
+    x=50.
 
-    The notch between the two bases is the head. Drawing it would make this an
-    illustration; leaving it out makes it a mark, and it is the reason this
-    reads as a bull rather than as a pair of tusks or a crescent.
+    Why the tips point up. The superseded mark (mark-v1-superseded.svg) curled
+    both tips inward and let the bases meet at centre; rendered below 48px the
+    pair fused into a single bowl and read as a smile, not a bull. Outward,
+    upward tips keep two separate silhouettes at every size, and the skull
+    holds the centre so the gap never closes.
 
-    Symmetric, though the artwork's three-quarter view is not. A stamp has to
-    be square-on or the asymmetry reads as a mistake once it is small.
+    Symmetric on purpose — the illustrated mascot is a three-quarter view and
+    a stamp has to be square-on or it reads as a mistake when small.
   -->
   <g fill="currentColor">
-    <path d="M45 54C32 53 18 47 10 33C5 23 4 11 8 2C13 13 17 26 24 34C31 41 38 45 47 46Z"/>
-    <path d="M45 54C32 53 18 47 10 33C5 23 4 11 8 2C13 13 17 26 24 34C31 41 38 45 47 46Z"
-          transform="translate(100,0) scale(-1,1)"/>
+    <path d="M50 28 C62 28 70 34 70 44 C70 60 61 73 50 73 C39 73 30 60 30 44 C30 34 38 28 50 28 Z"/>
+    <path d="M32 46 C21 47 11 42 5 32 C1 25 0 15 3 8 C8 19 15 27 25 31 C29 33 32 36 33 39 Z"/>
+    <path d="M68 46 C79 47 89 42 95 32 C99 25 100 15 97 8 C92 19 85 27 75 31 C71 33 68 36 67 39 Z"/>
   </g>
 </svg>

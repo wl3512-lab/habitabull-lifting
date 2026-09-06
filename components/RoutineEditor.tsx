@@ -193,7 +193,7 @@ export default function RoutineEditor({
   if (!routine) {
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-        <p className="text-[17px] text-dim">No training days yet. Set up your week first.</p>
+        <p className="text-emphasis text-dim">No training days yet. Set up your week first.</p>
         <div className="mt-auto pt-10">
           <Pill onClick={onBack}>Back</Pill>
         </div>
@@ -284,14 +284,14 @@ export default function RoutineEditor({
         <button
           type="button"
           onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
         >
           Cancel
         </button>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">{FULL[routine.day]}</h1>
-      <p className="mt-1 text-[17px] text-dim">{templateOf(routine.template ?? "full-body").label}</p>
+      <h1 className="statement mt-2 text-figure text-fg">{FULL[routine.day]}</h1>
+      <p className="mt-1 text-emphasis text-dim">{templateOf(routine.template ?? "full-body").label}</p>
 
       {days.length > 1 && (
         <div className="mt-4 flex gap-2">
@@ -305,7 +305,7 @@ export default function RoutineEditor({
                 setAdding(null);
               }}
               aria-pressed={i === dayIndex}
-              className={`head h-11 flex-1 rounded-full border text-[17px] transition-colors duration-150 ${
+              className={`head h-11 flex-1 rounded-full border text-emphasis transition-colors duration-quick ${
                 i === dayIndex
                   ? "border-cyan bg-cyan text-ground"
                   : "border-line-strong text-dim hover:border-fg"
@@ -328,17 +328,17 @@ export default function RoutineEditor({
                 type="button"
                 onClick={() => setTemplate(t.id)}
                 aria-pressed={on}
-                className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+                className={`rounded-xl border p-3.5 text-left transition-colors duration-quick ${
                   on ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
                 }`}
               >
-                <span className="head flex items-baseline gap-2 text-[17px] text-fg">
+                <span className="head flex items-baseline gap-2 text-emphasis text-fg">
                   {t.label}
                   {t.recommended && (
                     <span className="label text-cyan">Recommended</span>
                   )}
                 </span>
-                <span className="block text-[15px] text-dim">{t.hint}</span>
+                <span className="block text-body text-dim">{t.hint}</span>
               </button>
             );
           })}
@@ -363,18 +363,18 @@ export default function RoutineEditor({
               maxLength={200}
               placeholder="I want to focus on legs, and one easy day"
               aria-label="Describe the week you want"
-              className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+              className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <button
               type="submit"
               disabled={!weekAsk.trim() || weekBusy}
-              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
             >
               {weekBusy ? "…" : "Build"}
             </button>
           </form>
           {weekWhy && (
-            <p role="status" className="mt-2.5 text-[15px] leading-snug text-dim">
+            <p role="status" className="mt-2.5 text-body leading-snug text-dim">
               {weekWhy} Change any day above.
             </p>
           )}
@@ -386,7 +386,7 @@ export default function RoutineEditor({
           — she should know that and then decide for herself.
         */}
         {!thorough && (
-          <p className="mt-3 text-[15px] text-dim">
+          <p className="mt-3 text-body text-dim">
             This week trains some muscles once. Twice a week is what makes the difference —
             full body, or run these days again.
           </p>
@@ -409,15 +409,15 @@ export default function RoutineEditor({
                 className="flex w-full items-center justify-between gap-3 p-[18px] text-left"
               >
                 <span className="min-w-0">
-                  <span className="head block truncate text-[17px] text-fg">
+                  <span className="head block truncate text-emphasis text-fg">
                     {nameOf(e.exerciseId)}
                   </span>
-                  <span className="block text-[15px] text-dim">
+                  <span className="block text-body text-dim">
                     {e.sets} × {e.reps}
                     {e.weight > 0 && ` · ${e.weight} lb`}
                   </span>
                 </span>
-                <span aria-hidden className="shrink-0 text-[15px] text-cyan">
+                <span aria-hidden className="shrink-0 text-body text-cyan">
                   {open ? "Done" : "Edit"}
                 </span>
               </button>
@@ -425,7 +425,7 @@ export default function RoutineEditor({
               {open && (
                 <div className="rise border-t border-line px-[18px] pb-[18px] pt-4">
                   <div className="flex items-center gap-3">
-                    <span className="flex-1 text-[15px] text-dim">Sets</span>
+                    <span className="flex-1 text-body text-dim">Sets</span>
                     <Stepper
                       value={e.sets}
                       min={1}
@@ -435,7 +435,7 @@ export default function RoutineEditor({
                     />
                   </div>
                   <div className="mt-2.5 flex items-center gap-3">
-                    <span className="flex-1 text-[15px] text-dim">Reps</span>
+                    <span className="flex-1 text-body text-dim">Reps</span>
                     <Stepper
                       value={e.reps}
                       min={1}
@@ -457,7 +457,7 @@ export default function RoutineEditor({
                             key={a.id}
                             type="button"
                             onClick={() => swap(e.exerciseId, a.id)}
-                            className="head rounded-full border border-line-strong px-4 py-2.5 text-[15px] text-dim transition-colors hover:border-fg hover:text-fg"
+                            className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
                           >
                             {a.name}
                           </button>
@@ -469,7 +469,7 @@ export default function RoutineEditor({
                   <button
                     type="button"
                     onClick={() => remove(e.exerciseId)}
-                    className="head tap mt-5 text-[15px] text-dim transition-colors hover:text-fg"
+                    className="head tap mt-5 text-body text-dim transition-colors hover:text-fg"
                   >
                     Take this out
                   </button>
@@ -481,7 +481,7 @@ export default function RoutineEditor({
       </ul>
 
       {routine.exercises.length === 0 && (
-        <p className="mt-4 text-[15px] text-dim">
+        <p className="mt-4 text-body text-dim">
           Nothing on this day. Add a lift, or leave it as a rest day.
         </p>
       )}
@@ -493,7 +493,7 @@ export default function RoutineEditor({
             <button
               type="button"
               onClick={closeAdd}
-              className="head tap shrink-0 text-[15px] text-cyan"
+              className="head tap shrink-0 text-body text-cyan"
             >
               Cancel
             </button>
@@ -504,7 +504,7 @@ export default function RoutineEditor({
                 key={a.id}
                 type="button"
                 onClick={() => add(a.id)}
-                className="head rounded-full border border-line-strong px-4 py-2.5 text-[15px] text-dim transition-colors hover:border-fg hover:text-fg"
+                className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
               >
                 {a.name}
               </button>
@@ -531,12 +531,12 @@ export default function RoutineEditor({
                 maxLength={200}
                 placeholder={`Something for ${adding} that is easy on the wrists`}
                 aria-label={`Ask for help choosing a ${adding} lift`}
-                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
               />
               <button
                 type="submit"
                 disabled={!ask.trim() || asking}
-                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
               >
                 {asking ? "…" : "Ask"}
               </button>
@@ -562,17 +562,17 @@ export default function RoutineEditor({
                   maxLength={40}
                   placeholder="Cable crossover"
                   aria-label="The name of a lift to add yourself"
-                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
                 />
                 <button
                   type="submit"
                   disabled={!ownName.trim() || ownBusy}
-                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-raise px-5 text-[15px] text-cyan transition-opacity disabled:opacity-30"
+                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-raise px-5 text-body text-cyan transition-opacity disabled:opacity-30"
                 >
                   {ownBusy ? "…" : "Add"}
                 </button>
               </form>
-              <p className="mt-2 text-[15px] leading-snug text-dim">
+              <p className="mt-2 text-body leading-snug text-dim">
                 Type the name and it gets filed for you. There is no form guidance for a
                 lift you added — that part only exists where a person wrote it.
               </p>
@@ -581,14 +581,14 @@ export default function RoutineEditor({
 
           {suggested && byId(suggested.id) && (
               <div role="status" className="mt-3 rounded-xl bg-raise/50 p-3.5">
-                <p className="head text-[17px] text-fg">{nameOf(suggested.id)}</p>
+                <p className="head text-emphasis text-fg">{nameOf(suggested.id)}</p>
                 {suggested.why && (
-                  <p className="mt-1 text-[15px] leading-snug text-dim">{suggested.why}</p>
+                  <p className="mt-1 text-body leading-snug text-dim">{suggested.why}</p>
                 )}
                 <button
                   type="button"
                   onClick={() => add(suggested.id)}
-                  className="head tap mt-2 text-[15px] text-cyan transition-opacity hover:opacity-70"
+                  className="head tap mt-2 text-body text-cyan transition-opacity hover:opacity-70"
                 >
                   Add it
                 </button>
@@ -605,7 +605,7 @@ export default function RoutineEditor({
                 key={m.id}
                 type="button"
                 onClick={() => setAdding(m.id)}
-                className="head rounded-full border border-line-strong px-4 py-2.5 text-[15px] text-dim transition-colors hover:border-fg hover:text-fg"
+                className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
               >
                 {m.label}
               </button>
@@ -622,8 +622,8 @@ export default function RoutineEditor({
                       onClick={() => add(sg.tryThis)}
                       className="w-full rounded-xl bg-raise/50 p-3.5 text-left transition-colors hover:bg-raise"
                     >
-                      <span className="head block text-[17px] text-fg">{nameOf(sg.tryThis)}</span>
-                      <span className="block text-[15px] text-dim">
+                      <span className="head block text-emphasis text-fg">{nameOf(sg.tryThis)}</span>
+                      <span className="block text-body text-dim">
                         You star {nameOf(sg.because)} — same muscle, different feel.
                       </span>
                     </button>
@@ -634,7 +634,7 @@ export default function RoutineEditor({
           )}
 
           {profile.level === "new" && (
-            <p className="mt-3 text-[15px] text-dim">
+            <p className="mt-3 text-body text-dim">
               Your days are full body on purpose. Hitting everything twice a week beats a
               clever split you have to remember.
             </p>
@@ -672,17 +672,17 @@ function Stepper({
         onClick={() => onChange(Math.max(min, value - step))}
         disabled={value <= min}
         aria-label={`Fewer ${label}`}
-        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-[22px] leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
+        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
       >
         −
       </button>
-      <span className="tabular statement w-10 text-center text-[24px] text-fg">{value}</span>
+      <span className="tabular statement w-10 text-center text-title text-fg">{value}</span>
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + step))}
         disabled={value >= max}
         aria-label={`More ${label}`}
-        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-[22px] leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
+        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
       >
         +
       </button>
