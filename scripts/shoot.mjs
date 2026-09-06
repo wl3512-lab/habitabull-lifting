@@ -47,6 +47,8 @@ const SHOTS = [
   ["01f", "01f-today-reason-skipped"],
   ["01g", "01g-today-first-run"],
   ["04", "04-logging"],
+  ["04b", "04b-set-logged"],
+  ["04c", "04c-set-logged-best"],
   ["05", "05-rest-timer"],
   ["06", "06-pr-celebration"],
   ["09", "09-bull-coach"],
