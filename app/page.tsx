@@ -26,7 +26,16 @@ import {
 import { enabled, publishPlan, pushCheckins } from "@/lib/cloud";
 import { setCustomExercises } from "@/lib/exercises";
 import { challengeFor } from "@/lib/crew";
-import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
+import { launchPlaylist } from "@/lib/spotify";
+import {
+  EMPTY,
+  load,
+  save,
+  sessionFor,
+  todayISO,
+  upsertSession,
+  upsertWeighIn,
+} from "@/lib/storage";
 import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
@@ -140,6 +149,13 @@ export default function Page() {
 
   function startLogging() {
     if (!profile) return;
+    /*
+      Fired here, on the same tick as the tap, so the browser still treats the
+      window it opens as user-activated. Before the state write rather than
+      after: if music is going to fail it should fail before anything has been
+      committed, and the call itself swallows everything anyway.
+    */
+    launchPlaylist(profile.playlistId);
     if (!draft && routine) {
       setState((s) => ({
         ...s,
@@ -187,6 +203,14 @@ export default function Page() {
     setView("exercise");
   }
 
+  /** One entry per day; logging twice corrects the day rather than appending. */
+  function saveWeighIn(lb: number) {
+    setState((s) => ({
+      ...s,
+      weighIns: upsertWeighIn(s.weighIns ?? [], { date: today, lb }),
+    }));
+  }
+
   function saveGoal(g: Goal) {
     setState((s) => ({ ...s, goal: g, goalDismissed: true }));
     setView("progress");
@@ -227,12 +251,35 @@ export default function Page() {
     );
   }
 
+  /**
+   * This week's showing-up, for the ring around the home mark.
+   *
+   * Sunday-to-Saturday to match the week strip on Today and the consistency
+   * grid, both of which already start weeks on Sunday. Undefined until a week
+   * has been planned: a ring at zero on a brand new account is the app opening
+   * with a scold, and the whole product is an argument against that.
+   */
+  const week = (() => {
+    if (!profile || profile.trainingDays.length === 0) return undefined;
+    const now = new Date(today + "T00:00:00");
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() - now.getDay());
+    const start = todayISO(sunday);
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
+    const end = todayISO(saturday);
+    const done = state.sessions.filter(
+      (s) => s.completedAt && s.date >= start && s.date <= end
+    ).length;
+    return { done, total: profile.trainingDays.length };
+  })();
+
   /** Wraps a top-level screen with the tab bar. Modes never get one. */
   function placed(node: React.ReactNode, tab: Tab) {
     return (
       <>
         {node}
-        <TabBar active={tab} onChange={(t) => setView(t)} />
+        <TabBar active={tab} onChange={(t) => setView(t)} week={week} />
       </>
     );
   }
@@ -406,6 +453,9 @@ export default function Page() {
         goal={goal}
         onGoal={() => setView("goal")}
         state={state}
+        weighIns={state.weighIns ?? []}
+        todayKey={today}
+        onWeighIn={saveWeighIn}
         onImport={(next: AppState) => {
           setState(next);
           setView("today");

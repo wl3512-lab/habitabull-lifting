@@ -1,10 +1,12 @@
 "use client";
 
+import BodyWeight from "./BodyWeight";
+import Chart from "./Chart";
 import { Card, GoalBar, Pill, Stat } from "./ui";
 import YourData from "./YourData";
 import { nameOf } from "@/lib/exercises";
 import { goalProgress } from "@/lib/engine";
-import type { AppState, Goal, Session } from "@/lib/types";
+import type { AppState, Goal, Session, WeighIn } from "@/lib/types";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKS = 12;
@@ -25,12 +27,19 @@ export default function Progress({
   onGoal,
   state,
   onImport,
+  weighIns,
+  todayKey,
+  onWeighIn,
 }: {
   sessions: Session[];
   goal: Goal | null;
   onGoal: () => void;
   state: AppState;
   onImport: (s: AppState) => void;
+  weighIns: WeighIn[];
+  /** Local ISO date. Named to avoid the local `today` Date below. */
+  todayKey: string;
+  onWeighIn: (lb: number) => void;
 }) {
   const done = sessions
     .filter((s) => s.completedAt)
@@ -91,10 +100,10 @@ export default function Progress({
         <p className="label text-cyan">Last {WEEKS} weeks</p>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">
+      <h1 className="statement mt-2 text-figure text-fg">
         {reliable ? `You show up on ${WEEKDAYS[topDay]}s.` : "Progress"}
       </h1>
-      <p className="mt-1.5 text-[17px] text-dim">
+      <p className="mt-1.5 text-emphasis text-dim">
         {reliable
           ? `Your most reliable day, ${byDay[topDay]} sessions in. Protect it.`
           : done.length === 0
@@ -115,11 +124,11 @@ export default function Progress({
                   // that is deliberate — the information here is the green, at
                   // 7:1, and absence is drawn as absence. Documented in
                   // DESIGN.md as a knowing deviation from 1.4.11.
-                  className={`aspect-square w-full rounded-[5px] ${
+                  className={`aspect-square w-full rounded-tick ${
                     cell.comeback
                       ? "bg-cyan"
                       : cell.trained
-                        ? "bg-green"
+                        ? "bg-done"
                         : cell.future
                           ? "bg-raise/40"
                           : "bg-line"
@@ -133,15 +142,15 @@ export default function Progress({
           {done.length} sessions in the last {WEEKS} weeks, {comebacks.size} of them after a
           break of a week or more.
         </p>
-        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-dim">
+        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-caption text-dim">
           <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-green" /> Trained
+            <span aria-hidden className="h-3 w-3 rounded-tick bg-done" /> Trained
           </li>
           <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-cyan" /> Comeback
+            <span aria-hidden className="h-3 w-3 rounded-tick bg-cyan" /> Comeback
           </li>
           <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-line" /> Missed
+            <span aria-hidden className="h-3 w-3 rounded-tick bg-line" /> Missed
           </li>
         </ul>
       </Card>
@@ -158,7 +167,7 @@ export default function Progress({
       </div>
 
       {comebacks.size > 0 && (
-        <p className="mt-3 text-[15px] text-dim">
+        <p className="mt-3 text-body text-dim">
           Comebacks are counted on purpose. Coming back is the skill.
         </p>
       )}
@@ -170,13 +179,13 @@ export default function Progress({
             <button
               type="button"
               onClick={onGoal}
-              className="head tap text-[15px] text-cyan transition-opacity hover:opacity-70"
+              className="head tap text-body text-cyan transition-opacity hover:opacity-70"
             >
               Change
             </button>
           </div>
           <Card className="mt-3 p-[18px]">
-            <p className="statement text-[26px] text-fg">
+            <p className="statement text-title text-fg">
               {nameOf(goal.exerciseId)} {goal.targetWeight} lb by{" "}
               {new Date(goal.targetDate + "T00:00:00").toLocaleDateString(undefined, {
                 month: "long",
@@ -206,39 +215,30 @@ export default function Progress({
         <YourData state={state} onImport={onImport} />
       </div>
 
+      <BodyWeight weighIns={weighIns} today={todayKey} onSave={onWeighIn} />
+
       {ranked.length > 0 && (
         <section className="mt-8 flex flex-col gap-2.5">
           <p className="label text-dim">Lift by lift</p>
           {ranked.map(([id, points]) => {
-            const max = Math.max(...points.map((p) => p.weight), 1);
             const delta = points[points.length - 1].weight - points[0].weight;
             const latest = points[points.length - 1];
             return (
               <Card key={id} className="p-[18px]">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="head text-[17px] text-fg">{nameOf(id)}</h2>
-                  <span className="tabular statement shrink-0 text-[20px] text-fg">
+                  <h2 className="head text-emphasis text-fg">{nameOf(id)}</h2>
+                  <span className="tabular statement shrink-0 text-head text-fg">
                     {latest.weight > 0 ? `${latest.weight} lb` : `${latest.reps} reps`}
-                    {delta > 0 && <span className="text-green"> +{delta}</span>}
+                    {delta > 0 && <span className="text-done"> +{delta}</span>}
                   </span>
                 </div>
-                {/* One data point is not a trend, so it gets no chart. */}
-                {points.length > 1 && (
-                  <div className="mt-3.5 flex h-12 items-end gap-1.5" aria-hidden>
-                    {points.slice(-14).map((p, i, arr) => (
-                      <div
-                        key={i}
-                        className={`w-3 rounded-full ${i === arr.length - 1 ? "bg-cyan" : "bg-raise"}`}
-                        style={{ height: `${Math.max(10, (p.weight / max) * 100)}%` }}
-                      />
-                    ))}
-                  </div>
-                )}
-                <p className="mt-2.5 text-[15px] text-dim">
-                  {points.length === 1
-                    ? "First one logged. Come back and this becomes a line."
-                    : `${points.length} sessions logged`}
-                </p>
+                <div className="mt-3.5">
+                  <Chart
+                    points={points.map((pt) => ({ date: pt.date, value: pt.weight }))}
+                    label={nameOf(id)}
+                    showDelta={false}
+                  />
+                </div>
               </Card>
             );
           })}

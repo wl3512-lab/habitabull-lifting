@@ -1,5 +1,5 @@
 import { setCustomExercises } from "./exercises";
-import type { AppState, Exercise, Session } from "./types";
+import type { AppState, Exercise, Session, WeighIn } from "./types";
 
 const KEY = "habitabull.v1";
 
@@ -29,10 +29,32 @@ export function load(): AppState {
       goal: parsed.goal ?? null,
       goalDismissed: parsed.goalDismissed,
       challenge: parsed.challenge,
+      weighIns: saneWeighIns(parsed.weighIns),
     };
   } catch {
     return EMPTY;
   }
+}
+
+/**
+ * Weigh-ins get the same treatment as custom lifts: they came from
+ * localStorage, and a NaN or a string in `lb` would reach the chart as a
+ * geometry value and blank the whole card. Sorted here rather than at every
+ * read site, so anything downstream can assume oldest-first.
+ */
+function saneWeighIns(list: unknown): WeighIn[] {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter(
+      (w): w is WeighIn =>
+        Boolean(w) &&
+        typeof w === "object" &&
+        typeof (w as WeighIn).date === "string" &&
+        typeof (w as WeighIn).lb === "number" &&
+        Number.isFinite((w as WeighIn).lb) &&
+        (w as WeighIn).lb > 0
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
@@ -76,6 +98,12 @@ export function upsertSession(sessions: Session[], session: Session): Session[] 
   const next = [...sessions];
   next[i] = session;
   return next;
+}
+
+/** Replace the entry for a date, or insert it in date order. */
+export function upsertWeighIn(list: WeighIn[], entry: WeighIn): WeighIn[] {
+  const rest = list.filter((w) => w.date !== entry.date);
+  return [...rest, entry].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function sessionFor(sessions: Session[], date: string): Session | undefined {
