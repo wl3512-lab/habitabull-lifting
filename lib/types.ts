@@ -27,6 +27,8 @@ export interface Exercise {
    * single core lift was a plank.
    */
   hold?: boolean;
+  /** Time-based cardio: one set, logged in minutes, no weight. */
+  cardio?: boolean;
   cue: string;
   /** How to do it, in order. Shown on the exercise screen. */
   steps: string[];

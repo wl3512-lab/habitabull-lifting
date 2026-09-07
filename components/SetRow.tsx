@@ -20,11 +20,14 @@ import type { LoggedSet } from "@/lib/types";
 export default function SetRow({
   set,
   increment,
+  cardio = false,
   lastTime,
   onChange,
 }: {
   set: LoggedSet;
   increment: number;
+  /** Cardio logs one duration in minutes, not weight and reps. */
+  cardio?: boolean;
   /** What this set was last time, if there is a last time. */
   lastTime?: string;
   onChange: (next: LoggedSet) => void;
@@ -41,11 +44,11 @@ export default function SetRow({
         />
       )}
       <Stepper
-        label="Reps"
+        label={cardio ? "Duration" : "Reps"}
         value={set.reps}
-        step={1}
-        min={1}
-        suffix="reps"
+        step={cardio ? 5 : 1}
+        min={cardio ? 5 : 1}
+        suffix={cardio ? "min" : "reps"}
         onChange={(reps) => onChange({ ...set, reps })}
       />
       {lastTime && (

@@ -459,6 +459,42 @@ export const EXERCISES: Exercise[] = [
     ],
     mistakes: ["Lifting the elbows off the pad to get more range.", "Stopping short at the bottom, which is where it is hardest."],
   },
+  {
+    id: "treadmill", name: "Treadmill", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Run or walk tall. Land under your hips, not out in front.",
+    steps: ["Set a pace you can hold a short conversation at.", "Relax the shoulders, quick light steps.", "Ease the pace down for the last minute rather than stopping dead."],
+    mistakes: ["Gripping the rails, which takes the work out of it.", "Starting far too fast to hold."],
+  },
+  {
+    id: "stairmaster", name: "Stairmaster", equipment: "machine", primary: "glutes", increment: 0, compound: false, cardio: true,
+    cue: "Stand tall, full steps, no leaning on the rails.",
+    steps: ["Set a steady speed you can keep for the whole time.", "Drive through the whole foot on each step.", "Ease the speed down to finish."],
+    mistakes: ["Hanging on the rails and leaning back.", "Tiny half-steps instead of full ones."],
+  },
+  {
+    id: "elliptical", name: "Elliptical", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Push and pull evenly. Let the legs lead, not the arms.",
+    steps: ["Set a resistance you can hold a smooth rhythm against.", "Drive through the legs, arms following.", "Spin easy for the last minute."],
+    mistakes: ["Bouncing on the toes.", "Letting the arms do the work."],
+  },
+  {
+    id: "bike", name: "Bike", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Smooth circles, not stomping. Keep the cadence up.",
+    steps: ["Set a resistance you can spin steadily against.", "Aim for a quick, even cadence.", "Spin easy for the last minute."],
+    mistakes: ["Resistance so high the cadence crawls.", "Rocking in the saddle to force the pedals."],
+  },
+  {
+    id: "rowing", name: "Rowing", equipment: "machine", primary: "back", increment: 0, compound: false, cardio: true,
+    cue: "Legs, then back, then arms. Reverse it coming back.",
+    steps: ["Drive with the legs first.", "Swing the back, finish with the arms to the ribs.", "Arms out, body over, knees bend, in that order."],
+    mistakes: ["Pulling with the arms first.", "Rounding the back at the catch."],
+  },
+  {
+    id: "outdoor-run", name: "Run", equipment: "bodyweight", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Conversational pace. If you can't speak, ease off.",
+    steps: ["Start easy for the first few minutes.", "Settle into a rhythm you could hold a chat at.", "Walk the last stretch to bring the heart rate down."],
+    mistakes: ["Going out too hard and fading.", "Overstriding, reaching the foot too far ahead."],
+  },
 ];
 
 /**
@@ -523,4 +559,9 @@ export function makeCustomExercise(
       "Chasing the number when the form has already gone.",
     ],
   };
+}
+
+/** Cardio machines for the add-a-lift picker's own Cardio category. */
+export function cardioLifts(exclude: string[] = []): Exercise[] {
+  return EXERCISES.filter((e) => e.cardio && !exclude.includes(e.id));
 }

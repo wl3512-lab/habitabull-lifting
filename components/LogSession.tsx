@@ -6,7 +6,7 @@ import RestTimer from "./RestTimer";
 import SetLogged from "./SetLogged";
 import SetRow from "./SetRow";
 import { Pill } from "./ui";
-import { byId, nameOf } from "@/lib/exercises";
+import { byId, cardioLifts, nameOf } from "@/lib/exercises";
 import { MUSCLES } from "@/lib/constraints";
 import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight } from "@/lib/engine";
 import { haptic } from "@/lib/haptics";
@@ -31,7 +31,7 @@ function lastAttempt(history: Session[], exerciseId: string, increment: number) 
     const sets = ex?.sets.filter((x) => x.done) ?? [];
     if (sets.length === 0) continue;
     const best = sets.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
-    return increment === 0 ? `${best.reps} reps` : `${best.weight} lb × ${best.reps}`;
+    return byId(exerciseId)?.cardio ? `${best.reps} min` : increment === 0 ? `${best.reps} reps` : `${best.weight} lb × ${best.reps}`;
   }
   return undefined;
 }
@@ -55,7 +55,7 @@ export default function LogSession({
 }) {
   // The lift picker for adding to a session mid-way. Null unless open; the
   // chosen muscle narrows the list the same way the routine editor does.
-  const [addingMuscle, setAddingMuscle] = useState<Muscle | null>(null);
+  const [addingMuscle, setAddingMuscle] = useState<Muscle | "cardio" | null>(null);
   const [adding, setAdding] = useState(false);
   // The exercise jump list — pick which lift to do next, any time.
   const [picking, setPicking] = useState(false);
@@ -81,6 +81,7 @@ export default function LogSession({
   const exercise = session.exercises[index] as (typeof session.exercises)[number] | undefined;
   const meta = exercise ? byId(exercise.exerciseId) : undefined;
   const increment = meta?.increment ?? 5;
+  const isCardio = meta?.cardio ?? false;
   const activeSet = exercise ? exercise.sets.findIndex((s) => !s.done) : -1;
   const pr = useMemo(
     () => (exercise ? personalRecord(history, exercise.exerciseId) : 0),
@@ -181,7 +182,7 @@ export default function LogSession({
     unlockAudio(); // let the rest bell through on iOS later
     haptic(isBest ? "best" : "log");
     setLogged({
-      summary: increment === 0 ? `${set.reps} reps` : `${set.weight} lb × ${set.reps}`,
+      summary: isCardio ? `${set.reps} min` : increment === 0 ? `${set.reps} reps` : `${set.weight} lb × ${set.reps}`,
       best: isBest,
       resting: !lastOfSession,
       advance,
@@ -200,11 +201,13 @@ export default function LogSession({
   // today's session": you already trained, and you are doing a little more.
   function addLift(exerciseId: string) {
     const m = byId(exerciseId);
-    const sets: LoggedSet[] = Array.from({ length: LEVEL_SETS[profile.level] }, () => ({
-      weight: m ? startingWeight(m, profile.level) : 0,
-      reps: m ? repsFor(m, profile.level) : 8,
-      done: false,
-    }));
+    const sets: LoggedSet[] = m?.cardio
+      ? [{ weight: 0, reps: 20, done: false }]
+      : Array.from({ length: LEVEL_SETS[profile.level] }, () => ({
+          weight: m ? startingWeight(m, profile.level) : 0,
+          reps: m ? repsFor(m, profile.level) : 8,
+          done: false,
+        }));
     const exercises = [...session.exercises, { exerciseId, sets }];
     onChange({ ...session, exercises, completedAt: undefined });
     setIndex(exercises.length - 1);
@@ -240,7 +243,12 @@ export default function LogSession({
 
   if (adding) {
     const exclude = session.exercises.map((e) => e.exerciseId);
-    const options = addingMuscle ? alternativesFor(addingMuscle, profile.equipment, exclude) : [];
+    const options =
+      addingMuscle === "cardio"
+        ? cardioLifts(exclude)
+        : addingMuscle
+          ? alternativesFor(addingMuscle, profile.equipment, exclude)
+          : [];
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
         <div className="flex items-center justify-between gap-3">
@@ -270,6 +278,15 @@ export default function LogSession({
               {mu}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setAddingMuscle("cardio")}
+            className={`rounded-full px-3.5 py-2 text-caption transition-colors ${
+              addingMuscle === "cardio" ? "bg-cyan text-ground" : "bg-raise text-fg"
+            }`}
+          >
+            Cardio
+          </button>
         </div>
         {addingMuscle && (
           <div className="mt-6 flex flex-col gap-2.5">
@@ -445,6 +462,7 @@ export default function LogSession({
             key={activeSet}
             set={exercise.sets[activeSet]}
             increment={increment}
+            cardio={isCardio}
             lastTime={lastTime}
             onChange={(next) => updateSet(activeSet, next)}
           />
