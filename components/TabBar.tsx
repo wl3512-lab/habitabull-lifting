@@ -60,17 +60,14 @@ export default function TabBar({
                 {t.id === "progress" ? (
                   <Raised active={on} />
                 ) : t.id === "today" ? (
-                  <svg
-                    viewBox="0 0 100 88"
+                  // The hand-drawn bull, light so it reads on the dark bar;
+                  // opacity carries the active/inactive state.
+                  <img
+                    src="/tab-bull.png"
+                    alt=""
                     aria-hidden
-                    className={`h-[18px] w-5 transition-colors duration-quick ${on ? "text-cyan" : "text-line-strong"}`}
-                    fill="currentColor"
-                    fillRule="evenodd"
-                  >
-                    <path d="M50 26 C43 26 38 27 35 30 C32 33 30 37 30 43 C29 39 25 39 23 42 C26 43 29 44 31 47 C33 54 35 60 39 65 C43 70 47 73 50 73 C53 73 57 70 61 65 C65 60 67 54 69 47 C71 44 74 43 77 42 C75 39 71 39 70 43 C70 37 68 33 65 30 C62 27 57 26 50 26 Z M43 46 C39 45 36 48 38 51 C42 50 45 48 45 46 Z M57 46 C61 45 64 48 62 51 C58 50 55 48 55 46 Z" />
-                    <path d="M39 27 C32 17 22 9 14 1 C11 6 12 16 17 24 C21 29 29 32 36 30 C37 29 38 28 39 27 Z" />
-                    <path transform="translate(100,0) scale(-1,1)" d="M39 27 C32 17 22 9 14 1 C11 6 12 16 17 24 C21 29 29 32 36 30 C37 29 38 28 39 27 Z" />
-                  </svg>
+                    className={`h-5 w-auto transition-opacity duration-quick ${on ? "opacity-100" : "opacity-45"}`}
+                  />
                 ) : (
                   <span
                     aria-hidden
