@@ -13,6 +13,7 @@ import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
+import ProfileScreen from "@/components/Profile";
 import Progress from "@/components/Progress";
 import RestTimer from "@/components/RestTimer";
 import SetLogged from "@/components/SetLogged";
@@ -61,7 +62,7 @@ function Frame({
   name: string;
   note: string;
   /** Screens that sit at the top level carry the bar; modes do not. */
-  tab?: "today" | "calendar" | "progress" | "crew";
+  tab?: "today" | "calendar" | "progress" | "crew" | "profile";
   children: ReactNode;
 }) {
   const shot = useContext(Shot);
@@ -100,7 +101,7 @@ function Captured({
 }: {
   n: string;
   scroll: number;
-  tab?: "today" | "calendar" | "progress" | "crew";
+  tab?: "today" | "calendar" | "progress" | "crew" | "profile";
   children: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -352,10 +353,19 @@ function gallery(challenge: Challenge) {
                 goal={f.goal}
                 onGoal={f.noop}
                 state={f.state}
-                weighIns={f.weighIns}
-                todayKey={f.today}
+                onImport={f.noop}
+              />
+            </Frame>
+            <Frame n="08b" name="Profile" tab="profile" note="You, and the setup that is yours rather than today's — name, your reason, body weight (moved here from Progress), the plan with its sets and reps, schedule, equipment, gym playlist, and the data export. Visited rarely, which is what lets Today and Progress each stay about one thing.">
+              <ProfileScreen
+                profile={f.profile}
+                state={f.state}
+                today={f.today}
+                onProfile={f.noop}
                 onWeighIn={f.noop}
                 onImport={f.noop}
+                onEditPlan={f.noop}
+                onEditWeek={f.noop}
               />
             </Frame>
             <Frame n="11" name="Calendar" tab="calendar" note="Weeks, not days. The Figma's “you're on fire” was cut — PRODUCT.md bans hustle language by name.">

@@ -11,6 +11,7 @@ import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
+import ProfileScreen from "@/components/Profile";
 import Progress from "@/components/Progress";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar, { type Tab } from "@/components/TabBar";
@@ -40,7 +41,7 @@ import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -251,35 +252,13 @@ export default function Page() {
     );
   }
 
-  /**
-   * This week's showing-up, for the ring around the home mark.
-   *
-   * Sunday-to-Saturday to match the week strip on Today and the consistency
-   * grid, both of which already start weeks on Sunday. Undefined until a week
-   * has been planned: a ring at zero on a brand new account is the app opening
-   * with a scold, and the whole product is an argument against that.
-   */
-  const week = (() => {
-    if (!profile || profile.trainingDays.length === 0) return undefined;
-    const now = new Date(today + "T00:00:00");
-    const sunday = new Date(now);
-    sunday.setDate(now.getDate() - now.getDay());
-    const start = todayISO(sunday);
-    const saturday = new Date(sunday);
-    saturday.setDate(sunday.getDate() + 6);
-    const end = todayISO(saturday);
-    const done = state.sessions.filter(
-      (s) => s.completedAt && s.date >= start && s.date <= end
-    ).length;
-    return { done, total: profile.trainingDays.length };
-  })();
 
   /** Wraps a top-level screen with the tab bar. Modes never get one. */
   function placed(node: React.ReactNode, tab: Tab) {
     return (
       <>
         {node}
-        <TabBar active={tab} onChange={(t) => setView(t)} week={week} />
+        <TabBar active={tab} onChange={(t) => setView(t)} />
       </>
     );
   }
@@ -453,15 +432,31 @@ export default function Page() {
         goal={goal}
         onGoal={() => setView("goal")}
         state={state}
-        weighIns={state.weighIns ?? []}
-        todayKey={today}
-        onWeighIn={saveWeighIn}
         onImport={(next: AppState) => {
           setState(next);
           setView("today");
         }}
       />,
       "progress"
+    );
+  }
+
+  if (view === "profile" && profile) {
+    return placed(
+      <ProfileScreen
+        profile={profile}
+        state={state}
+        today={today}
+        onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
+        onWeighIn={saveWeighIn}
+        onImport={(next: AppState) => {
+          setState(next);
+          setView("today");
+        }}
+        onEditPlan={() => setView("routine")}
+        onEditWeek={() => setView("week")}
+      />,
+      "profile"
     );
   }
 

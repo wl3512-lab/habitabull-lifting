@@ -54,6 +54,7 @@ const SHOTS = [
   ["09", "09-bull-coach"],
   ["16", "16-after-workout"],
   ["08", "08-progress"],
+  ["08b", "08b-profile"],
   ["11", "11-calendar"],
   ["17", "17-day-detail"],
   ["17b", "17b-day-detail-crew"],

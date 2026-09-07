@@ -1,12 +1,11 @@
 "use client";
 
-import BodyWeight from "./BodyWeight";
 import Chart from "./Chart";
 import { Card, GoalBar, Pill, Stat } from "./ui";
 import YourData from "./YourData";
 import { nameOf } from "@/lib/exercises";
 import { goalProgress } from "@/lib/engine";
-import type { AppState, Goal, Session, WeighIn } from "@/lib/types";
+import type { AppState, Goal, Session } from "@/lib/types";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKS = 12;
@@ -27,19 +26,12 @@ export default function Progress({
   onGoal,
   state,
   onImport,
-  weighIns,
-  todayKey,
-  onWeighIn,
 }: {
   sessions: Session[];
   goal: Goal | null;
   onGoal: () => void;
   state: AppState;
   onImport: (s: AppState) => void;
-  weighIns: WeighIn[];
-  /** Local ISO date. Named to avoid the local `today` Date below. */
-  todayKey: string;
-  onWeighIn: (lb: number) => void;
 }) {
   const done = sessions
     .filter((s) => s.completedAt)
@@ -214,8 +206,6 @@ export default function Progress({
       <div className="mt-8">
         <YourData state={state} onImport={onImport} />
       </div>
-
-      <BodyWeight weighIns={weighIns} today={todayKey} onSave={onWeighIn} />
 
       {ranked.length > 0 && (
         <section className="mt-8 flex flex-col gap-2.5">
