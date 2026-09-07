@@ -14,6 +14,7 @@ import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import Comeback from "@/components/Comeback";
+import ImportWorkout from "@/components/ImportWorkout";
 import ProfileScreen from "@/components/Profile";
 import Progress from "@/components/Progress";
 import RestTimer from "@/components/RestTimer";
@@ -215,6 +216,9 @@ function gallery(challenge: Challenge) {
             </Frame>
             <Frame n="04d" name="Comeback" note="The one the product is built for: opening a workout after a week or more away. Retention is the unsolved problem and coming back is the skill, so returning gets its own beat before the first set — in cyan, the colour this system uses for arrival, with the bull doing the work rather than a badge. No day count, no 'you missed N days'; the gap is not a mark against anyone.">
               <Comeback seed={3} onDone={f.noop} />
+            </Frame>
+            <Frame n="03b" name="Import a workout" note="Paste a plan you already have — from notes, a coach, anywhere — and the model reads it into routines, validated against the real library. Lifts the app doesn't have are created as customs; weights are never taken from the text. You confirm before it saves.">
+              <ImportWorkout profile={f.profile} onDone={f.noop} onCancel={f.noop} />
             </Frame>
             <Frame n="05" name="Rest" note="The 45 lb plate from the 2023 app icon, doing a job. It never nags and never advances on its own.">
               <RestTimer

@@ -13,6 +13,7 @@ import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import ProfileScreen from "@/components/Profile";
 import Comeback from "@/components/Comeback";
+import ImportWorkout from "@/components/ImportWorkout";
 import Progress from "@/components/Progress";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar, { type Tab } from "@/components/TabBar";
@@ -43,7 +44,7 @@ import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "import";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -355,6 +356,31 @@ export default function Page() {
           setView(profile.planChosen ? "today" : "routine");
         }}
         onSkip={() => setView(profile.planChosen ? "today" : "routine")}
+        onImport={() => setView("import")}
+      />
+    );
+  }
+
+  if (view === "import" && profile) {
+    return (
+      <ImportWorkout
+        profile={profile}
+        onCancel={() => setView("week")}
+        onDone={(routines, customs) => {
+          const nextCustoms = [...(state.customExercises ?? []), ...customs];
+          setCustomExercises(nextCustoms);
+          setState((s) => ({
+            ...s,
+            routines,
+            customExercises: nextCustoms,
+            profile: {
+              ...profile,
+              planChosen: true,
+              trainingDays: [...new Set(routines.map((r) => r.day))].sort((a, b) => a - b),
+            },
+          }));
+          setView("today");
+        }}
       />
     );
   }

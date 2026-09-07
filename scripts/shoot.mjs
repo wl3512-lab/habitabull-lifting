@@ -40,6 +40,7 @@ const SHOTS = [
   ["00", "00-welcome"],
   ["02", "02-onboarding-why"],
   ["03", "03-week-setup"],
+  ["03b", "03b-import-workout"],
   ["01", "01-today"],
   ["01c", "01c-today-habit-learned"],
   ["01d", "01d-today-comeback"],

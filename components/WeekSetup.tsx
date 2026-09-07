@@ -41,10 +41,12 @@ export default function WeekSetup({
   profile,
   onSave,
   onSkip,
+  onImport,
 }: {
   profile: Profile;
   onSave: (p: Profile) => void;
   onSkip: () => void;
+  onImport?: () => void;
 }) {
   const [text, setText] = useState("");
   const [asking, setAsking] = useState(false);
@@ -302,6 +304,15 @@ export default function WeekSetup({
         >
           That&apos;s my week
         </Pill>
+        {onImport && (
+          <button
+            type="button"
+            onClick={onImport}
+            className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70"
+          >
+            Or paste a workout you already have
+          </button>
+        )}
       </div>
     </main>
   );
