@@ -57,6 +57,8 @@ export default function LogSession({
   // chosen muscle narrows the list the same way the routine editor does.
   const [addingMuscle, setAddingMuscle] = useState<Muscle | null>(null);
   const [adding, setAdding] = useState(false);
+  // The exercise jump list — pick which lift to do next, any time.
+  const [picking, setPicking] = useState(false);
   const [rest, setRest] = useState<{
     seconds: number;
     exerciseId: string;
@@ -294,6 +296,49 @@ export default function LogSession({
     );
   }
 
+  if (picking) {
+    return (
+      <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="statement text-figure text-fg">Jump to</h1>
+          <button
+            type="button"
+            onClick={() => setPicking(false)}
+            className="head tap text-emphasis text-dim transition-colors hover:text-fg"
+          >
+            Cancel
+          </button>
+        </div>
+        <p className="label mt-6 text-dim">This session, in any order</p>
+        <div className="mt-3 flex flex-col gap-2.5">
+          {session.exercises.map((e, i) => {
+            const doneN = e.sets.filter((x) => x.done).length;
+            const total = e.sets.length;
+            const complete = doneN === total;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  setIndex(i);
+                  setPicking(false);
+                }}
+                className={`flex items-center justify-between gap-3 rounded-2xl p-[18px] text-left transition-colors ${
+                  i === index ? "bg-raise" : "bg-card hover:bg-raise"
+                }`}
+              >
+                <span className="head text-emphasis text-fg">{nameOf(e.exerciseId)}</span>
+                <span className={`tabular text-body ${complete ? "text-done" : "text-dim"}`}>
+                  {complete ? "done" : `${doneN} of ${total}`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </main>
+    );
+  }
+
   if (rest) {
     return (
       <RestTimer
@@ -325,9 +370,15 @@ export default function LogSession({
                 ←
               </button>
             )}
-            <p className="label text-cyan">
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              className="label tap flex items-center gap-1 text-cyan transition-opacity hover:opacity-70"
+              aria-label={`Exercise ${index + 1} of ${session.exercises.length}. Tap to jump to another lift.`}
+            >
               Exercise {index + 1} of {session.exercises.length}
-            </p>
+              <span aria-hidden className="text-[10px]">▾</span>
+            </button>
           </div>
           <button
             type="button"
