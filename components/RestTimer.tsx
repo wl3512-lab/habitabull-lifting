@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Pill } from "./ui";
+import { chime } from "@/lib/chime";
+import { haptic } from "@/lib/haptics";
 import { nameOf } from "@/lib/exercises";
 
 const R = 84;
@@ -40,10 +42,12 @@ export default function RestTimer({
   // A target timestamp, not a decrementing counter: phones suspend timers when
   // the screen locks, and coming back to a stalled clock is worse than none.
   const endsAt = useRef(Date.now() + seconds * 1000);
+  const rang = useRef(false);
   const [left, setLeft] = useState(seconds);
 
   useEffect(() => {
     endsAt.current = Date.now() + seconds * 1000;
+    rang.current = false;
     const tick = () =>
       setLeft(Math.max(0, Math.ceil((endsAt.current - Date.now()) / 1000)));
     tick();
@@ -53,6 +57,17 @@ export default function RestTimer({
 
   const done = left === 0;
   const progress = seconds > 0 ? (seconds - left) / seconds : 1;
+
+  // The one moment this screen speaks up: a soft bell and a buzz when rest is
+  // over. It still never advances on its own — someone in a gym decides when
+  // they are ready — it only says the wait it suggested has passed.
+  useEffect(() => {
+    if (done && !rang.current) {
+      rang.current = true;
+      chime();
+      haptic("best");
+    }
+  }, [done]);
 
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
