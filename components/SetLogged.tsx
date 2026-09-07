@@ -52,7 +52,7 @@ export default function SetLogged({
         </svg>
         <p className="rise statement mt-6 text-display">New best</p>
         <p className="rise tabular mt-1 text-head">{summary}</p>
-        <p className="mt-10 text-caption text-ground/70">{footer}</p>
+        <p className="mt-10 text-caption text-ground/90">{footer}</p>
       </main>
     );
   }

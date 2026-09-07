@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Bull, { BULL } from "./Bull";
 import { line } from "@/lib/voice";
 
@@ -17,13 +17,17 @@ import { line } from "@/lib/voice";
  * contained, brief, tap to skip, gone under reduced motion.
  */
 export default function Comeback({ seed, onDone }: { seed: number; onDone: () => void }) {
+  // Ref so the auto-advance fires exactly once on mount; depending on onDone's
+  // identity would reset the 2.4s timer on every parent re-render.
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const t = setTimeout(onDone, reduced ? 0 : 2400);
+    const t = setTimeout(() => done.current(), reduced ? 0 : 2400);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, []);
 
   return (
     <main
