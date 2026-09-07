@@ -45,36 +45,21 @@ export default function TabBar({
       <ul className="mx-auto flex w-full max-w-[430px] items-end">
         {TABS.map((t) => {
           const on = t.id === active;
-          if (t.id === "progress") {
-            return (
-              <li key={t.id} className="flex-1">
-                <button
-                  type="button"
-                  onClick={() => onChange(t.id)}
-                  aria-current={on ? "page" : undefined}
-                  className="flex w-full flex-col items-center justify-end gap-1.5"
-                >
-                  <Raised active={on} />
-                  <span
-                    className={`head text-caption transition-colors duration-quick ${
-                      on ? "text-fg" : "text-dim"
-                    }`}
-                  >
-                    {t.label}
-                  </span>
-                </button>
-              </li>
-            );
-          }
           return (
             <li key={t.id} className="flex-1">
               <button
                 type="button"
                 onClick={() => onChange(t.id)}
                 aria-current={on ? "page" : undefined}
-                className="flex h-14 w-full flex-col items-center justify-center gap-1.5"
+                // Every tab is the same height and pins its label to the bottom,
+                // so all five labels share one baseline. The raised centre pops
+                // up out of this box (its negative margin only frees space above
+                // it — justify-end keeps the label anchored to the floor).
+                className="flex h-14 w-full flex-col items-center justify-end gap-1.5"
               >
-                {t.id === "today" ? (
+                {t.id === "progress" ? (
+                  <Raised active={on} />
+                ) : t.id === "today" ? (
                   <svg
                     viewBox="0 0 100 88"
                     aria-hidden
@@ -89,7 +74,7 @@ export default function TabBar({
                 ) : (
                   <span
                     aria-hidden
-                    className={`h-1.5 w-1.5 rounded-full transition-colors duration-quick ${
+                    className={`mb-1.5 h-1.5 w-1.5 rounded-full transition-colors duration-quick ${
                       on ? "bg-cyan" : "bg-line-strong"
                     }`}
                   />
