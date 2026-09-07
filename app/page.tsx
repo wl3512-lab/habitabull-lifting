@@ -12,6 +12,7 @@ import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import ProfileScreen from "@/components/Profile";
+import Comeback from "@/components/Comeback";
 import Progress from "@/components/Progress";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar, { type Tab } from "@/components/TabBar";
@@ -28,6 +29,7 @@ import { enabled, publishPlan, pushCheckins } from "@/lib/cloud";
 import { setCustomExercises } from "@/lib/exercises";
 import { challengeFor } from "@/lib/crew";
 import { launchPlaylist } from "@/lib/spotify";
+import { greetingMood } from "@/lib/voice";
 import {
   EMPTY,
   load,
@@ -41,7 +43,7 @@ import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -157,6 +159,14 @@ export default function Page() {
       committed, and the call itself swallows everything anyway.
     */
     launchPlaylist(profile.playlistId);
+    // A gap of a week or more turns starting into a comeback, which gets its
+    // own beat before the first set. Judged on completed sessions before today.
+    const lastDone = state.sessions
+      .filter((x) => x.completedAt && x.date < today)
+      .map((x) => x.date)
+      .sort()
+      .pop();
+    const isComeback = greetingMood(lastDone, today) === "return";
     if (!draft && routine) {
       setState((s) => ({
         ...s,
@@ -166,7 +176,7 @@ export default function Page() {
         }),
       }));
     }
-    setView("log");
+    setView(isComeback ? "comeback" : "log");
   }
 
   /**
@@ -458,6 +468,11 @@ export default function Page() {
       />,
       "profile"
     );
+  }
+
+  if (view === "comeback") {
+    const seed = today.length + (profile?.name.length ?? 0);
+    return <Comeback seed={seed} onDone={() => setView("log")} />;
   }
 
   if (view === "log" && draft) {

@@ -49,6 +49,7 @@ const SHOTS = [
   ["04", "04-logging"],
   ["04b", "04b-set-logged"],
   ["04c", "04c-set-logged-best"],
+  ["04d", "04d-comeback"],
   ["05", "05-rest-timer"],
   ["06", "06-pr-celebration"],
   ["09", "09-bull-coach"],
