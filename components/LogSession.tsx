@@ -112,7 +112,7 @@ export default function LogSession({
         logged.advance();
         setLogged(null);
       },
-      reduced ? 0 : 1650
+      reduced ? 0 : logged.best ? 1650 : 850
     );
     return () => clearTimeout(t);
   }, [logged]);
