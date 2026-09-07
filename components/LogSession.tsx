@@ -165,7 +165,7 @@ export default function LogSession({
       advance = () => {
         if (lastOfExercise) setIndex(index + 1);
         setRest({
-          seconds: restSeconds(exercise.exerciseId),
+          seconds: restSeconds(exercise.exerciseId, profile.restPref),
           exerciseId: upcoming.exerciseId,
           weight: lastOfExercise ? nextSet.weight : sets[i].weight,
           reps: nextSet.reps,

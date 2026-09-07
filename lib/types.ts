@@ -2,6 +2,7 @@ import type { Anchor } from "./schedule";
 import type { TemplateId } from "./templates";
 
 export type Level = "new" | "returning" | "experienced";
+export type RestPref = "short" | "standard" | "long";
 export type Equipment = "barbell" | "dumbbell" | "machine" | "bodyweight" | "kettlebell";
 export type Muscle = "quads" | "hamstrings" | "glutes" | "chest" | "back" | "shoulders" | "arms" | "core";
 
@@ -162,6 +163,8 @@ export interface Profile {
   playlistId?: string;
   /** What to call it on screen. Free text — we cannot read their library. */
   playlistName?: string;
+  /** How long to rest between sets, chosen at signup. Scales restSeconds. */
+  restPref?: RestPref;
   createdAt: string;
 }
 

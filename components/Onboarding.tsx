@@ -4,7 +4,7 @@ import { useState } from "react";
 import Bull, { BULL } from "./Bull";
 import { Pill } from "./ui";
 import { placeDays } from "@/lib/schedule";
-import type { Equipment, Profile } from "@/lib/types";
+import type { Equipment, Profile, RestPref } from "@/lib/types";
 
 /**
  * Every one of these is intrinsic — a reason that is its own payoff. That is
@@ -38,6 +38,12 @@ const REASONS = [
  * and three non-consecutive days. All three correct themselves from what
  * actually gets logged.
  */
+const REST_OPTIONS: { id: RestPref; label: string; hint: string }[] = [
+  { id: "short", label: "Short", hint: "About a minute. Keeps the pace up." },
+  { id: "standard", label: "Standard", hint: "A minute and a half. Right for most lifts." },
+  { id: "long", label: "Long", hint: "Two to three minutes. For heavy strength work." },
+];
+
 export default function Onboarding({
   onDone,
   initialStep = 0,
@@ -49,6 +55,8 @@ export default function Onboarding({
   const [step, setStep] = useState(initialStep);
   const [name, setName] = useState("");
   const [motivation, setMotivation] = useState("");
+  const [restPref, setRestPref] = useState<RestPref>("standard");
+  const [showRestInfo, setShowRestInfo] = useState(false);
 
   const finish = () =>
     onDone({
@@ -58,6 +66,7 @@ export default function Onboarding({
       trainingDays: placeDays(3, new Date().getDay()),
       equipment: ["barbell", "dumbbell", "machine", "bodyweight"] as Equipment[],
       motivation: motivation.trim() || undefined,
+      restPref,
       createdAt: new Date().toISOString(),
     });
 
@@ -119,6 +128,64 @@ export default function Onboarding({
     );
   }
 
+  if (step === 2) {
+    return (
+      <main className="rise mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
+        <div className="flex items-center justify-between gap-4">
+          <p className="label text-cyan">Your pace</p>
+          <button
+            type="button"
+            onClick={finish}
+            className="head tap shrink-0 text-body text-dim transition-colors hover:text-fg"
+          >
+            Skip
+          </button>
+        </div>
+
+        <h1 className="statement mt-5 text-figure text-fg">How long do you rest?</h1>
+        <p className="mt-1.5 text-emphasis text-dim">Between sets. Change it any time.</p>
+
+        <div className="mt-7 flex flex-col gap-2.5">
+          {REST_OPTIONS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => setRestPref(o.id)}
+              className={`rounded-2xl border p-[18px] text-left transition-colors duration-quick ${
+                restPref === o.id ? "border-cyan bg-cyan/10" : "border-line-strong hover:border-fg"
+              }`}
+            >
+              <span className="head block text-emphasis text-fg">{o.label}</span>
+              <span className="mt-0.5 block text-body text-dim">{o.hint}</span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowRestInfo((v) => !v)}
+          aria-expanded={showRestInfo}
+          className="tap mt-4 self-start text-body text-cyan transition-opacity hover:opacity-70"
+        >
+          Do men and women rest differently?
+        </button>
+        {showRestInfo && (
+          <div className="rise mt-2.5 rounded-2xl bg-card p-[18px]">
+            <p className="text-body leading-snug text-dim">
+              A little. Studies suggest women often recover faster between sets, while men moving
+              heavier absolute loads tend to need more. But how hard the set felt and which lift it
+              was matter more than either — so pick what fits today, and change it whenever.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-auto pt-10">
+          <Pill onClick={finish}>Start my first workout</Pill>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="rise mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-center justify-between gap-4">
@@ -170,10 +237,8 @@ export default function Onboarding({
       </div>
 
       <div className="mt-auto pt-10">
-        <p className="mb-3 text-body text-dim">
-          Days, times and weights all come after your first session — not before it.
-        </p>
-        <Pill onClick={finish}>Start my first workout</Pill>
+        <p className="mb-3 text-body text-dim">One quick thing, then you lift.</p>
+        <Pill onClick={() => setStep(2)}>Continue</Pill>
       </div>
     </main>
   );

@@ -1,6 +1,6 @@
 import { allExercises, byId } from "./exercises";
 import { templateOf, defaultTemplates, type TemplateId } from "./templates";
-import type { Equipment, Exercise, Goal, Level, Muscle, PlannedExercise, Routine, Session } from "./types";
+import type { Equipment, Exercise, Goal, Level, Muscle, PlannedExercise, Routine, Session, RestPref } from "./types";
 
 /**
  * The rules engine owns every number in this app: sets, reps, starting load,
@@ -324,11 +324,15 @@ export const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
  *
  * It is guidance, not a deadline. Nothing in the app penalises overrunning it.
  */
-export function restSeconds(exerciseId: string): number {
+export function restSeconds(exerciseId: string, pref: RestPref = "standard"): number {
   const ex = byId(exerciseId);
-  if (!ex) return 90;
-  if (ex.increment === 0) return 60;
-  return ex.compound ? 120 : 90;
+  // Base rest by the kind of lift: a heavy compound needs more than an
+  // isolation, a timed hold least of all.
+  const base = !ex ? 90 : ex.increment === 0 ? 60 : ex.compound ? 120 : 90;
+  // The signup preference shifts all of it up or down together. It is a pace,
+  // not a precise number — someone picks what fits and changes it any time.
+  const mult = pref === "short" ? 0.66 : pref === "long" ? 1.5 : 1;
+  return Math.round((base * mult) / 5) * 5;
 }
 
 /**
