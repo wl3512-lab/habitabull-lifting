@@ -1,25 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" role="img" aria-label="HabitaBull">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 88" role="img" aria-label="HabitaBull">
   <title>HabitaBull</title>
   <!--
-    Head front-on, horns sweeping out and UP.
-
-    Construction: the skull is one rounded mass on the vertical axis; each horn
-    leaves the skull at its widest point (y=46), sweeps outward and down
-    slightly, then turns up to a point. One horn is drawn and mirrored about
-    x=50.
-
-    Why the tips point up. The superseded mark (mark-v1-superseded.svg) curled
-    both tips inward and let the bases meet at centre; rendered below 48px the
-    pair fused into a single bowl and read as a smile, not a bull. Outward,
-    upward tips keep two separate silhouettes at every size, and the skull
-    holds the centre so the gap never closes.
-
-    Symmetric on purpose — the illustrated mascot is a three-quarter view and
-    a stamp has to be square-on or it reads as a mistake when small.
+    A front-facing bull head: a shield with eye cuts, and two tapered horns
+    that sweep out and up to points. Horns are separate paths mirrored about
+    x=50 so both sides are exactly symmetric; the head carries the eyes as
+    evenodd holes. Muzzle is blunt on purpose — a pointed one reads as a fox.
   -->
-  <g fill="currentColor">
-    <path d="M50 28 C62 28 70 34 70 44 C70 60 61 73 50 73 C39 73 30 60 30 44 C30 34 38 28 50 28 Z"/>
-    <path d="M32 46 C21 47 11 42 5 32 C1 25 0 15 3 8 C8 19 15 27 25 31 C29 33 32 36 33 39 Z"/>
-    <path d="M68 46 C79 47 89 42 95 32 C99 25 100 15 97 8 C92 19 85 27 75 31 C71 33 68 36 67 39 Z"/>
+  <g fill="currentColor" fill-rule="evenodd">
+    <path d="M50 26 C43 26 38 27 35 30 C32 33 30 37 30 43 C29 39 25 39 23 42 C26 43 29 44 31 47 C33 54 35 60 39 65 C43 70 47 73 50 73 C53 73 57 70 61 65 C65 60 67 54 69 47 C71 44 74 43 77 42 C75 39 71 39 70 43 C70 37 68 33 65 30 C62 27 57 26 50 26 Z M43 46 C39 45 36 48 38 51 C42 50 45 48 45 46 Z M57 46 C61 45 64 48 62 51 C58 50 55 48 55 46 Z"/>
+    <path d="M37 29 C29 22 17 14 5 12 C7 19 12 27 21 32 C26 35 30 36 34 37 C34 34 35 31 37 29 Z"/>
+    <path transform="translate(100,0) scale(-1,1)" d="M37 29 C29 22 17 14 5 12 C7 19 12 27 21 32 C26 35 30 36 34 37 C34 34 35 31 37 29 Z"/>
   </g>
 </svg>
