@@ -465,6 +465,7 @@ export default function Page() {
       <LogSession
         session={draft}
         history={sessions.filter((s) => s.date !== today)}
+        profile={profile}
         onChange={updateDraft}
         onFinish={finish}
         onExit={() => setView("today")}

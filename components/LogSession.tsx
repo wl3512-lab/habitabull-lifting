@@ -7,10 +7,12 @@ import SetLogged from "./SetLogged";
 import SetRow from "./SetRow";
 import { Pill } from "./ui";
 import { byId, nameOf } from "@/lib/exercises";
-import { personalRecord, restSeconds } from "@/lib/engine";
+import { MUSCLES } from "@/lib/constraints";
+import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight } from "@/lib/engine";
 import { haptic } from "@/lib/haptics";
+import { unlockAudio } from "@/lib/chime";
 import { line } from "@/lib/voice";
-import type { LoggedSet, Session } from "@/lib/types";
+import type { LoggedSet, Muscle, Profile, Session } from "@/lib/types";
 
 /**
  * The working screen, and the one the whole product is judged on. Someone is
@@ -37,6 +39,7 @@ function lastAttempt(history: Session[], exerciseId: string, increment: number) 
 export default function LogSession({
   session,
   history,
+  profile,
   onChange,
   onFinish,
   onExit,
@@ -44,11 +47,16 @@ export default function LogSession({
 }: {
   session: Session;
   history: Session[];
+  profile: Profile;
   onChange: (next: Session) => void;
   onFinish: () => void;
   onExit: () => void;
   onExercise: (id: string) => void;
 }) {
+  // The lift picker for adding to a session mid-way. Null unless open; the
+  // chosen muscle narrows the list the same way the routine editor does.
+  const [addingMuscle, setAddingMuscle] = useState<Muscle | null>(null);
+  const [adding, setAdding] = useState(false);
   const [rest, setRest] = useState<{
     seconds: number;
     exerciseId: string;
@@ -168,6 +176,7 @@ export default function LogSession({
     // says — the bull does not congratulate someone for turning up once, and
     // the product's whole voice is about not claiming a number you cannot back.
     const isBest = increment > 0 && pr > 0 && set.weight > pr;
+    unlockAudio(); // let the rest bell through on iOS later
     haptic(isBest ? "best" : "log");
     setLogged({
       summary: increment === 0 ? `${set.reps} reps` : `${set.weight} lb × ${set.reps}`,
@@ -180,6 +189,25 @@ export default function LogSession({
   function reopenSet(i: number) {
     if (!exercise) return;
     writeSets(exercise.sets.map((s, j) => (j === i ? { ...s, done: false } : s)));
+  }
+
+  // Add a lift to the session in progress. Weight, reps and set count come out
+  // of the same engine that builds the planned day, for this person's level —
+  // a lift added by hand is programmed exactly like one the app chose. Clearing
+  // completedAt reopens a finished day, which is the whole point of "add to
+  // today's session": you already trained, and you are doing a little more.
+  function addLift(exerciseId: string) {
+    const m = byId(exerciseId);
+    const sets: LoggedSet[] = Array.from({ length: LEVEL_SETS[profile.level] }, () => ({
+      weight: m ? startingWeight(m, profile.level) : 0,
+      reps: m ? repsFor(m, profile.level) : 8,
+      done: false,
+    }));
+    const exercises = [...session.exercises, { exerciseId, sets }];
+    onChange({ ...session, exercises, completedAt: undefined });
+    setIndex(exercises.length - 1);
+    setAdding(false);
+    setAddingMuscle(null);
   }
 
   if (!exercise) {
@@ -205,6 +233,64 @@ export default function LogSession({
         resting={logged.resting}
         onSkip={skipConfirm}
       />
+    );
+  }
+
+  if (adding) {
+    const exclude = session.exercises.map((e) => e.exerciseId);
+    const options = addingMuscle ? alternativesFor(addingMuscle, profile.equipment, exclude) : [];
+    return (
+      <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="statement text-figure text-fg">Add a lift</h1>
+          <button
+            type="button"
+            onClick={() => {
+              setAdding(false);
+              setAddingMuscle(null);
+            }}
+            className="head tap text-emphasis text-dim transition-colors hover:text-fg"
+          >
+            Cancel
+          </button>
+        </div>
+        <p className="label mt-6 text-dim">Muscle</p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {MUSCLES.map((mu) => (
+            <button
+              key={mu}
+              type="button"
+              onClick={() => setAddingMuscle(mu)}
+              className={`rounded-full px-3.5 py-2 text-caption capitalize transition-colors ${
+                addingMuscle === mu ? "bg-cyan text-ground" : "bg-raise text-fg"
+              }`}
+            >
+              {mu}
+            </button>
+          ))}
+        </div>
+        {addingMuscle && (
+          <div className="mt-6 flex flex-col gap-2.5">
+            {options.length === 0 ? (
+              <p className="text-body text-dim">
+                Nothing new for that muscle with your equipment.
+              </p>
+            ) : (
+              options.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => addLift(o.id)}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
+                >
+                  <span className="head text-emphasis text-fg">{o.name}</span>
+                  <span className="head text-body text-cyan">Add</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </main>
     );
   }
 
@@ -329,11 +415,29 @@ export default function LogSession({
             </p>
           </>
         ) : isLastExercise ? (
-          <Pill onClick={onFinish} disabled={doneSets === 0}>
-            Finish workout
-          </Pill>
+          <>
+            <Pill onClick={onFinish} disabled={doneSets === 0}>
+              Finish workout
+            </Pill>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70"
+            >
+              Add a lift
+            </button>
+          </>
         ) : (
-          <Pill onClick={() => setIndex(index + 1)}>Next exercise</Pill>
+          <>
+            <Pill onClick={() => setIndex(index + 1)}>Next exercise</Pill>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70"
+            >
+              Add a lift
+            </button>
+          </>
         )}
       </nav>
     </main>

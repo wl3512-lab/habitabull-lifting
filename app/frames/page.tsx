@@ -199,6 +199,7 @@ function gallery(challenge: Challenge) {
               <LogSession
                 session={f.draft}
                 history={f.sessions}
+                profile={f.profile}
                 onChange={f.noop}
                 onFinish={f.noop}
                 onExit={f.noop}
