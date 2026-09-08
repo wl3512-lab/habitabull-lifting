@@ -77,6 +77,12 @@ export default function AfterWorkout({
     month: "long",
   });
 
+  // The finish tiles: minutes (when timed) + lifts + sets + PRs (on a PR day).
+  // Three fit one even row; two or four read best two-up. Fitting the columns to
+  // the count keeps the tiles roomy instead of letting a long minute count push
+  // the row past the screen edge.
+  const statCount = (minutes !== null ? 1 : 0) + 2 + (records.length > 0 ? 1 : 0);
+
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -118,7 +124,7 @@ export default function AfterWorkout({
       <p className="label text-done">Workout complete</p>
       <h1 className="statement mt-2 text-figure text-fg">{session.label}</h1>
 
-      <div className="mt-5 flex gap-2.5">
+      <div className={`mt-5 grid gap-2.5 ${statCount === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
         {minutes !== null && <Stat value={minutes} label="min" />}
         <Stat value={lifts.length} label={lifts.length === 1 ? "lift" : "lifts"} />
         <Stat value={sets} label={sets === 1 ? "set" : "sets"} />

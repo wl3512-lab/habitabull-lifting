@@ -44,7 +44,7 @@ export default function Stepper({
     if (typing) field.current?.select();
   }, [typing]);
 
-  const bump = (dir: 1 | -1) => onChange(Math.max(min, value + dir * step));
+  const bump = (dir: 1 | -1) => onChange(Math.min(max, Math.max(min, value + dir * step)));
 
   function open() {
     setDraft(String(value));
@@ -113,7 +113,7 @@ export default function Stepper({
           type="button"
           onClick={() => bump(1)}
           aria-label={`Increase ${label}`}
-          disabled={typing}
+          disabled={value >= max || typing}
           className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-title leading-none text-cyan transition-colors duration-quick hover:bg-line active:bg-line disabled:opacity-30"
         >
           +
