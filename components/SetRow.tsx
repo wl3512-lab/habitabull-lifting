@@ -21,6 +21,7 @@ export default function SetRow({
   set,
   increment,
   cardio = false,
+  incline = false,
   lastTime,
   onChange,
 }: {
@@ -28,6 +29,8 @@ export default function SetRow({
   increment: number;
   /** Cardio logs one duration in minutes, not weight and reps. */
   cardio?: boolean;
+  /** A cardio machine with a settable incline — logs an incline % as well. */
+  incline?: boolean;
   /** What this set was last time, if there is a last time. */
   lastTime?: string;
   onChange: (next: LoggedSet) => void;
@@ -51,6 +54,17 @@ export default function SetRow({
         suffix={cardio ? "min" : "reps"}
         onChange={(reps) => onChange({ ...set, reps })}
       />
+      {cardio && incline && (
+        <Stepper
+          label="Incline"
+          value={set.weight}
+          step={1}
+          min={0}
+          max={40}
+          suffix="%"
+          onChange={(weight) => onChange({ ...set, weight })}
+        />
+      )}
       {lastTime && (
         <p className="mt-1 flex items-center gap-2.5 text-body text-dim">
           <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-dim" />

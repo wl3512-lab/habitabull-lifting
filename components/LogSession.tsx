@@ -82,6 +82,7 @@ export default function LogSession({
   const meta = exercise ? byId(exercise.exerciseId) : undefined;
   const increment = meta?.increment ?? 5;
   const isCardio = meta?.cardio ?? false;
+  const hasIncline = meta?.incline ?? false;
   const activeSet = exercise ? exercise.sets.findIndex((s) => !s.done) : -1;
   const pr = useMemo(
     () => (exercise ? personalRecord(history, exercise.exerciseId) : 0),
@@ -182,7 +183,11 @@ export default function LogSession({
     unlockAudio(); // let the rest bell through on iOS later
     haptic(isBest ? "best" : "log");
     setLogged({
-      summary: isCardio ? `${set.reps} min` : increment === 0 ? `${set.reps} reps` : `${set.weight} lb × ${set.reps}`,
+      summary: isCardio
+        ? `${set.reps} min${set.weight > 0 ? ` · ${set.weight}% incline` : ""}`
+        : increment === 0
+          ? `${set.reps} reps`
+          : `${set.weight} lb × ${set.reps}`,
       best: isBest,
       resting: !lastOfSession,
       advance,
@@ -463,6 +468,7 @@ export default function LogSession({
             set={exercise.sets[activeSet]}
             increment={increment}
             cardio={isCardio}
+            incline={hasIncline}
             lastTime={lastTime}
             onChange={(next) => updateSet(activeSet, next)}
           />

@@ -460,19 +460,19 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Lifting the elbows off the pad to get more range.", "Stopping short at the bottom, which is where it is hardest."],
   },
   {
-    id: "treadmill", name: "Treadmill", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true,
+    id: "treadmill", name: "Treadmill", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true, incline: true,
     cue: "Run or walk tall. Land under your hips, not out in front.",
     steps: ["Set a pace you can hold a short conversation at.", "Relax the shoulders, quick light steps.", "Ease the pace down for the last minute rather than stopping dead."],
     mistakes: ["Gripping the rails, which takes the work out of it.", "Starting far too fast to hold."],
   },
   {
-    id: "stairmaster", name: "Stairmaster", equipment: "machine", primary: "glutes", increment: 0, compound: false, cardio: true,
+    id: "stairmaster", name: "Stairmaster", equipment: "machine", primary: "glutes", increment: 0, compound: false, cardio: true, incline: true,
     cue: "Stand tall, full steps, no leaning on the rails.",
     steps: ["Set a steady speed you can keep for the whole time.", "Drive through the whole foot on each step.", "Ease the speed down to finish."],
     mistakes: ["Hanging on the rails and leaning back.", "Tiny half-steps instead of full ones."],
   },
   {
-    id: "elliptical", name: "Elliptical", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true,
+    id: "elliptical", name: "Elliptical", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true, incline: true,
     cue: "Push and pull evenly. Let the legs lead, not the arms.",
     steps: ["Set a resistance you can hold a smooth rhythm against.", "Drive through the legs, arms following.", "Spin easy for the last minute."],
     mistakes: ["Bouncing on the toes.", "Letting the arms do the work."],

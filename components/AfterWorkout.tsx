@@ -115,12 +115,11 @@ export default function AfterWorkout({
 
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-      <p className="label text-done">
-        Workout complete{minutes !== null && ` · ${minutes} min`}
-      </p>
+      <p className="label text-done">Workout complete</p>
       <h1 className="statement mt-2 text-figure text-fg">{session.label}</h1>
 
       <div className="mt-5 flex gap-2.5">
+        {minutes !== null && <Stat value={minutes} label="min" />}
         <Stat value={lifts.length} label={lifts.length === 1 ? "lift" : "lifts"} />
         <Stat value={sets} label={sets === 1 ? "set" : "sets"} />
         {records.length > 0 && (
