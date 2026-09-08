@@ -87,6 +87,9 @@ export default function Today({
       trained: done.some((s) => s.date === iso),
       isToday: iso === today,
       planned: profile.trainingDays.includes(i),
+      // A gym day still ahead of you this week — dotted the same orange as the
+      // calendar. A planned day already past stays quiet: absence, not failure.
+      upcoming: iso > today,
     };
   });
 
@@ -512,9 +515,11 @@ export default function Today({
                     ? "border-done bg-done"
                     : d.isToday
                       ? "border-cyan"
-                      : d.planned
-                        ? "border-line"
-                        : "border-raise"
+                      : d.planned && d.upcoming
+                        ? "border-action"
+                        : d.planned
+                          ? "border-line"
+                          : "border-raise"
                 }`}
               />
               <span className={`text-caption ${d.isToday ? "text-fg" : "text-dim"}`}>
