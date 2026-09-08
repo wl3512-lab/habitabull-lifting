@@ -3,6 +3,31 @@ import type { AppState, Exercise, Session, WeighIn } from "./types";
 
 const KEY = "habitabull.v1";
 
+/**
+ * A one-time wipe of every device's local slate.
+ *
+ * Everything this app knows lives in localStorage on one device, so there is no
+ * server switch to clear a tester's data from here. Instead, bumping
+ * RESET_EPOCH makes every device clear all of its habitabull.* keys the next
+ * time it loads — the app state, the crew identity, and the cached crew code
+ * and check-ins together — so a friend who poked at a pre-launch build starts
+ * from a genuinely fresh install. It fires once per epoch and then the app
+ * persists normally again; a later test wave just needs a new date here.
+ */
+const RESET_KEY = "habitabull.reset";
+const RESET_EPOCH = "2026-09-08";
+
+function resetOncePerEpoch(): void {
+  try {
+    if (window.localStorage.getItem(RESET_KEY) === RESET_EPOCH) return;
+    const keys = Object.keys(window.localStorage).filter((k) => k.startsWith("habitabull."));
+    for (const k of keys) window.localStorage.removeItem(k);
+    window.localStorage.setItem(RESET_KEY, RESET_EPOCH);
+  } catch {
+    // Storage blocked (private mode). Nothing persisted, nothing to reset.
+  }
+}
+
 export const EMPTY: AppState = { profile: null, routines: [], sessions: [], goal: null };
 
 /** Local date as YYYY-MM-DD. Never UTC — a 11pm workout belongs to today. */
@@ -13,6 +38,7 @@ export function todayISO(d = new Date()): string {
 
 export function load(): AppState {
   if (typeof window === "undefined") return EMPTY;
+  resetOncePerEpoch();
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return EMPTY;
