@@ -89,14 +89,13 @@ export default function Onboarding({
             "HABITABULL" throws away the capital B in the middle of the name —
             the camel case is the identity, not a styling accident.
 
-            "Lifting" is tucked under the wordmark rather than floating a line
-            below it: tracked out to the wordmark's width, tight leading, so
-            the two read as one lockup instead of two headings.
+            The name stands on its own. "Lifting" used to sit tucked under it,
+            which is why this carried a tightened leading; with the tag gone
+            the wordmark is a single line and takes the ramp's own.
           */}
           <h1 className="mt-4 text-center text-ground">
             <span className="aside block text-title leading-none opacity-80">Welcome to</span>
-            <span className="statement mt-1.5 block text-hero leading-[0.92]">HabitaBull</span>
-            <span className="head block text-body uppercase tracking-[0.34em]">Lifting</span>
+            <span className="statement mt-1.5 block text-hero">HabitaBull</span>
           </h1>
 
           <label htmlFor="name" className="head mt-9 block text-emphasis text-ground">
