@@ -69,12 +69,7 @@ export default function TabBar({
                     className={`h-5 w-auto transition-opacity duration-quick ${on ? "opacity-100" : "opacity-45"}`}
                   />
                 ) : (
-                  <span
-                    aria-hidden
-                    className={`mb-1.5 h-1.5 w-1.5 rounded-full transition-colors duration-quick ${
-                      on ? "bg-cyan" : "bg-line-strong"
-                    }`}
-                  />
+                  <TabGlyph id={t.id} active={on} />
                 )}
                 <span
                   className={`head text-caption transition-colors duration-quick ${
@@ -89,6 +84,40 @@ export default function TabBar({
         })}
       </ul>
     </nav>
+  );
+}
+
+/**
+ * Simple line glyphs for the flat tabs, drawn at the same weight as the raised
+ * trend so the five icons read as one set. Colour carries the active state, the
+ * same cyan the dots used to.
+ */
+function TabGlyph({ id, active }: { id: Tab; active: boolean }) {
+  const cls = `h-5 w-5 transition-colors duration-quick ${active ? "text-cyan" : "text-dim"}`;
+  if (id === "calendar")
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+        <path d="M3.5 9.5h17" />
+        <path d="M8 3.5v3" />
+        <path d="M16 3.5v3" />
+      </svg>
+    );
+  if (id === "crew")
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="8.5" cy="9" r="2.6" />
+        <circle cx="15.5" cy="9" r="2.6" />
+        <path d="M4 19a4.5 4.5 0 0 1 9 0" />
+        <path d="M11 19a4.5 4.5 0 0 1 9 0" />
+      </svg>
+    );
+  // profile
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={cls} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8.5" r="3.2" />
+      <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+    </svg>
   );
 }
 
