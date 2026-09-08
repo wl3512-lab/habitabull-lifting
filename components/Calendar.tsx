@@ -12,7 +12,7 @@ import {
 } from "@/lib/calendar";
 import { addPhoto, deletePhoto, listPhotos, photoUrl, type PhotoMeta } from "@/lib/photos";
 import { buildIcs, googleUrl } from "@/lib/ics";
-import type { Profile, Session } from "@/lib/types";
+import type { Profile, Routine, Session } from "@/lib/types";
 
 const DAY_HEADS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = [
@@ -82,10 +82,13 @@ function Thumb({
 export default function Calendar({
   profile,
   sessions,
+  routines,
   onOpenDay,
 }: {
   profile: Profile;
   sessions: Session[];
+  /** The weekly plan, so the calendar can dot the days you are due in the gym. */
+  routines: Routine[];
   onOpenDay: (date: string) => void;
 }) {
   const today = new Date();
@@ -96,7 +99,18 @@ export default function Calendar({
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Tapping a scheduled dot names the day type here rather than opening an
+  // empty detail screen for a day that has not happened yet.
+  const [peek, setPeek] = useState<{ iso: string; label: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Which day type is planned for each weekday, so a day you are due in the gym
+  // can be dotted and named on tap.
+  const schedule = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const r of routines) m.set(r.day, r.label);
+    return m;
+  }, [routines]);
 
   useEffect(() => {
     listPhotos().then(setPhotos);
@@ -238,18 +252,26 @@ export default function Calendar({
                   {d}
                 </div>
               ))}
-              {rows.flat().map((c, i) => (
+              {rows.flat().map((c, i) => {
+                // A day you are due in the gym: its weekday is on the plan and
+                // you have not already trained it. Named on tap, dotted here.
+                const sched =
+                  c.iso && !c.trained && (c.future || c.today)
+                    ? schedule.get(new Date(c.iso + "T00:00:00").getDay())
+                    : undefined;
                 // A leading blank in the month grid is spacing, not a control.
-                // Rendering it as a disabled, nameless button puts an unlabelled
-                // stop in the accessibility tree for nothing.
-                c.iso === null ? (
+                return c.iso === null ? (
                   <div key={`pad-${i}`} aria-hidden className="min-h-12" />
                 ) : (
                 <button
                   key={c.iso}
                   type="button"
-                  onClick={() => onOpenDay(c.iso!)}
-                  aria-label={`${c.day} ${MONTHS[month]}${c.trained ? ", trained" : ""}`}
+                  onClick={() =>
+                    sched ? setPeek({ iso: c.iso!, label: sched }) : (setPeek(null), onOpenDay(c.iso!))
+                  }
+                  aria-label={`${c.day} ${MONTHS[month]}${
+                    c.trained ? ", trained" : sched ? `, ${sched} planned` : ""
+                  }`}
                   className="flex min-h-12 flex-col items-center justify-center py-0.5"
                 >
                   <span
@@ -269,11 +291,13 @@ export default function Calendar({
                   </span>
                   <span
                     aria-hidden
-                    className={`mt-0.5 h-1 w-1 rounded-full ${c.hasPhoto ? "bg-cyan" : "bg-transparent"}`}
+                    className={`mt-0.5 h-1 w-1 rounded-full ${
+                      sched ? "bg-action" : c.hasPhoto ? "bg-cyan" : "bg-transparent"
+                    }`}
                   />
                 </button>
-                )
-              ))}
+                );
+              })}
             </div>
 
             <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-caption text-dim">
@@ -286,7 +310,24 @@ export default function Calendar({
               <li className="flex items-center gap-2">
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-cyan" /> Photo
               </li>
+              <li className="flex items-center gap-2">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-action" /> Gym day
+              </li>
             </ul>
+
+            {peek && (
+              <p className="mt-3 text-body">
+                <span className="text-dim">
+                  {new Date(peek.iso + "T00:00:00").toLocaleDateString(undefined, {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  ·{" "}
+                </span>
+                <span className="text-action">{peek.label}</span>
+              </p>
+            )}
           </div>
 
           {/*

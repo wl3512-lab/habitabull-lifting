@@ -379,7 +379,7 @@ function gallery(challenge: Challenge) {
               />
             </Frame>
             <Frame n="11" name="Calendar" tab="calendar" note="Weeks, not days. The Figma's “you're on fire” was cut — PRODUCT.md bans hustle language by name.">
-              <Calendar profile={f.profile} sessions={f.sessions} onOpenDay={f.noop} />
+              <Calendar profile={f.profile} sessions={f.sessions} routines={f.routines ?? []} onOpenDay={f.noop} />
             </Frame>
             <Frame n="17" name="Day detail" note="What you lifted, what you wrote, what you looked like. A rest day says so rather than apologising.">
               <DayDetail

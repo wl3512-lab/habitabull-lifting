@@ -67,7 +67,8 @@ export default function BodyWeight({
         {weighIns.length === 0 && !open ? (
           <>
             <p className="text-body text-dim">
-              Weigh in whenever you feel like it. Nothing here counts against you.
+              Weigh in whenever you feel like it. Nothing here counts against you,
+              and it is never shared with your crew. It stays on your phone.
             </p>
             <div className="mt-4">
               <Pill size="sm" variant="ghost" onClick={() => setOpen(true)}>
@@ -97,6 +98,9 @@ export default function BodyWeight({
                 />
               </div>
             )}
+            <p className="mt-3 text-caption text-dim">
+              Private to you. Your crew never sees your weight.
+            </p>
           </>
         )}
 

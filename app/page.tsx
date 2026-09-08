@@ -462,6 +462,7 @@ export default function Page() {
       <Calendar
         profile={profile}
         sessions={sessions}
+        routines={routines}
         onOpenDay={(d: string) => {
           setDayOpen(d);
           setView("day");

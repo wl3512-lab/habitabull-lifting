@@ -22,6 +22,7 @@ export default function SetRow({
   increment,
   cardio = false,
   incline = false,
+  hold = false,
   lastTime,
   onChange,
 }: {
@@ -31,6 +32,8 @@ export default function SetRow({
   cardio?: boolean;
   /** A cardio machine with a settable incline — logs an incline % as well. */
   incline?: boolean;
+  /** An isometric hold (plank, wall sit): logs time in seconds, not reps. */
+  hold?: boolean;
   /** What this set was last time, if there is a last time. */
   lastTime?: string;
   onChange: (next: LoggedSet) => void;
@@ -47,11 +50,11 @@ export default function SetRow({
         />
       )}
       <Stepper
-        label={cardio ? "Duration" : "Reps"}
+        label={cardio ? "Duration" : hold ? "Time" : "Reps"}
         value={set.reps}
-        step={cardio ? 5 : 1}
-        min={cardio ? 5 : 1}
-        suffix={cardio ? "min" : "reps"}
+        step={cardio || hold ? 5 : 1}
+        min={cardio || hold ? 5 : 1}
+        suffix={cardio ? "min" : hold ? "sec" : "reps"}
         onChange={(reps) => onChange({ ...set, reps })}
       />
       {cardio && incline && (

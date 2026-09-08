@@ -31,7 +31,7 @@ function lastAttempt(history: Session[], exerciseId: string, increment: number) 
     const sets = ex?.sets.filter((x) => x.done) ?? [];
     if (sets.length === 0) continue;
     const best = sets.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
-    return byId(exerciseId)?.cardio ? `${best.reps} min` : increment === 0 ? `${best.reps} reps` : `${best.weight} lb × ${best.reps}`;
+    return byId(exerciseId)?.cardio ? `${best.reps} min` : byId(exerciseId)?.hold ? `${best.reps} sec` : increment === 0 ? `${best.reps} reps` : `${best.weight} lb × ${best.reps}`;
   }
   return undefined;
 }
@@ -90,6 +90,7 @@ export default function LogSession({
   const increment = meta?.increment ?? 5;
   const isCardio = meta?.cardio ?? false;
   const hasIncline = meta?.incline ?? false;
+  const isHold = meta?.hold ?? false;
   const activeSet = exercise ? exercise.sets.findIndex((s) => !s.done) : -1;
   const pr = useMemo(
     () => (exercise ? personalRecord(history, exercise.exerciseId) : 0),
@@ -192,9 +193,11 @@ export default function LogSession({
     setLogged({
       summary: isCardio
         ? `${set.reps} min${set.weight > 0 ? ` · ${set.weight}% incline` : ""}`
-        : increment === 0
-          ? `${set.reps} reps`
-          : `${set.weight} lb × ${set.reps}`,
+        : isHold
+          ? `${set.reps} sec`
+          : increment === 0
+            ? `${set.reps} reps`
+            : `${set.weight} lb × ${set.reps}`,
       best: isBest,
       resting: !lastOfSession,
       advance,
@@ -532,6 +535,7 @@ export default function LogSession({
             increment={increment}
             cardio={isCardio}
             incline={hasIncline}
+            hold={isHold}
             lastTime={lastTime}
             onChange={(next) => updateSet(activeSet, next)}
           />
