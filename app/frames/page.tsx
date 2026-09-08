@@ -203,6 +203,7 @@ function gallery(challenge: Challenge) {
                 history={f.sessions}
                 profile={f.profile}
                 onChange={f.noop}
+                onAddCustom={f.noop}
                 onFinish={f.noop}
                 onExit={f.noop}
                 onExercise={f.noop}

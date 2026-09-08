@@ -6,13 +6,13 @@ import RestTimer from "./RestTimer";
 import SetLogged from "./SetLogged";
 import SetRow from "./SetRow";
 import { Pill } from "./ui";
-import { byId, cardioLifts, nameOf } from "@/lib/exercises";
-import { MUSCLES } from "@/lib/constraints";
+import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
+import { EQUIPMENT, MUSCLES } from "@/lib/constraints";
 import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight } from "@/lib/engine";
 import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
 import { line } from "@/lib/voice";
-import type { LoggedSet, Muscle, Profile, Session } from "@/lib/types";
+import type { Equipment, Exercise, LoggedSet, Muscle, Profile, Session } from "@/lib/types";
 
 /**
  * The working screen, and the one the whole product is judged on. Someone is
@@ -41,6 +41,7 @@ export default function LogSession({
   history,
   profile,
   onChange,
+  onAddCustom,
   onFinish,
   onExit,
   onExercise,
@@ -49,6 +50,8 @@ export default function LogSession({
   history: Session[];
   profile: Profile;
   onChange: (next: Session) => void;
+  /** Persist a lift the library did not have, so it is there next time too. */
+  onAddCustom: (e: Exercise) => void;
   onFinish: () => void;
   onExit: () => void;
   onExercise: (id: string) => void;
@@ -57,6 +60,10 @@ export default function LogSession({
   // chosen muscle narrows the list the same way the routine editor does.
   const [addingMuscle, setAddingMuscle] = useState<Muscle | "cardio" | null>(null);
   const [adding, setAdding] = useState(false);
+  // The "not seeing it?" fallback: name a lift the library is missing.
+  const [ownOpen, setOwnOpen] = useState(false);
+  const [ownName, setOwnName] = useState("");
+  const [ownEquip, setOwnEquip] = useState<Equipment>("machine");
   // The exercise jump list — pick which lift to do next, any time.
   const [picking, setPicking] = useState(false);
   const [rest, setRest] = useState<{
@@ -220,6 +227,19 @@ export default function LogSession({
     setAddingMuscle(null);
   }
 
+  // The fallback for a machine or lift the library does not have: name it, file
+  // it under the muscle you were browsing, and it joins the session and is kept
+  // as a custom for next time. No network needed — this is the offline path.
+  function addOwn() {
+    const name = ownName.trim();
+    if (!name || !addingMuscle || addingMuscle === "cardio") return;
+    const made = makeCustomExercise(name, addingMuscle, ownEquip, false);
+    onAddCustom(made); // registers it synchronously, so addLift can find it
+    setOwnName("");
+    setOwnOpen(false);
+    addLift(made.id);
+  }
+
   if (!exercise) {
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
@@ -294,25 +314,68 @@ export default function LogSession({
           </button>
         </div>
         {addingMuscle && (
-          <div className="mt-6 flex flex-col gap-2.5">
-            {options.length === 0 ? (
-              <p className="text-body text-dim">
-                Nothing new for that muscle with your equipment.
-              </p>
-            ) : (
-              options.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => addLift(o.id)}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
-                >
-                  <span className="head text-emphasis text-fg">{o.name}</span>
-                  <span className="head text-body text-cyan">Add</span>
-                </button>
-              ))
+          <>
+            <div className="mt-6 flex flex-col gap-2.5">
+              {options.length === 0 ? (
+                <p className="text-body text-dim">
+                  Nothing new for that muscle with your equipment.
+                </p>
+              ) : (
+                options.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => addLift(o.id)}
+                    className="flex items-center justify-between gap-3 rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
+                  >
+                    <span className="head text-emphasis text-fg">{o.name}</span>
+                    <span className="head text-body text-cyan">Add</span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            {addingMuscle !== "cardio" && (
+              <div className="mt-3">
+                {!ownOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setOwnOpen(true)}
+                    className="tap head text-body text-cyan transition-opacity hover:opacity-80"
+                  >
+                    Not seeing it? Add your own
+                  </button>
+                ) : (
+                  <div className="rise flex flex-col gap-3 rounded-2xl bg-card p-[18px]">
+                    <input
+                      value={ownName}
+                      onChange={(e) => setOwnName(e.target.value)}
+                      autoFocus
+                      placeholder="Name it (e.g. Hip Abductor)"
+                      className="w-full rounded-xl bg-raise p-3.5 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      {EQUIPMENT.map((eq) => (
+                        <button
+                          key={eq}
+                          type="button"
+                          onClick={() => setOwnEquip(eq)}
+                          className={`rounded-full px-3.5 py-2 text-caption capitalize transition-colors ${
+                            ownEquip === eq ? "bg-cyan text-ground" : "bg-raise text-fg"
+                          }`}
+                        >
+                          {eq}
+                        </button>
+                      ))}
+                    </div>
+                    <Pill onClick={addOwn} disabled={!ownName.trim()} className="h-12">
+                      Add it
+                    </Pill>
+                  </div>
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
       </main>
     );

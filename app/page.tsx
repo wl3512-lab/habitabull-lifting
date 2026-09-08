@@ -522,6 +522,11 @@ export default function Page() {
         history={sessions.filter((s) => s.date !== today)}
         profile={profile}
         onChange={updateDraft}
+        onAddCustom={(e) => {
+          const next = [...(state.customExercises ?? []), e];
+          setCustomExercises(next);
+          setState((s) => ({ ...s, customExercises: next }));
+        }}
         onFinish={finish}
         onExit={() => setView("today")}
         onExercise={(id) => openExercise(id, "log")}
