@@ -460,6 +460,118 @@ export const EXERCISES: Exercise[] = [
     mistakes: ["Lifting the elbows off the pad to get more range.", "Stopping short at the bottom, which is where it is hardest."],
   },
   {
+    id: "hip-abductor", name: "Hip Abductor", equipment: "machine", primary: "glutes", increment: 2.5, compound: false,
+    cue: "Drive the pads apart with your outer hips, not by leaning back.",
+    steps: [
+      "Sit tall, pads against the outside of your knees",
+      "Push your knees apart to the machine's full range",
+      "Return slow, keeping the tension in your glutes",
+    ],
+    mistakes: [
+      "Leaning back to force the weight open",
+      "Snapping the legs apart",
+      "Cutting the range short",
+    ],
+  },
+  {
+    id: "hip-adductor", name: "Hip Adductor", equipment: "machine", primary: "glutes", increment: 2.5, compound: false,
+    cue: "Squeeze from the inner thigh, and control the way back out.",
+    steps: [
+      "Sit tall, pads against the inside of your knees",
+      "Squeeze your knees together to the full range",
+      "Open slow, never letting the stack pull you back",
+    ],
+    mistakes: [
+      "Letting the pads fling your legs open",
+      "Loading more than you can control",
+      "Rushing the return",
+    ],
+  },
+  {
+    id: "seated-leg-curl", name: "Seated Leg Curl", equipment: "machine", primary: "hamstrings", increment: 2.5, compound: false,
+    cue: "Curl your heels under the seat with your hips pinned to the pad.",
+    steps: [
+      "Pad low on your shins, thighs strapped down",
+      "Curl your heels down and under as far as they go",
+      "Return slow, stopping just short of straight",
+    ],
+    mistakes: [
+      "Lifting your hips off the pad",
+      "Half-repping the curl",
+      "Letting the weight drop back",
+    ],
+  },
+  {
+    id: "calf-raise", name: "Calf Raise", equipment: "machine", primary: "calves", increment: 2.5, compound: false,
+    cue: "Full stretch at the bottom, tall on your toes at the top.",
+    steps: [
+      "Balls of your feet on the platform, heels hanging",
+      "Drop the heels for a deep stretch",
+      "Press all the way onto your toes and pause",
+    ],
+    mistakes: [
+      "Bouncing out of the bottom",
+      "Cutting the height short",
+      "Rushing the reps",
+    ],
+  },
+  {
+    id: "hack-squat", name: "Hack Squat", equipment: "machine", primary: "quads", increment: 2.5, compound: true,
+    cue: "Sit down between your heels, knees tracking over your toes.",
+    steps: [
+      "Shoulders under the pads, feet mid-platform",
+      "Break at the knees and hips, sink to depth",
+      "Drive through your whole foot back up",
+    ],
+    mistakes: [
+      "Coming up onto your toes",
+      "Cutting the depth short",
+      "Letting the knees cave inward",
+    ],
+  },
+  {
+    id: "rear-delt-fly-machine", name: "Rear Delt Fly", equipment: "machine", primary: "shoulders", increment: 2.5, compound: false,
+    cue: "Lead with your elbows, not your hands.",
+    steps: [
+      "Chest on the pad, handles out in front",
+      "Sweep your arms back in a wide arc",
+      "Squeeze the rear delts, then return slow",
+    ],
+    mistakes: [
+      "Shrugging the traps up",
+      "Bending the arms to cheat the weight",
+      "Rushing the return",
+    ],
+  },
+  {
+    id: "assisted-pull-up", name: "Assisted Pull-up", equipment: "machine", primary: "back", increment: 2.5, compound: true,
+    cue: "More weight on the pad means more help, so chase less over time.",
+    steps: [
+      "Kneel or stand on the pad, hands wide",
+      "Pull your chest toward the bar, elbows down",
+      "Lower under control to a full hang",
+    ],
+    mistakes: [
+      "Bouncing out of the bottom",
+      "Stopping short of a full hang",
+      "Shrugging instead of pulling",
+    ],
+  },
+  {
+    id: "assisted-dip", name: "Assisted Dip", equipment: "machine", primary: "chest", increment: 2.5, compound: true,
+    cue: "Lean forward to feel it in your chest; stay upright for triceps.",
+    steps: [
+      "Kneel on the pad, arms locked out",
+      "Lower until your shoulders reach your elbows",
+      "Press back up to a strong lockout",
+    ],
+    mistakes: [
+      "Dropping too fast",
+      "Cutting the depth short",
+      "Letting the shoulders roll forward",
+    ],
+  },
+  {
     id: "treadmill", name: "Treadmill", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true, incline: true,
     cue: "Run or walk tall. Land under your hips, not out in front.",
     steps: ["Set a pace you can hold a short conversation at.", "Relax the shoulders, quick light steps.", "Ease the pace down for the last minute rather than stopping dead."],

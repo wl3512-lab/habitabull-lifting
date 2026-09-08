@@ -21,6 +21,7 @@ import Today from "@/components/Today";
 import WeekSetup from "@/components/WeekSetup";
 import {
   buildSession,
+  rememberLineup,
   generateRoutine,
   mergeRebuild,
   personalRecord,
@@ -198,10 +199,13 @@ export default function Page() {
       ...s,
       sessions: upsertSession(
         s.sessions.filter((x) => x.date !== today || x.completedAt),
-        mergeRebuild(
-          sessionFor(s.sessions, today),
-          buildSession(rebuilt, s.sessions, profile.level, today)
-        )
+        {
+          ...mergeRebuild(
+            sessionFor(s.sessions, today),
+            buildSession(rebuilt, s.sessions, profile.level, today)
+          ),
+          adapted: true,
+        }
       ),
     }));
   }
@@ -239,15 +243,25 @@ export default function Page() {
       .map((e) => e.exerciseId);
 
     setRecords(hit);
-    setState((s) => ({
-      ...s,
-      sessions: upsertSession(s.sessions, {
-        ...draft,
-        // Drop untouched sets so history reflects what was actually done.
-        exercises: draft.exercises.map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) })),
-        completedAt: new Date().toISOString(),
-      }),
-    }));
+    setState((s) => {
+      // Remember the lineup you actually trained. buildSession takes its
+      // exercise list from the routine, so writing today's lineup back means the
+      // next time this day comes up your workout returns — the lift you added,
+      // the one you dropped — instead of the starting template. Weights still
+      // progress from history, so only the choice of exercises is carried over.
+      // A one-off "something hurts" rebuild is exempt: it changes only today.
+      return {
+        ...s,
+        // Next time this day comes up, the workout you actually did returns.
+        routines: rememberLineup(s.routines, draft),
+        sessions: upsertSession(s.sessions, {
+          ...draft,
+          // Drop untouched sets so history reflects what was actually done.
+          exercises: draft.exercises.map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) })),
+          completedAt: new Date().toISOString(),
+        }),
+      };
+    });
     setView("done");
   }
 

@@ -13,11 +13,12 @@ import {
   mergeRebuild,
   alternativesFor,
   musclesIn,
+  rememberLineup,
   repsFor,
   suggestFrom,
 } from "./engine";
 import { byId } from "./exercises";
-import type { Equipment, Session } from "./types";
+import type { Equipment, Routine, Session } from "./types";
 
 const ALL: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight", "kettlebell"];
 
@@ -541,5 +542,64 @@ describe("favourites", () => {
 
   it("ignores a favourite that is not a real lift", () => {
     expect(suggestFrom(["not-a-lift"], KIT)).toEqual([]);
+  });
+});
+
+describe("rememberLineup", () => {
+  const legDay: Routine = {
+    day: 1,
+    label: "Leg day",
+    exercises: [
+      { exerciseId: "back-squat", sets: 3, reps: 8, weight: 135 },
+      { exerciseId: "leg-press", sets: 3, reps: 10, weight: 180 },
+    ],
+  };
+  const pushDay: Routine = {
+    day: 3,
+    label: "Push day",
+    exercises: [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 95 }],
+  };
+
+  /** A finished Leg day where a lift was added and one dropped. */
+  function trained(label: string, ids: string[], extra: Partial<Session> = {}): Session {
+    return {
+      date: "2026-09-08",
+      label,
+      completedAt: "2026-09-08T12:00:00.000Z",
+      exercises: ids.map((id) => ({
+        exerciseId: id,
+        sets: [{ weight: 100, reps: 9, done: true }],
+      })),
+      ...extra,
+    };
+  }
+
+  it("writes the trained lineup back onto the matching routine", () => {
+    const out = rememberLineup([legDay, pushDay], trained("Leg day", ["back-squat", "hip-abductor"]));
+    const leg = out.find((r) => r.label === "Leg day")!;
+    expect(leg.exercises.map((e) => e.exerciseId)).toEqual(["back-squat", "hip-abductor"]);
+    // leg-press was not done, so it is dropped; the added machine is kept.
+    expect(leg.exercises.some((e) => e.exerciseId === "leg-press")).toBe(false);
+  });
+
+  it("only touches the routine whose label matches", () => {
+    const out = rememberLineup([legDay, pushDay], trained("Leg day", ["back-squat"]));
+    expect(out.find((r) => r.label === "Push day")).toEqual(pushDay);
+  });
+
+  it("carries the performed reps and set count as the new seed", () => {
+    const out = rememberLineup([legDay], trained("Leg day", ["back-squat"]));
+    const sq = out[0].exercises[0];
+    expect(sq).toEqual({ exerciseId: "back-squat", sets: 1, reps: 9, weight: 100 });
+  });
+
+  it("leaves the plan alone for a one-off constraint rebuild", () => {
+    const out = rememberLineup([legDay], trained("Leg day", ["back-squat"], { adapted: true }));
+    expect(out).toEqual([legDay]);
+  });
+
+  it("never blanks a routine from an empty session", () => {
+    const out = rememberLineup([legDay], { date: "2026-09-08", label: "Leg day", exercises: [] });
+    expect(out).toEqual([legDay]);
   });
 });

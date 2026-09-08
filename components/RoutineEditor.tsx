@@ -13,6 +13,7 @@ const MUSCLES: { id: Muscle; label: string }[] = [
   { id: "quads", label: "Quads" },
   { id: "hamstrings", label: "Hamstrings" },
   { id: "glutes", label: "Glutes" },
+  { id: "calves", label: "Calves" },
   { id: "chest", label: "Chest" },
   { id: "back", label: "Back" },
   { id: "shoulders", label: "Shoulders" },

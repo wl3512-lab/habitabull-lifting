@@ -4,7 +4,7 @@ import type { TemplateId } from "./templates";
 export type Level = "new" | "returning" | "experienced";
 export type RestPref = "short" | "standard" | "long";
 export type Equipment = "barbell" | "dumbbell" | "machine" | "bodyweight" | "kettlebell";
-export type Muscle = "quads" | "hamstrings" | "glutes" | "chest" | "back" | "shoulders" | "arms" | "core";
+export type Muscle = "quads" | "hamstrings" | "glutes" | "calves" | "chest" | "back" | "shoulders" | "arms" | "core";
 
 export interface Exercise {
   id: string;
@@ -84,6 +84,12 @@ export interface Session {
    * free field, never a mood picker or a set of tags.
    */
   note?: string;
+  /**
+   * This day was rebuilt to work around a constraint ("something hurts"). It is
+   * a one-off for today, so finishing it must not write the reduced lineup back
+   * over the saved plan the way a deliberately edited day does.
+   */
+  adapted?: boolean;
 }
 
 /**

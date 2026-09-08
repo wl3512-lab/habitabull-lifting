@@ -254,6 +254,40 @@ export function buildSession(routine: Routine, sessions: Session[], level: Level
 }
 
 /**
+ * Carry a finished day's lineup back onto its routine.
+ *
+ * buildSession takes a day's exercise *list* from the routine, so the next time
+ * that day comes up it rebuilds from the original template and any lift you
+ * added or dropped last time is forgotten. Writing the lineup you actually
+ * trained back onto the matching routine (matched by label, the day's name)
+ * makes your workout return instead. Only the choice of exercises is carried
+ * over; weights keep progressing from history through nextTarget.
+ *
+ * Two exemptions: a one-off "something hurts" rebuild (`adapted`) changes only
+ * today and must not overwrite the plan, and an empty session never blanks a
+ * routine.
+ */
+export function rememberLineup(routines: Routine[], session: Session): Routine[] {
+  if (session.adapted || session.exercises.length === 0) return routines;
+  return routines.map((r) =>
+    r.label === session.label
+      ? {
+          ...r,
+          exercises: session.exercises.map((e) => ({
+            exerciseId: e.exerciseId,
+            sets: e.sets.length,
+            reps:
+              e.sets[0]?.reps ??
+              r.exercises.find((p) => p.exerciseId === e.exerciseId)?.reps ??
+              10,
+            weight: e.sets[0]?.weight ?? 0,
+          })),
+        }
+      : r
+  );
+}
+
+/**
  * Re-pick a day's exercises under new constraints — different equipment, or a
  * muscle group to work around. The muscles targeted stay the same minus the
  * ones being avoided; only the exercise choices change.
