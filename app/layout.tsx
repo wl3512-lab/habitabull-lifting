@@ -23,6 +23,13 @@ const barlow = Barlow({
 });
 
 export const metadata: Metadata = {
+  /*
+    Where a relative image URL below is resolved from. Without it Next falls
+    back to the per-deployment host, and the invite preview would then point at
+    a URL that changes with every push — the stable alias is the only one worth
+    putting in somebody's message thread.
+  */
+  metadataBase: new URL("https://habitabull.vercel.app"),
   title: "HabitaBull",
   description: "Most people quit by week three. This one is built for coming back.",
   applicationName: "HabitaBull",
