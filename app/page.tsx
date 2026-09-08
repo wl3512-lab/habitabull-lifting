@@ -22,6 +22,8 @@ import WeekSetup from "@/components/WeekSetup";
 import {
   buildSession,
   rememberLineup,
+  mergeDayLibrary,
+  overlayDayLibrary,
   generateRoutine,
   mergeRebuild,
   personalRecord,
@@ -250,10 +252,13 @@ export default function Page() {
       // the one you dropped — instead of the starting template. Weights still
       // progress from history, so only the choice of exercises is carried over.
       // A one-off "something hurts" rebuild is exempt: it changes only today.
+      // Next time this day comes up, the workout you actually did returns; the
+      // day library keeps it per day type, so pressing that day again does too.
+      const routines = rememberLineup(s.routines, draft);
       return {
         ...s,
-        // Next time this day comes up, the workout you actually did returns.
-        routines: rememberLineup(s.routines, draft),
+        routines,
+        dayLibrary: mergeDayLibrary(s.dayLibrary, routines),
         sessions: upsertSession(s.sessions, {
           ...draft,
           // Drop untouched sets so history reflects what was actually done.
@@ -325,6 +330,7 @@ export default function Page() {
       <RoutineEditor
         profile={profile}
         routines={routines}
+        library={state.dayLibrary}
         onAddCustom={(e) => {
           /*
             The registry is filled here, not left to `save`. It is a module
@@ -344,6 +350,7 @@ export default function Page() {
           setState((s) => ({
             ...s,
             routines: r,
+            dayLibrary: mergeDayLibrary(s.dayLibrary, r),
             profile: s.profile ? { ...s.profile, planChosen: true } : s.profile,
           }));
           setView("today");
@@ -359,10 +366,15 @@ export default function Page() {
         profile={profile}
         onSave={(p: Profile) => {
           // A changed week means changed routines; sessions already logged stay.
+          // Overlay the saved day library so a rebuilt week keeps the day types
+          // the user has already shaped, instead of reverting them to defaults.
           setState((s) => ({
             ...s,
             profile: p,
-            routines: generateRoutine(p.level, p.trainingDays, p.equipment),
+            routines: overlayDayLibrary(
+              generateRoutine(p.level, p.trainingDays, p.equipment),
+              s.dayLibrary
+            ),
           }));
           // First time through, days are only half the answer — go straight on
           // to what each day is, rather than dropping her back on a home screen

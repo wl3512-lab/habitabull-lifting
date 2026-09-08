@@ -288,6 +288,40 @@ export function rememberLineup(routines: Routine[], session: Session): Routine[]
 }
 
 /**
+ * Remember the user's version of each named day type, keyed by template. Called
+ * whenever routines change, so pressing "Leg day" later brings back the leg day
+ * they actually shaped, not the generated default. Full-body is skipped: it is
+ * meant to vary slot to slot.
+ */
+export function mergeDayLibrary(
+  library: Record<string, PlannedExercise[]> = {},
+  routines: Routine[]
+): Record<string, PlannedExercise[]> {
+  const next = { ...library };
+  for (const r of routines) {
+    if (r.template && r.template !== "full-body" && r.exercises.length) {
+      next[r.template] = r.exercises;
+    }
+  }
+  return next;
+}
+
+/**
+ * When days are generated from templates, swap in the user's saved version of
+ * any day type they have shaped before, so a rebuilt week keeps their days.
+ */
+export function overlayDayLibrary(
+  routines: Routine[],
+  library: Record<string, PlannedExercise[]> = {}
+): Routine[] {
+  return routines.map((r) =>
+    r.template && r.template !== "full-body" && library[r.template]?.length
+      ? { ...r, exercises: library[r.template] }
+      : r
+  );
+}
+
+/**
  * Re-pick a day's exercises under new constraints — different equipment, or a
  * muscle group to work around. The muscles targeted stay the same minus the
  * ones being avoided; only the exercise choices change.

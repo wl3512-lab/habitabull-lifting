@@ -1,5 +1,5 @@
 import { setCustomExercises } from "./exercises";
-import type { AppState, Exercise, Session, WeighIn } from "./types";
+import type { AppState, Exercise, PlannedExercise, Session, WeighIn } from "./types";
 
 const KEY = "habitabull.v1";
 
@@ -56,6 +56,7 @@ export function load(): AppState {
       goalDismissed: parsed.goalDismissed,
       challenge: parsed.challenge,
       weighIns: saneWeighIns(parsed.weighIns),
+      dayLibrary: saneDayLibrary(parsed.dayLibrary),
     };
   } catch {
     return EMPTY;
@@ -81,6 +82,25 @@ function saneWeighIns(list: unknown): WeighIn[] {
         (w as WeighIn).lb > 0
     )
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * The saved day-per-template library came from localStorage too. Keep only
+ * entries that are arrays of things with an exerciseId; anything malformed is
+ * dropped rather than reaching the routine builder as a bad plan.
+ */
+function saneDayLibrary(v: unknown): Record<string, PlannedExercise[]> | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const out: Record<string, PlannedExercise[]> = {};
+  for (const [k, list] of Object.entries(v as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    const items = list.filter(
+      (p): p is PlannedExercise =>
+        Boolean(p) && typeof p === "object" && typeof (p as PlannedExercise).exerciseId === "string"
+    );
+    if (items.length) out[k] = items;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /**

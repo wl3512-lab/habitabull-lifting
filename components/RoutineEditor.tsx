@@ -37,6 +37,7 @@ const MUSCLES: { id: Muscle; label: string }[] = [
 export default function RoutineEditor({
   profile,
   routines,
+  library,
   onSave,
   onAddCustom,
   initialAdding = null,
@@ -44,6 +45,8 @@ export default function RoutineEditor({
 }: {
   profile: Profile;
   routines: Routine[];
+  /** The user's saved version of each named day type, keyed by template id. */
+  library?: Record<string, PlannedExercise[]>;
   onSave: (r: Routine[]) => void;
   /** A lift the library does not have, added by hand. */
   onAddCustom?: (e: Exercise) => void;
@@ -255,7 +258,12 @@ export default function RoutineEditor({
     setOpenId(id);
   };
 
-  /** Changing the day type rebuilds that day from the template. */
+  /**
+   * Changing the day type brings back the version of that day you already made
+   * — another day of the same type this week, then your saved library — and
+   * only falls back to a fresh default when you have never shaped it. Full-body
+   * is exempt: it is meant to vary, so it always rebuilds.
+   */
   function setTemplate(id: TemplateId) {
     const [rebuilt] = generateRoutine(
       profile.level,
@@ -265,7 +273,12 @@ export default function RoutineEditor({
       [id]
     );
     if (!rebuilt) return;
-    setDraft(draft.map((r, i) => (i === dayIndex ? { ...rebuilt, day: r.day } : r)));
+    const saved =
+      id === "full-body"
+        ? undefined
+        : draft.find((r) => r.template === id && r.exercises.length)?.exercises ?? library?.[id];
+    const exercises = saved?.length ? saved : rebuilt.exercises;
+    setDraft(draft.map((r, i) => (i === dayIndex ? { ...rebuilt, day: r.day, exercises } : r)));
     setOpenId(null);
     setAdding(null);
   }

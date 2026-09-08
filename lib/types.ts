@@ -212,4 +212,10 @@ export interface AppState {
   weighIns?: WeighIn[];
   /** Lifts somebody added that the library does not have. */
   customExercises?: Exercise[];
+  /**
+   * The user's own version of each named day type, keyed by template id. Once
+   * they shape a "Leg day", pressing Leg day again brings back theirs, not the
+   * generated default. Full-body is deliberately excluded: it alternates.
+   */
+  dayLibrary?: Record<string, PlannedExercise[]>;
 }

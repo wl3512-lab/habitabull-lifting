@@ -14,6 +14,8 @@ import {
   alternativesFor,
   musclesIn,
   rememberLineup,
+  mergeDayLibrary,
+  overlayDayLibrary,
   repsFor,
   suggestFrom,
 } from "./engine";
@@ -601,5 +603,43 @@ describe("rememberLineup", () => {
   it("never blanks a routine from an empty session", () => {
     const out = rememberLineup([legDay], { date: "2026-09-08", label: "Leg day", exercises: [] });
     expect(out).toEqual([legDay]);
+  });
+});
+
+describe("day library (per day-type memory)", () => {
+  const leg: Routine = { day: 1, label: "Leg day", template: "legs",
+    exercises: [{ exerciseId: "back-squat", sets: 3, reps: 8, weight: 135 }] };
+  const legB: Routine = { day: 3, label: "Leg day", template: "legs",
+    exercises: [{ exerciseId: "leg-press", sets: 3, reps: 10, weight: 180 }] };
+  const fb: Routine = { day: 5, label: "Full body A", template: "full-body",
+    exercises: [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 95 }] };
+
+  it("remembers a named day's exercises under its template", () => {
+    expect(mergeDayLibrary({}, [leg]).legs).toEqual(leg.exercises);
+  });
+  it("never remembers full-body (it is meant to vary)", () => {
+    expect(mergeDayLibrary({}, [fb])).toEqual({});
+  });
+  it("skips an empty day rather than blanking the memory", () => {
+    expect(mergeDayLibrary({ legs: leg.exercises }, [{ ...leg, exercises: [] }]).legs)
+      .toEqual(leg.exercises);
+  });
+  it("keeps the most recent version of a day type", () => {
+    expect(mergeDayLibrary({}, [leg, legB]).legs).toEqual(legB.exercises);
+  });
+
+  it("overlays the saved day type onto a freshly generated day", () => {
+    const fresh: Routine = { day: 6, label: "Leg day", template: "legs",
+      exercises: [{ exerciseId: "goblet-squat", sets: 3, reps: 10, weight: 20 }] };
+    const [out] = overlayDayLibrary([fresh], { legs: leg.exercises });
+    expect(out.exercises).toEqual(leg.exercises);
+  });
+  it("leaves a day type with no saved version untouched", () => {
+    const push: Routine = { day: 2, label: "Push day", template: "push",
+      exercises: [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 95 }] };
+    expect(overlayDayLibrary([push], { legs: leg.exercises })).toEqual([push]);
+  });
+  it("does not overlay full-body even if it is in the library", () => {
+    expect(overlayDayLibrary([fb], { "full-body": leg.exercises })).toEqual([fb]);
   });
 });
