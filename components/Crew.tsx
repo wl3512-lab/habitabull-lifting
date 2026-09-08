@@ -172,12 +172,12 @@ export default function Crew({
 
   async function share() {
     const text = code
-      ? `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull Lifting. Join my crew with ${formatCode(code)}.`
-      : `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull Lifting. Come do it with me.`;
+      ? `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Join my crew with ${formatCode(code)}.`
+      : `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Come do it with me.`;
     const url = typeof window === "undefined" ? "" : window.location.origin;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "HabitaBull Lifting", text, url });
+        await navigator.share({ title: "HabitaBull", text, url });
         setShared("idle");
         return;
       }

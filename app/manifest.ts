@@ -17,7 +17,7 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "HabitaBull Lifting",
+    name: "HabitaBull",
     short_name: "HabitaBull",
     description: "A gym companion for when you keep losing the habit by week three.",
     start_url: "/",

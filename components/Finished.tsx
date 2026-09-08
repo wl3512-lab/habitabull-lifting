@@ -188,7 +188,7 @@ export default function Finished({
         <div className="mt-8 rounded-2xl border border-line-strong p-[18px]">
           <p className="label text-cyan">Keep this</p>
           <p className="mt-1.5 text-emphasis leading-snug text-fg">
-            Add HabitaBull Lifting to your home screen.
+            Add HabitaBull to your home screen.
           </p>
           <p className="mt-1 text-body leading-snug text-dim">
             Everything you log lives in this browser, and phones clear that for sites

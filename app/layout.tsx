@@ -23,14 +23,14 @@ const barlow = Barlow({
 });
 
 export const metadata: Metadata = {
-  title: "HabitaBull Lifting",
+  title: "HabitaBull",
   description: "Most people quit by week three. This one is built for coming back.",
-  applicationName: "HabitaBull Lifting",
+  applicationName: "HabitaBull",
   // The Crew screen sends a link to invite somebody; without this it previewed
   // as nothing at all, which is a poor first impression of a product whose
   // whole pitch is that it takes you seriously.
   openGraph: {
-    title: "HabitaBull Lifting",
+    title: "HabitaBull",
     description: "Most people quit by week three. This one is built for coming back.",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
     type: "website",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   // days. See app/manifest.ts.
   appleWebApp: {
     capable: true,
-    title: "HabitaBull Lifting",
+    title: "HabitaBull",
     // "default", not "black-translucent": translucent puts the web view under
     // the status bar, and every screen here carries a fixed top padding rather
     // than a safe-area inset. Let iOS keep the clock out of the headline.
