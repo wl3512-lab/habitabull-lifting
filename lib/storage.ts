@@ -4,20 +4,33 @@ import type { AppState, Exercise, PlannedExercise, Session, WeighIn } from "./ty
 const KEY = "habitabull.v1";
 
 /**
- * A one-time wipe of every device's local slate.
+ * A one-time wipe of every device's local slate. Disarmed, and it stays that
+ * way unless somebody deliberately arms it.
  *
  * Everything this app knows lives in localStorage on one device, so there is no
- * server switch to clear a tester's data from here. Instead, bumping
+ * server switch to clear a tester's data from here. Putting a date in
  * RESET_EPOCH makes every device clear all of its habitabull.* keys the next
  * time it loads — the app state, the crew identity, and the cached crew code
  * and check-ins together — so a friend who poked at a pre-launch build starts
- * from a genuinely fresh install. It fires once per epoch and then the app
- * persists normally again; a later test wave just needs a new date here.
+ * from a genuinely fresh install.
+ *
+ * **A date left in here is a loaded gun pointed at the dormant.** It does not
+ * fire on the day it names; it fires the next time each device opens the app,
+ * however long that takes. So it never touches anyone who was around during
+ * the test wave, and it destroys the history of exactly the person who was
+ * not: the one who installed it, went quiet for three weeks and came back.
+ * That user is the entire reason this app asks to be installed at all — see
+ * the note in app/manifest.ts — and the reason the product exists. A wipe
+ * aimed at testers hits only the people it was never meant for.
+ *
+ * To run a real test wave: set a date, ship it, and take it back out once the
+ * testers have opened it. Do not leave one here between waves.
  */
 const RESET_KEY = "habitabull.reset";
-const RESET_EPOCH = "2026-09-08";
+const RESET_EPOCH: string | null = null;
 
 function resetOncePerEpoch(): void {
+  if (RESET_EPOCH === null) return;
   try {
     if (window.localStorage.getItem(RESET_KEY) === RESET_EPOCH) return;
     const keys = Object.keys(window.localStorage).filter((k) => k.startsWith("habitabull."));

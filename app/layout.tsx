@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import NotSaving from "@/components/NotSaving";
+import StayFresh from "@/components/StayFresh";
 
 /*
   Two faces, one family. Barlow Condensed carries headlines and every figure
@@ -117,6 +118,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             until a write actually fails, which on a healthy phone is never.
           */}
           <NotSaving />
+          {/*
+            Renders nothing. It watches for a build newer than the one this
+            page is running, which is the only way an installed app that is
+            resumed rather than reloaded ever picks up a fix.
+          */}
+          <StayFresh />
         </div>
       </body>
     </html>

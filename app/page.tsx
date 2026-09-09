@@ -47,6 +47,7 @@ import {
 } from "@/lib/storage";
 import { arrivalMood, lastGreeting, rememberGreeting, type ArrivalMood } from "@/lib/arrival";
 import { nextTrainingDay } from "@/lib/schedule";
+import { setBusy } from "@/lib/busy";
 import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
@@ -104,6 +105,19 @@ export default function Page() {
     // the root, which is the only element that renders on every path.
     if (ready) save(state);
   }, [state, ready]);
+
+  /*
+    The stretch nobody may interrupt: a workout, from the first set to the beat
+    that ends it. StayFresh reads this before picking up a new build, because
+    the one place a reload costs something is standing at a rack halfway
+    through a session. Everywhere else the app rebuilds from storage and lands
+    where a resumed app lands anyway.
+  */
+  const mid = view === "log" || view === "done" || view === "comeback";
+  useEffect(() => {
+    setBusy(mid);
+    return () => setBusy(false);
+  }, [mid]);
 
   /*
     Tell the crew which days she trained — the dates, and nothing else. It runs
