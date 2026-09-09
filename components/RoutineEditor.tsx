@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
@@ -663,7 +663,14 @@ export default function RoutineEditor({
   );
 }
 
-/** A compact inline ± for numbers that live inside a row. */
+/**
+ * A compact inline ± for numbers that live inside a row.
+ *
+ * `handed` is here for the same reason it is in components/Stepper.tsx: taps
+ * arrive faster than renders, and reading the `value` prop inside the handler
+ * made every tap in a burst compute from the same stale number, so holding +
+ * changed sets by one and looked like a control that had stopped working.
+ */
 function Stepper({
   value,
   onChange,
@@ -679,11 +686,19 @@ function Stepper({
   step?: number;
   label: string;
 }) {
+  const handed = useRef(value);
+  handed.current = value;
+  const bump = (dir: 1 | -1) => {
+    const next = Math.min(max, Math.max(min, handed.current + dir * step));
+    handed.current = next;
+    onChange(next);
+  };
+
   return (
     <div className="flex shrink-0 items-center gap-2">
       <button
         type="button"
-        onClick={() => onChange(Math.max(min, value - step))}
+        onClick={() => bump(-1)}
         disabled={value <= min}
         aria-label={`Fewer ${label}`}
         className="grid h-11 w-11 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
@@ -693,7 +708,7 @@ function Stepper({
       <span className="tabular statement w-10 text-center text-title text-fg">{value}</span>
       <button
         type="button"
-        onClick={() => onChange(Math.min(max, value + step))}
+        onClick={() => bump(1)}
         disabled={value >= max}
         aria-label={`More ${label}`}
         className="grid h-11 w-11 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"

@@ -126,15 +126,53 @@ function sane(list: unknown): Exercise[] {
   );
 }
 
-export function save(state: AppState): void {
-  if (typeof window === "undefined") return;
+/**
+ * Write the whole state, and say whether it landed.
+ *
+ * This used to swallow the failure. The reasoning was sound as far as it went
+ * — the in-memory session still works, and losing history is bad where
+ * blocking a workout log is worse — but it stopped one step short. A device
+ * that cannot write is a device where every edit disappears on the next
+ * launch, and saying nothing about it means the app looks like it is working
+ * right up until all of the evidence is gone.
+ *
+ * It happens for real and not only when a disk is full: Safari in private
+ * browsing throws on the first `setItem`, and iOS evicts a web app's storage
+ * after seven idle days unless it has been installed to the home screen. Both
+ * are ordinary situations for somebody handed a link to a deployed app.
+ *
+ * So the write still never throws and never blocks a log. It just reports, and
+ * the caller is the one that decides whether the person should be told.
+ */
+type SaveWatcher = (ok: boolean) => void;
+const watchers = new Set<SaveWatcher>();
+
+/**
+ * Watch whether writes are landing. Returns the unsubscribe.
+ *
+ * A broadcast rather than a return value threaded through the app, because the
+ * screen that has to say "this is not being kept" is not the screen that made
+ * the write, and there is no single place in the view machine that renders on
+ * every path. One subscriber at the root beats a prop through forty branches.
+ */
+export function watchSaves(fn: SaveWatcher): () => void {
+  watchers.add(fn);
+  return () => {
+    watchers.delete(fn);
+  };
+}
+
+export function save(state: AppState): boolean {
+  if (typeof window === "undefined") return true;
   setCustomExercises(state.customExercises ?? []);
+  let ok = true;
   try {
     window.localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
-    // Storage full or blocked. The in-memory session still works; losing
-    // history is bad but blocking a workout log is worse.
+    ok = false;
   }
+  for (const w of watchers) w(ok);
+  return ok;
 }
 
 /** Replace the session for a date, or append it. */

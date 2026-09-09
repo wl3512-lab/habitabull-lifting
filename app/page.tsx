@@ -100,6 +100,8 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
+    // Whether this landed is broadcast by `save` and picked up by NotSaving at
+    // the root, which is the only element that renders on every path.
     if (ready) save(state);
   }, [state, ready]);
 

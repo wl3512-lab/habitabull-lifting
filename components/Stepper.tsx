@@ -44,7 +44,30 @@ export default function Stepper({
     if (typing) field.current?.select();
   }, [typing]);
 
-  const bump = (dir: 1 | -1) => onChange(Math.min(max, Math.max(min, value + dir * step)));
+  /*
+    The number this control last handed out, which between a tap and the render
+    that tap causes is not the same thing as `value`.
+
+    Taps land faster than React re-renders, and every tap in one burst was
+    reading the same stale `value` prop and computing the same result: eight
+    quick presses of + moved the weight by one step, not eight. On the screen
+    that is exactly indistinguishable from a control that does not work, and on
+    the way out of it people conclude their change was not saved. Which is the
+    other half of the same bug: what they eventually did save was a number they
+    had not asked for.
+
+    Holding the last handed-out value lets a burst accumulate. Every render
+    puts the prop back, so the parent stays the source of truth the moment it
+    has had a chance to speak.
+  */
+  const handed = useRef(value);
+  handed.current = value;
+
+  const bump = (dir: 1 | -1) => {
+    const next = Math.min(max, Math.max(min, handed.current + dir * step));
+    handed.current = next;
+    onChange(next);
+  };
 
   function open() {
     setDraft(String(value));

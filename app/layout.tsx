@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
+import NotSaving from "@/components/NotSaving";
 
 /*
   Two faces, one family. Barlow Condensed carries headlines and every figure
@@ -110,6 +111,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div id="app-scroll" className="flex flex-1 flex-col desk:overflow-y-auto desk:no-scrollbar">
             {children}
           </div>
+          {/*
+            Outside the scroller and a sibling of it, so it pins to the device
+            rather than scrolling away with a screen. Renders nothing at all
+            until a write actually fails, which on a healthy phone is never.
+          */}
+          <NotSaving />
         </div>
       </body>
     </html>
