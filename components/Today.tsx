@@ -9,12 +9,11 @@ import { nameOf } from "@/lib/exercises";
 import { goalProgress, nextTarget, personalRecord, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
-import { anchorLabel, anchorOf, observedAnchor, primaryAnchor } from "@/lib/schedule";
+import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor } from "@/lib/schedule";
 import type { CrewDay } from "@/lib/cloud";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
-const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /**
  * The opening screen. It is a logging screen, not a dashboard — the single
@@ -317,17 +316,8 @@ export default function Today({
     </section>
   ) : null;
 
-  // The next day she said she would train, named rather than counted.
-  const nextDayLabel = (() => {
-    const days = profile.trainingDays;
-    if (!days.length) return "soon";
-    const dow = new Date(today + "T00:00:00").getDay();
-    for (let i = 1; i <= 7; i++) {
-      const d = (dow + i) % 7;
-      if (days.includes(d)) return i === 1 ? "tomorrow" : FULL_DAYS[d];
-    }
-    return "soon";
-  })();
+  // Shared with the arrival beat, so both name the same day the same way.
+  const nextDayLabel = nextTrainingDay(profile.trainingDays, today) ?? "soon";
 
   // Only when there is a session to describe — on a rest day the headline
   // already says it, and repeating it under itself reads like a bug.

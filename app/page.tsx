@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
 import DayDetail from "@/components/DayDetail";
@@ -12,6 +12,7 @@ import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import ProfileScreen from "@/components/Profile";
+import Arrival from "@/components/Arrival";
 import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
 import Progress from "@/components/Progress";
@@ -44,6 +45,8 @@ import {
   upsertSession,
   upsertWeighIn,
 } from "@/lib/storage";
+import { arrivalMood, lastGreeting, rememberGreeting, type ArrivalMood } from "@/lib/arrival";
+import { nextTrainingDay } from "@/lib/schedule";
 import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
@@ -60,11 +63,40 @@ export default function Page() {
   const [detail, setDetail] = useState<{ id: string; from: View } | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [copying, setCopying] = useState<{ day: SharedDay; from: string } | null>(null);
+  /*
+    The beat the app opens on, and whether it has already played.
+
+    `arrival` is the mood being shown right now and null the rest of the time;
+    `welcomed` records that today's beat was a welcome back, which is what stops
+    the same person being welcomed a second time when they start their workout.
+    Both are decided once, on the load that reads storage, because the answer
+    depends on the state that load returns and must not change under them
+    afterwards.
+  */
+  const [arrival, setArrival] = useState<ArrivalMood | null>(null);
+  const [welcomed, setWelcomed] = useState(false);
+  // Set when the beat hands over, so Today rises into place rather than simply
+  // appearing. A ref, not state: it is read during the render that dismissing
+  // the beat already causes, and never needs to cause one of its own.
+  const handedOff = useRef(false);
 
   useEffect(() => {
-    setState(load());
-    setToday(todayISO());
+    const loaded = load();
+    const t = todayISO();
+    setState(loaded);
+    setToday(t);
     setReady(true);
+
+    const greeted = lastGreeting();
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const mood = arrivalMood(loaded, t, { greeted, reduced });
+    if (mood) {
+      setArrival(mood);
+      rememberGreeting({ date: t, mood });
+    }
+    // A welcome already given today counts whether it was given this minute or
+    // this morning, or closing the app would buy a second one.
+    setWelcomed(mood === "return" || (greeted?.date === t && greeted.mood === "return"));
   }, []);
 
   useEffect(() => {
@@ -129,6 +161,28 @@ export default function Page() {
     );
   }
 
+  /*
+    Before anything else the app has to show, once a day: what today is.
+
+    Sits after onboarding and before every other view, because it is about the
+    day rather than about a screen — and whether it appears at all was decided
+    on load, in `arrivalMood`, against rules that keep it quiet far more often
+    than not.
+  */
+  if (arrival) {
+    return (
+      <Arrival
+        mood={arrival}
+        seed={today.length + profile.name.length}
+        nextDay={nextTrainingDay(profile.trainingDays, today)}
+        onDone={() => {
+          handedOff.current = true;
+          setArrival(null);
+        }}
+      />
+    );
+  }
+
   const dow = new Date(today + "T00:00:00").getDay();
   const scheduled = routines.find((r) => r.day === dow) ?? null;
   const draft = sessionFor(sessions, today);
@@ -171,7 +225,9 @@ export default function Page() {
       .map((x) => x.date)
       .sort()
       .pop();
-    const isComeback = greetingMood(lastDone, today) === "return";
+    // Unless the arrival beat already said it this morning. One welcome back a
+    // day, at the door rather than again on the way to the bar.
+    const isComeback = !welcomed && greetingMood(lastDone, today) === "return";
     if (!draft && routine) {
       setState((s) => ({
         ...s,
@@ -288,7 +344,9 @@ export default function Page() {
   function placed(node: React.ReactNode, tab: Tab) {
     return (
       <>
-        <TabView tab={tab}>{node}</TabView>
+        <TabView tab={tab} handoff={handedOff.current}>
+          {node}
+        </TabView>
         <TabBar active={tab} onChange={(t) => setView(t)} />
       </>
     );

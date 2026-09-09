@@ -342,6 +342,46 @@ body {
 }
 
 /*
+  The rest-day arrival, which is `rise` turned over.
+
+  A training day arrives from below and braces: the whole gesture is forward.
+  A rest day comes down instead and lands, which is what breathing out looks
+  like, and it takes `deliberate` rather than `standard` to do it. Same 10px,
+  same curve, opposite direction — the difference between the two screens is
+  carried by how they move rather than by giving one of them a colour, because
+  this system only has two drenched screens and spending that scarcity on the
+  most frequent moment in the app would cost both of them their meaning.
+*/
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.settle {
+  animation: settle var(--duration-deliberate) var(--ease-out-quart) backwards;
+}
+
+/*
+  Leaving, so the next screen can arrive rather than cut in. Faster than any
+  entrance — an exit nobody is reading should not be paced like something they
+  are. `forwards`, not `backwards`, and it is one of the two exceptions in this
+  file: it ends at nothing, and handing the element back to its own styles
+  would put it straight back on screen.
+*/
+@keyframes depart {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.depart {
+  animation: depart var(--duration-quick) var(--ease-out-quart) forwards;
+}
+
+/*
   The consistency grid drawing itself, oldest week first.
 
   Only the days she trained animate. The missed cells are already on screen and

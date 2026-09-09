@@ -20,10 +20,25 @@ import { useEffect, useRef, type ReactNode } from "react";
  * The `key` is what re-fires the animation. Without it React reuses the same
  * element across tabs and a CSS animation that has already run does not run
  * again; with it each tab is its own element with its own one entrance.
+ *
+ * `handoff` is the exception to the first-paint rule and it is not a loophole.
+ * The rule exists because opening the app is not a tap; when the daily arrival
+ * beat has just played, the app is already open and something has already been
+ * on screen, so Today is genuinely arriving after it. Without this the beat
+ * would fade out onto a screen that simply appeared, and the one continuous
+ * moment would be two.
  */
-export default function TabView({ tab, children }: { tab: string; children: ReactNode }) {
+export default function TabView({
+  tab,
+  handoff = false,
+  children,
+}: {
+  tab: string;
+  handoff?: boolean;
+  children: ReactNode;
+}) {
   const shown = useRef<string | null>(null);
-  const entering = shown.current !== null && shown.current !== tab;
+  const entering = handoff || (shown.current !== null && shown.current !== tab);
 
   useEffect(() => {
     shown.current = tab;
