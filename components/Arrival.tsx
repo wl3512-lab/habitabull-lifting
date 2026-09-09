@@ -37,6 +37,7 @@ export default function Arrival({
   mood,
   seed,
   nextDay,
+  preview = false,
   onDone,
 }: {
   mood: ArrivalMood;
@@ -44,6 +45,8 @@ export default function Arrival({
   seed: number;
   /** The next day on the plan, named. Rest days only, and only if there is one. */
   nextDay?: string | null;
+  /** Held open for the frames gallery: no hold, no exit, nothing to miss. */
+  preview?: boolean;
   onDone: () => void;
 }) {
   const resting = mood === "rest";
@@ -55,6 +58,7 @@ export default function Arrival({
   done.current = onDone;
 
   useEffect(() => {
+    if (preview) return;
     // The exit runs on screen, so the next screen is arriving into a fade
     // rather than replacing a hard edge. 150ms is the `quick` token.
     const leave = setTimeout(() => setLeaving(true), HOLD[mood]);
@@ -63,11 +67,11 @@ export default function Arrival({
       clearTimeout(leave);
       clearTimeout(finish);
     };
-  }, [mood]);
+  }, [mood, preview]);
 
   return (
     <main
-      onClick={() => done.current()}
+      onClick={() => !preview && done.current()}
       role="status"
       aria-live="polite"
       className={`mx-auto flex w-full max-w-[430px] flex-1 cursor-pointer flex-col items-center justify-center px-6 text-center ${

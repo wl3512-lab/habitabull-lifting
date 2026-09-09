@@ -13,6 +13,7 @@ import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
+import Arrival from "@/components/Arrival";
 import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
 import ProfileScreen from "@/components/Profile";
@@ -180,6 +181,12 @@ function gallery(challenge: Challenge) {
           </Group>
 
           <Group title="The loop" sub="One action per screen, in the same place every time.">
+            <Frame n="01a" name="Opening, on a training day" note="The first open of a calendar day, and only the first: someone reopening the app between sets is not here for a greeting. It arrives from below and braces, and the bull nods. Every line is an existing pool in voice.ts — no copy was written for this screen.">
+              <Arrival mood="greet" seed={1} preview onDone={f.noop} />
+            </Frame>
+            <Frame n="01b" name="Opening, on a rest day" note="The same beat, told apart by how it moves rather than by what colour it is: it comes down and lands instead of rising, holds 2800ms instead of 2400, and the bull stays still. Giving the rest day its own field was refused — there are two drenched screens in this product and spending that scarcity here would cost Welcome and the PR both of theirs. It names when you are next in, so a day off points at the next session rather than reading as a closed door, and it never appears at all for someone with nothing logged yet.">
+              <Arrival mood="rest" seed={0} nextDay="Friday" preview onDone={f.noop} />
+            </Frame>
             <Frame n="01" name="Today" tab="today" note="“Full body A”, not “Monday”. A weekday is not a description of a workout.">
               <Today
                 profile={f.profile}
