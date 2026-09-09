@@ -41,6 +41,8 @@ const SHOTS = [
   ["02", "02-onboarding-why"],
   ["03", "03-week-setup"],
   ["03b", "03b-import-workout"],
+  ["01a", "01a-arrival-training"],
+  ["01b", "01b-arrival-rest"],
   ["01", "01-today"],
   ["01c", "01c-today-habit-learned"],
   ["01d", "01d-today-comeback"],
