@@ -107,26 +107,38 @@ export default function Progress({
         <div className="flex gap-1.5" aria-hidden>
           {columns.map((week, w) => (
             <div key={w} className="flex flex-1 flex-col gap-1.5">
-              {week.map((cell) => (
-                <div
-                  key={cell.iso}
-                  // Missed days sit at `line`, not `raise`: enough to read the
-                  // lattice so a green cell has a weekday, not enough to make
-                  // an empty day shout. It measures 1.44:1 against the card and
-                  // that is deliberate — the information here is the green, at
-                  // 7:1, and absence is drawn as absence. Documented in
-                  // DESIGN.md as a knowing deviation from 1.4.11.
-                  className={`aspect-square w-full rounded-tick ${
-                    cell.comeback
-                      ? "bg-cyan"
-                      : cell.trained
-                        ? "bg-done"
-                        : cell.future
-                          ? "bg-raise/40"
-                          : "bg-line"
-                  }`}
-                />
-              ))}
+              {week.map((cell) => {
+                // Only a day she trained arrives; the lattice is already there.
+                // Animating the gaps too would spend a third of a second
+                // drawing attention to every one of them, in the one app built
+                // for people who quit six others that did exactly that.
+                const logged = cell.trained || cell.comeback;
+                return (
+                  <div
+                    key={cell.iso}
+                    // Missed days sit at `line`, not `raise`: enough to read the
+                    // lattice so a green cell has a weekday, not enough to make
+                    // an empty day shout. It measures 1.44:1 against the card and
+                    // that is deliberate — the information here is the green, at
+                    // 7:1, and absence is drawn as absence. Documented in
+                    // DESIGN.md as a knowing deviation from 1.4.11.
+                    className={`aspect-square w-full rounded-tick ${
+                      logged ? "cell-in " : ""
+                    }${
+                      cell.comeback
+                        ? "bg-cyan"
+                        : cell.trained
+                          ? "bg-done"
+                          : cell.future
+                            ? "bg-raise/40"
+                            : "bg-line"
+                    }`}
+                    // Weeks land oldest first, so twelve weeks read left to
+                    // right the way they were lived.
+                    style={logged ? ({ "--week": w } as React.CSSProperties) : undefined}
+                  />
+                );
+              })}
             </div>
           ))}
         </div>

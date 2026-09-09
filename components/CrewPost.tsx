@@ -135,11 +135,15 @@ export default function CrewPost({
       tabIndex={-1}
       // Fixed on a phone, absolute inside the device on a desktop. No blur:
       // under a 95% scrim it costs a compositing pass to be 5% visible.
-      className={`z-50 flex justify-center bg-ground/95 outline-none ${
+      //
+      // `veil` on the surface, `rise` on the column: the sheet establishes
+      // itself and the content lands on it, so covering the whole screen reads
+      // as arriving on top of the app rather than replacing it.
+      className={`veil z-50 flex justify-center bg-ground/95 outline-none ${
         framed ? "absolute inset-0" : "fixed inset-0 desk:absolute"
       }`}
     >
-      <div className="no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
+      <div className="rise no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="head truncate text-emphasis text-fg">

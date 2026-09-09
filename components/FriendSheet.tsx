@@ -78,11 +78,12 @@ export default function FriendSheet({
       aria-label={member.name}
       ref={sheet}
       tabIndex={-1}
-      className={`z-50 flex justify-center bg-ground/95 outline-none ${
+      // The scrim fades and the column rises on it — see CrewPost, same sheet.
+      className={`veil z-50 flex justify-center bg-ground/95 outline-none ${
         framed ? "absolute inset-0" : "fixed inset-0 desk:absolute"
       }`}
     >
-      <div className="no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
+      <div className="rise no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="label text-cyan">In your crew</p>

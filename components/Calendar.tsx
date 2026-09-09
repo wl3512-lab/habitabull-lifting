@@ -161,7 +161,19 @@ export default function Calendar({
     setOpenId(null);
   }
 
-  const shift = (n: number) => setCursor(new Date(year, month + n, 1));
+  /*
+    Which way through time the last move went, so the month can arrive from
+    that side. Months run oldest-left, so stepping back brings the new month in
+    from the left and stepping forward from the right — the grid moves the way
+    the arrow you pressed points. Null for a jump rather than a step (picking a
+    month out of the year view), where there is no direction to honour.
+  */
+  const [heading, setHeading] = useState<-1 | 1 | null>(null);
+  const shift = (n: number) => {
+    setHeading(n < 0 ? -1 : 1);
+    setCursor(new Date(year, month + n, 1));
+  };
+  const arriving = heading === -1 ? "from-earlier" : heading === 1 ? "from-later" : "";
 
   /*
     Training days are the only thing a reminder actually needs. This used to
@@ -199,7 +211,13 @@ export default function Calendar({
       <div className="mt-2 flex items-baseline justify-between gap-3">
         {/* 34px, not the usual 44: "September 2026" plus the toggle has to
             hold one line at 390px, and a wrapped month name reads as a bug. */}
-        <h1 className="statement min-w-0 text-display text-fg">
+        {/* Keyed and animated with the grid below it, so the name and the days
+            it names arrive as one move rather than the title cutting while the
+            grid slides. */}
+        <h1
+          key={view === "month" ? `${year}-${month}` : year}
+          className={`statement min-w-0 text-display text-fg ${view === "month" ? arriving : ""}`}
+        >
           {view === "month" ? MONTHS[month] : year}{" "}
           {view === "month" && <span className="text-dim">{year}</span>}
         </h1>
@@ -246,7 +264,7 @@ export default function Calendar({
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-7 gap-y-1">
+            <div key={`${year}-${month}`} className={`mt-3 grid grid-cols-7 gap-y-1 ${arriving}`}>
               {DAY_HEADS.map((d, i) => (
                 <div key={i} className="pb-1 text-center text-caption text-dim">
                   {d}
@@ -375,6 +393,7 @@ export default function Calendar({
                 <button
                   type="button"
                   onClick={() => {
+                    setHeading(null);
                     setCursor(new Date(year, m, 1));
                     setView("month");
                   }}

@@ -17,6 +17,7 @@ import ImportWorkout from "@/components/ImportWorkout";
 import Progress from "@/components/Progress";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar, { type Tab } from "@/components/TabBar";
+import TabView from "@/components/TabView";
 import Today from "@/components/Today";
 import WeekSetup from "@/components/WeekSetup";
 import {
@@ -287,7 +288,7 @@ export default function Page() {
   function placed(node: React.ReactNode, tab: Tab) {
     return (
       <>
-        {node}
+        <TabView tab={tab}>{node}</TabView>
         <TabBar active={tab} onChange={(t) => setView(t)} />
       </>
     );

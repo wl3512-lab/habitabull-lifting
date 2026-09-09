@@ -294,12 +294,73 @@ body {
   animation: ring-pulse 620ms var(--ease-out-quart) both;
 }
 
-@keyframes flood {
+@keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 .flood {
-  animation: flood 220ms var(--ease-out-quart) both;
+  animation: fade-in var(--duration-standard) var(--ease-out-quart) both;
+}
+
+/*
+  A dialog arriving, in two parts.
+
+  The covering surface fades and the column it carries rises behind it. One
+  gesture, decomposed, because translating the covering surface itself uncovers
+  a strip of the screen underneath along one edge for the length of the
+  animation — a seam where there should be a sheet. So the surface only fades,
+  and the travel belongs to the content.
+
+  Quicker than the rise it sits under: the scrim's job is to be established
+  before the content lands on it, not to arrive alongside it.
+*/
+.veil {
+  animation: fade-in var(--duration-quick) var(--ease-out-quart) both;
+}
+
+/*
+  A month arriving from the direction you asked for.
+
+  Back and forward looked identical, which on a calendar is the one thing they
+  must not: the whole content of the gesture is which way through time you just
+  moved. 14px is enough to read as a direction and short enough not to be a
+  transition you wait for.
+*/
+@keyframes from-earlier {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes from-later {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: none; }
+}
+.from-earlier {
+  animation: from-earlier var(--duration-standard) var(--ease-out-quart) backwards;
+}
+.from-later {
+  animation: from-later var(--duration-standard) var(--ease-out-quart) backwards;
+}
+
+/*
+  The consistency grid drawing itself, oldest week first.
+
+  Only the days she trained animate. The missed cells are already on screen and
+  stay put, because an app whose whole argument is that a gap is not a failure
+  cannot then spend a third of a second drawing attention to every gap. What
+  arrives is the green — which is also the only thing in that lattice carrying
+  information.
+
+  No overshoot. The over-then-settle belongs to `stamp` and to one event, a set
+  going down; a record of twelve weeks is not twelve small celebrations.
+*/
+@keyframes cell-in {
+  from { opacity: 0; transform: scale(0.72); }
+  to { opacity: 1; transform: none; }
+}
+.cell-in {
+  animation: cell-in var(--duration-standard) var(--ease-out-quart) backwards;
+  /* Staggered by week, so the record reads left to right the way it was made. */
+  animation-delay: calc(90ms + var(--week) * 26ms);
 }
 
 @keyframes stamp {
@@ -312,21 +373,47 @@ body {
   animation: stamp 260ms var(--ease-out-quart) both;
 }
 
+/*
+  `backwards`, not `both`, and the difference is not cosmetic.
+
+  `both` retains the last keyframe, and a retained `transform: none` computes to
+  an identity matrix rather than to `none` — which still makes the element a
+  containing block for any `position: fixed` inside it, permanently, after the
+  animation is long over. A screen wrapped in this and holding a full-screen
+  overlay (the calendar's progress-photo lightbox) would find that overlay
+  pinned to the wrapper instead of the viewport, and scrolling away with it.
+
+  `backwards` holds the *first* keyframe through any delay and then hands the
+  element back to its own styles, which is where it was going anyway. Identical
+  on screen, and it leaves nothing behind.
+*/
 .rise {
-  animation: rise 220ms var(--ease-out-quart) both;
+  animation: rise var(--duration-standard) var(--ease-out-quart) backwards;
 }
 
 .nod {
   animation: nod 620ms var(--ease-out-quart);
 }
 
-/* The bull swaps pose instead of animating when motion is unwelcome. */
+/*
+  The bull swaps pose instead of animating when motion is unwelcome.
+
+  Delays are reset alongside durations, and that is not a formality. A
+  staggered entrance holds its later elements at `opacity: 0` for the length of
+  the delay whatever the duration is, so collapsing only the duration turns the
+  consistency grid's fill into twelve columns appearing one after another over
+  a third of a second — still motion, now with the smoothness taken out, which
+  is the worst of both. Zeroing the delay is what actually makes the screen
+  simply be there.
+*/
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }
