@@ -243,8 +243,13 @@ export default function Crew({
         <div className="mt-4 flex items-center gap-2.5 border-t border-line pt-4">
           <span className="flex-1 text-body text-dim">
             Adjust the target
+            {/*
+              The hint below was `dim/70`, which is 3.78:1 on this card. It is
+              already a step down by size; it does not need to be a step down
+              in colour as well, and this palette could not afford it.
+            */}
             {challenge.target !== suggested && (
-              <span className="block text-caption text-dim/70">
+              <span className="block text-caption text-dim">
                 Your schedule says {suggested}.
               </span>
             )}

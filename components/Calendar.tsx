@@ -62,7 +62,13 @@ function Thumb({
       {url ? (
         // Blobs from IndexedDB, so next/image would only get in the way.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="h-full w-full object-cover" />
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
       ) : null}
       <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ground/90 to-transparent px-2 pb-1.5 pt-5 text-left text-caption text-fg">
         {label}
@@ -295,15 +301,33 @@ export default function Calendar({
                 >
                   <span
                     className={`grid h-9 w-9 place-items-center rounded-full text-body ${
+                      /*
+                        A day still to come used to be `dim` at half opacity,
+                        which measures 2.6:1 on this card and is a plain 1.4.3
+                        failure on a date somebody has to read and can tap.
+
+                        There is no fix by dimming. `dim` is 6.17:1 here, and
+                        the darkest text that still clears 4.5:1 on every
+                        surface the token lands on is #9099a6 against dim's
+                        #9aa3ae: a step you cannot see. This palette has no
+                        room below `dim`, so de-emphasis here cannot be a
+                        colour.
+
+                        It does not need to be. Today already carries the cyan
+                        ring, and a ring in a month grid is exactly the thing
+                        that separates behind from ahead. Both untrained
+                        states now read the same quiet `dim`, which is also
+                        what this product argues for: a day she missed and a
+                        day that has not arrived are both an absence, and
+                        neither is a mark against her.
+                      */
                       c.trained
                         ? "bg-done text-ground"
                         : c.comeback
                           ? "bg-cyan text-ground"
                           : c.today
                             ? "text-fg ring-2 ring-cyan"
-                            : c.future
-                              ? "text-dim/50"
-                              : "text-dim"
+                            : "text-dim"
                     }`}
                   >
                     {c.day ?? ""}
@@ -404,7 +428,11 @@ export default function Calendar({
                 >
                   <span className="block text-caption text-dim">{MONTHS[m].slice(0, 3)}</span>
                   <span
-                    className={`tabular statement block text-title ${n > 0 ? "text-fg" : "text-dim/50"}`}
+                    // A month with nothing in it shows a quiet zero, not an
+                    // unreadable one: /50 measured 2.6:1. `dim` on this
+                    // button's ground is 6.95:1 and still recedes from the
+                    // `fg` of a month she trained in.
+                    className={`tabular statement block text-title ${n > 0 ? "text-fg" : "text-dim"}`}
                   >
                     {n}
                   </span>
@@ -518,17 +546,30 @@ export default function Calendar({
         )}
       </section>
 
-      {openId && <Lightbox id={openId} onClose={() => setOpenId(null)} onDelete={remove} />}
+      {openId && (
+        <Lightbox
+          id={openId}
+          // The same date the thumbnail read out, formatted the same way.
+          label={new Date(
+            (photos.find((p) => p.id === openId)?.date ?? "") + "T00:00:00"
+          ).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+          onClose={() => setOpenId(null)}
+          onDelete={remove}
+        />
+      )}
     </main>
   );
 }
 
 function Lightbox({
   id,
+  label,
   onClose,
   onDelete,
 }: {
   id: string;
+  /** The date the thumbnail announced, so opening it does not lose it. */
+  label: string;
   onClose: () => void;
   onDelete: (id: string) => void;
 }) {
@@ -561,7 +602,7 @@ function Lightbox({
       className="fixed inset-0 z-50 flex flex-col bg-deep/95 p-5"
       role="dialog"
       aria-modal="true"
-      aria-label="Progress photo"
+      aria-label={`Progress photo from ${label}`}
     >
       <div className="flex justify-end">
         <button

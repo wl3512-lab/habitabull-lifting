@@ -30,7 +30,11 @@ function Shot({ id, className }: { id: string; className: string }) {
   }, [id]);
   // A blob from IndexedDB; next/image would only get in the way.
   // eslint-disable-next-line @next/next/no-img-element
-  return url ? <img src={url} alt="" className={className} /> : <div className={className} />;
+  return url ? (
+    <img src={url} alt="" loading="lazy" decoding="async" className={className} />
+  ) : (
+    <div className={className} />
+  );
 }
 
 /** How a small number of names reads out loud. */

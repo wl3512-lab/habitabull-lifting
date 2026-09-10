@@ -160,11 +160,25 @@ export default function ImportWorkout({
           Cancel
         </button>
       </div>
-      <h1 className="statement mt-5 text-figure text-fg">Paste a workout you have</h1>
-      <p className="mt-1.5 text-emphasis text-dim">
+      <h1 id="import-heading" className="statement mt-5 text-figure text-fg">
+        Paste a workout you have
+      </h1>
+      <p id="import-hint" className="mt-1.5 text-emphasis text-dim">
         From your notes, a coach, anywhere. We turn it into your week.
       </p>
+      {/*
+        Named by the heading rather than by its own label, because the heading
+        already says exactly what the field is for and a second copy of that
+        sentence would only be there for the screen reader.
+
+        It had no name at all before. The placeholder was doing the work, and
+        a placeholder stops existing the moment somebody types into it, so the
+        field was unnamed for everyone using one and unnamed the whole time
+        for anyone who could not see it.
+      */}
       <textarea
+        aria-labelledby="import-heading"
+        aria-describedby="import-hint"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={9}
