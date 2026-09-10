@@ -16,6 +16,14 @@ import type { Profile, Session } from "@/lib/types";
  * saying "knees caving in?" is a different thing from a label reading FORM.
  * Cutting him here would turn coaching back into documentation.
  */
+/**
+ * Small counts as words, because "the 4 steps above" reads like a spec and
+ * this sentence is meant to sound like somebody telling you not to worry.
+ * Anything past the list falls back to the digit rather than inventing a word.
+ */
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight"];
+const spell = (n: number) => WORDS[n] ?? String(n);
+
 export default function ExerciseInfo({
   exerciseId,
   profile,
@@ -140,8 +148,16 @@ export default function ExerciseInfo({
         </div>
         {demoAsked && (
           // Better an honest empty hand than a button that pretends.
+          //
+          // The count is read off the lift rather than typed. It said "three"
+          // for every lift in the library, and thirty-eight of the fifty-three
+          // have four — so the sentence written to reassure somebody that the
+          // missing clip hides nothing was itself miscounting the thing it was
+          // pointing at. "Write the true number" is a rule in DESIGN.md and
+          // this was the screen breaking it.
           <p className="mt-2.5 text-center text-caption text-dim">
-            No clip for this one yet. The three steps above are the whole movement.
+            No clip for this one yet. The {spell(ex.steps.length)} steps above are the
+            whole movement.
           </p>
         )}
       </div>
