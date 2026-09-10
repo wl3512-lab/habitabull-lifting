@@ -6,6 +6,7 @@ import YourData from "./YourData";
 import { nameOf } from "@/lib/exercises";
 import { goalProgress } from "@/lib/engine";
 import type { AppState, Goal, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKS = 12;
@@ -143,8 +144,8 @@ export default function Progress({
           ))}
         </div>
         <p className="sr-only">
-          {done.length} sessions in the last {WEEKS} weeks, {comebacks.size} of them after a
-          break of a week or more.
+          {count(done.length, "session")} in the last {WEEKS} weeks, {comebacks.size} of them
+          after a break of a week or more.
         </p>
         <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-caption text-dim">
           <li className="flex items-center gap-2">
@@ -230,7 +231,7 @@ export default function Progress({
                 <div className="flex items-baseline justify-between gap-3">
                   <h2 className="head text-emphasis text-fg">{nameOf(id)}</h2>
                   <span className="tabular statement shrink-0 text-head text-fg">
-                    {latest.weight > 0 ? `${latest.weight} lb` : `${latest.reps} reps`}
+                    {latest.weight > 0 ? `${latest.weight} lb` : `${count(latest.reps, "rep")}`}
                     {delta > 0 && <span className="text-done"> +{delta}</span>}
                   </span>
                 </div>

@@ -18,6 +18,7 @@ import {
   overlayDayLibrary,
   repsFor,
   suggestFrom,
+  LEVEL_SETS,
 } from "./engine";
 import { byId } from "./exercises";
 import type { Equipment, Routine, Session } from "./types";
@@ -641,5 +642,46 @@ describe("day library (per day-type memory)", () => {
   });
   it("does not overlay full-body even if it is in the library", () => {
     expect(overlayDayLibrary([fb], { "full-body": leg.exercises })).toEqual([fb]);
+  });
+});
+
+describe("cardio is counted differently because it is a different thing", () => {
+  // types.ts calls it "one set, logged in minutes" and import.ts has always
+  // clamped an imported plan to that. The engine was the path that did not,
+  // so a bike came back as four nine-minute blocks with rests between.
+  it("gives a cardio machine one set, not the level's", () => {
+    expect(nextTarget("bike", [], "experienced").sets).toBe(1);
+    expect(nextTarget("treadmill", [], "new").sets).toBe(1);
+  });
+
+  it("still gives a hold the level's sets, because a plank is repeated", () => {
+    expect(nextTarget("plank", [], "experienced").sets).toBe(LEVEL_SETS.experienced);
+  });
+
+  it("does not tell a bike or a plank to add reps", () => {
+    // Both are unloaded, so both take the increment === 0 branch, and both
+    // used to be told to add two reps — of minutes, and of seconds.
+    const cleared = (id: string, reps: number): Session[] => [
+      {
+        date: "2026-09-01",
+        label: "Cardio",
+        completedAt: "2026-09-01T18:00:00.000Z",
+        exercises: [{ exerciseId: id, sets: Array.from({ length: 4 }, () => ({ weight: 0, reps, done: true })) }],
+      },
+    ];
+    expect(nextTarget("bike", cleared("bike", 99), "experienced").note).not.toMatch(/reps/i);
+    expect(nextTarget("plank", cleared("plank", 99), "experienced").note).not.toMatch(/reps/i);
+  });
+
+  it("still says reps for a lift actually counted in them", () => {
+    const cleared: Session[] = [
+      {
+        date: "2026-09-01",
+        label: "Push",
+        completedAt: "2026-09-01T18:00:00.000Z",
+        exercises: [{ exerciseId: "push-up", sets: Array.from({ length: 4 }, () => ({ weight: 0, reps: 99, done: true })) }],
+      },
+    ];
+    expect(nextTarget("push-up", cleared, "experienced").note).toMatch(/reps/i);
   });
 });

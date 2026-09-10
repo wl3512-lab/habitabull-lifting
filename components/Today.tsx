@@ -12,6 +12,7 @@ import { greetingMood, line } from "@/lib/voice";
 import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor } from "@/lib/schedule";
 import type { CrewDay } from "@/lib/cloud";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -519,7 +520,8 @@ export default function Today({
           ))}
         </ul>
         <p className="sr-only">
-          {done.filter((s) => week.some((d) => d.iso === s.date)).length} sessions logged this week.
+          {count(done.filter((s) => week.some((d) => d.iso === s.date)).length, "session")} logged this
+          week.
         </p>
       </section>
 

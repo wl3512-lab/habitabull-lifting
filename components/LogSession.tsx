@@ -13,6 +13,7 @@ import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
 import { line } from "@/lib/voice";
 import type { Equipment, Exercise, LoggedSet, Muscle, Profile, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 /**
  * The working screen, and the one the whole product is judged on. Someone is
@@ -31,7 +32,7 @@ function lastAttempt(history: Session[], exerciseId: string, increment: number) 
     const sets = ex?.sets.filter((x) => x.done) ?? [];
     if (sets.length === 0) continue;
     const best = sets.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
-    return byId(exerciseId)?.cardio ? `${best.reps} min` : byId(exerciseId)?.hold ? `${best.reps} sec` : increment === 0 ? `${best.reps} reps` : `${best.weight} lb × ${best.reps}`;
+    return byId(exerciseId)?.cardio ? `${best.reps} min` : byId(exerciseId)?.hold ? `${best.reps} sec` : increment === 0 ? count(best.reps, "rep") : `${best.weight} lb × ${best.reps}`;
   }
   return undefined;
 }
@@ -196,7 +197,7 @@ export default function LogSession({
         : isHold
           ? `${set.reps} sec`
           : increment === 0
-            ? `${set.reps} reps`
+            ? count(set.reps, "rep")
             : `${set.weight} lb × ${set.reps}`,
       best: isBest,
       resting: !lastOfSession,
@@ -489,7 +490,7 @@ export default function LogSession({
               disabled={!s.done}
               aria-label={
                 s.done
-                  ? `Set ${i + 1}, logged ${increment === 0 ? `${s.reps} reps` : `${s.weight} lb × ${s.reps}`}. Tap to edit.`
+                  ? `Set ${i + 1}, logged ${increment === 0 ? count(s.reps, "rep") : `${s.weight} lb × ${s.reps}`}. Tap to edit.`
                   : `Set ${i + 1}, not logged`
               }
               // Drawn 6px, tapped at 44. The padding grows the target and the
@@ -513,7 +514,7 @@ export default function LogSession({
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className="text-emphasis text-dim">
             {exerciseDone
-              ? `All ${exercise.sets.length} sets done`
+              ? `All ${count(exercise.sets.length, "set")} done`
               : `Set ${activeSet + 1} of ${exercise.sets.length}`}
           </p>
           {pr > 0 && <span className="tabular text-body text-dim">· Best {pr} lb</span>}

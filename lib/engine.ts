@@ -169,7 +169,15 @@ export function nextTarget(
   if (!ex) return fallback;
 
   const targetReps = repsFor(ex, level);
-  const sets = LEVEL_SETS[level];
+  /*
+    Cardio is one set, and that is not a preference — it is what the type says
+    and what `import.ts` has always clamped an imported plan to. The engine
+    was the one path that never asked, so a bike added to a day came back as
+    four blocks of nine minutes with a rest timer between each, which is not a
+    thing anybody does. Everything else keeps the level's set count; a plank
+    held three or four times is exactly right.
+  */
+  const sets = ex.cardio ? 1 : LEVEL_SETS[level];
   const hist = historyFor(sessions, exerciseId);
 
   if (hist.length === 0) {
@@ -182,7 +190,14 @@ export function nextTarget(
 
   if (clearedAll) {
     const weight = ex.increment === 0 ? 0 : roundToIncrement(lastWeight + ex.increment, ex.increment);
-    return { weight, reps: targetReps, sets, note: ex.increment === 0 ? "Add two reps this time." : `Up ${ex.increment} lb. You earned it.` };
+    /*
+      What "more" means depends on what the lift is counted in. A bike is
+      logged in minutes and a plank in seconds, and both were being told to
+      add two reps. No number here where the app is not the one setting it:
+      on a lift it cannot load, going longer is the user's call.
+    */
+    const more = ex.cardio || ex.hold ? "Go a little longer this time." : "Add two reps this time.";
+    return { weight, reps: targetReps, sets, note: ex.increment === 0 ? more : `Up ${ex.increment} lb. You earned it.` };
   }
 
   const missedStreak = hist.slice(0, 3).filter((sets_) => !(sets_.length && sets_.every((s) => s.reps >= targetReps))).length;

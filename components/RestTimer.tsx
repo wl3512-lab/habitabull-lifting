@@ -5,6 +5,7 @@ import { Pill } from "./ui";
 import { chime } from "@/lib/chime";
 import { haptic } from "@/lib/haptics";
 import { nameOf } from "@/lib/exercises";
+import { count } from "@/lib/plural";
 
 const R = 84;
 const CIRCUMFERENCE = 2 * Math.PI * R;
@@ -122,9 +123,18 @@ export default function RestTimer({
           <p className="label text-dim">Next up</p>
           <div className="mt-1.5 flex items-baseline justify-between gap-3">
             <span className="head text-head text-fg">{nameOf(nextExerciseId)}</span>
-            <span className="tabular statement shrink-0 text-head text-cyan">
-              {nextWeight ? `${nextWeight} lb × ${nextReps}` : `${nextReps} reps`}
-            </span>
+            {/*
+              The reps are optional on the way in, and the old line printed
+              them straight into the string — so a next set that arrived
+              without them read "undefined reps" at somebody standing between
+              sets. The name alone is still a useful thing to say; a number
+              nobody has is not.
+            */}
+            {nextReps !== undefined && (
+              <span className="tabular statement shrink-0 text-head text-cyan">
+                {nextWeight ? `${nextWeight} lb × ${nextReps}` : count(nextReps, "rep")}
+              </span>
+            )}
           </div>
         </div>
       )}

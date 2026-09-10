@@ -24,6 +24,7 @@ import {
 } from "@/lib/crew";
 import { formatCode, isValidCode } from "@/lib/joincode";
 import type { Challenge, Profile, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -172,8 +173,8 @@ export default function Crew({
 
   async function share() {
     const text = code
-      ? `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Join my crew with ${formatCode(code)}.`
-      : `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull. Come do it with me.`;
+      ? `I'm doing ${count(challenge.target, "session")} in ${monthName} on HabitaBull. Join my crew with ${formatCode(code)}.`
+      : `I'm doing ${count(challenge.target, "session")} in ${monthName} on HabitaBull. Come do it with me.`;
     const url = typeof window === "undefined" ? "" : window.location.origin;
     try {
       if (navigator.share) {
@@ -215,7 +216,7 @@ export default function Crew({
           {challenge.target} {challenge.target === 1 ? "session" : "sessions"} in {monthName}.
         </p>
 
-        <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-raise" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${done} of ${challenge.target} sessions this month`}>
+        <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-raise" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${done} of ${count(challenge.target, "session")} this month`}>
           <div
             className="h-full w-full origin-left rounded-full bg-done transition-transform duration-deliberate ease-[cubic-bezier(0.25,1,0.5,1)]"
             style={{ transform: `scaleX(${pct / 100})` }}

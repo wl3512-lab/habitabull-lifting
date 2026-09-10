@@ -13,6 +13,7 @@ import {
 import { addPhoto, deletePhoto, listPhotos, photoUrl, type PhotoMeta } from "@/lib/photos";
 import { buildIcs, googleUrl } from "@/lib/ics";
 import type { Profile, Routine, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const DAY_HEADS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = [
@@ -359,7 +360,7 @@ export default function Calendar({
             </p>
             <p className="mt-1.5 text-body text-dim">
               {longest > 0
-                ? `Longest gap you have come back from: ${longest} days. A streak is a nice-to-have, not the score.`
+                ? `Longest gap you have come back from: ${count(longest, "day")}. A streak is a nice-to-have, not the score.`
                 : "A streak is a nice-to-have, not the score."}
             </p>
           </div>
@@ -376,7 +377,7 @@ export default function Calendar({
               ←
             </button>
             <p className="text-body text-dim">
-              {counts.reduce((a, b) => a + b, 0)} sessions in {year}
+              {count(counts.reduce((a, b) => a + b, 0), "session")} in {year}
             </p>
             <button
               type="button"
