@@ -48,6 +48,20 @@ export interface DayTemplate {
   recommended?: boolean;
 }
 
+/*
+  A day contains what its hint says it contains.
+
+  Every one of these used to end in a core slot, and the picker is
+  deterministic, so the same core lift landed on all six: a plank on push day,
+  on pull day, on leg day. "Lower body — everything below them" shipped with a
+  plank in it, which is above the hips by any reading.
+
+  Core stays where the description covers it: full body, which promises a bit
+  of everything, and upper body, where the trunk genuinely belongs. The named
+  splits list their muscles and now contain those muscles. Lower body picks up
+  a second hamstring slot in the core slot's place so it is still a full day
+  rather than three lifts.
+*/
 export const TEMPLATES: DayTemplate[] = [
   {
     id: "full-body",
@@ -61,21 +75,21 @@ export const TEMPLATES: DayTemplate[] = [
     id: "push",
     label: "Push day",
     hint: "Chest, shoulders, triceps",
-    muscles: ["chest", "shoulders", "arms", "chest", "core"],
+    muscles: ["chest", "shoulders", "arms", "chest"],
     style: "strength",
   },
   {
     id: "pull",
     label: "Pull day",
     hint: "Back, biceps, hamstrings",
-    muscles: ["back", "hamstrings", "back", "arms", "core"],
+    muscles: ["back", "hamstrings", "back", "arms"],
     style: "strength",
   },
   {
     id: "legs",
     label: "Leg day",
     hint: "Quads, hamstrings, glutes",
-    muscles: ["quads", "hamstrings", "glutes", "quads", "core"],
+    muscles: ["quads", "hamstrings", "glutes", "quads"],
     style: "strength",
   },
   {
@@ -89,7 +103,7 @@ export const TEMPLATES: DayTemplate[] = [
     id: "lower",
     label: "Lower body",
     hint: "Everything below them",
-    muscles: ["quads", "hamstrings", "glutes", "core"],
+    muscles: ["quads", "hamstrings", "glutes", "hamstrings"],
     style: "strength",
   },
   {

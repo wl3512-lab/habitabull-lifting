@@ -116,3 +116,34 @@ describe("generateRoutine with day types", () => {
     expect(week.map((r) => r.template)).toEqual(["push", "pull", "push", "pull"]);
   });
 });
+
+describe("a day holds what its hint says it holds", () => {
+  it("keeps core off the splits that list their muscles", () => {
+    // A plank on push day, on pull day and on leg day was the same core slot
+    // on every template, picked deterministically.
+    for (const id of ["push", "pull", "legs", "lower"] as const) {
+      const [day] = generateRoutine("new", [1], KIT, [], [id]);
+      const cores = day.exercises.filter((e) => byId(e.exerciseId)!.primary === "core");
+      expect(cores, id).toHaveLength(0);
+    }
+  });
+
+  it("keeps core where the description covers it", () => {
+    for (const id of ["full-body", "upper"] as const) {
+      const [day] = generateRoutine("new", [1], KIT, [], [id]);
+      const cores = day.exercises.filter((e) => byId(e.exerciseId)!.primary === "core");
+      expect(cores.length, id).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not leave lower body short after the swap", () => {
+    const [day] = generateRoutine("new", [1], KIT, [], ["lower"]);
+    expect(day.exercises.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("never puts the same plank across a whole named week", () => {
+    const week = generateRoutine("new", [1, 3, 5], KIT, [], ["push", "pull", "legs"]);
+    const names = week.flatMap((d) => d.exercises.map((e) => e.exerciseId));
+    expect(names.filter((n) => n === "plank")).toHaveLength(0);
+  });
+});
