@@ -5,6 +5,7 @@ import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
 import { byId, makeCustomExercise, nameOf } from "@/lib/exercises";
+import { count } from "@/lib/plural";
 import type { Equipment, Exercise, Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
 
 const FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -426,9 +427,21 @@ export default function RoutineEditor({
                   <span className="head block truncate text-emphasis text-fg">
                     {nameOf(e.exerciseId)}
                   </span>
+                  {/*
+                    What this row can change, and nothing else.
+
+                    It used to print the weight too, which is not editable on
+                    this screen and is not hers to set anyway: the engine picks
+                    the load from her history every time the day is built, so a
+                    number shown here is a number she cannot act on and that
+                    will have moved by the session. On a cardio lift it was
+                    also plain wrong — that field carries the incline, so a
+                    treadmill at 5% read "5 lb".
+                  */}
                   <span className="block text-body text-dim">
-                    {e.sets} × {e.reps}
-                    {e.weight > 0 && ` · ${e.weight} lb`}
+                    {byId(e.exerciseId)?.cardio
+                      ? count(e.reps, "minute")
+                      : `${e.sets} × ${e.reps}`}
                   </span>
                 </span>
                 <span aria-hidden className="shrink-0 text-body text-cyan">

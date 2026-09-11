@@ -32,6 +32,18 @@ export interface DayTemplate {
   muscles: Muscle[];
   /** Circuits run lighter and longer, and prefer what needs no setup. */
   style: "strength" | "circuit";
+  /**
+   * Named lifts in preference order, instead of muscle slots.
+   *
+   * Every other day is a shape the picker fills, because "legs" has a dozen
+   * right answers and the best one depends on what kit she has. Cardio has
+   * one: she is going to the machine everybody knows how to use. Naming it
+   * outright beats asking a picker to arrive at it by muscle, which is how it
+   * used to produce a bodyweight circuit nobody would call cardio.
+   *
+   * The first entry the kit allows wins, so the last one has to need nothing.
+   */
+  lifts?: string[];
   /** True for the shape the guidance actually recommends for a novice. */
   recommended?: boolean;
 }
@@ -83,9 +95,12 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "cardio",
     label: "Cardio",
-    hint: "A circuit — high reps, short rests, nothing to set up",
-    muscles: ["glutes", "quads", "chest", "core"],
+    hint: "Treadmill. Set a time and an incline, then walk it or run it",
+    // Kept as the fallback shape if the named lifts are ever unavailable.
+    muscles: ["quads"],
     style: "circuit",
+    // Outdoor run last, because it is the one that needs no gym at all.
+    lifts: ["treadmill", "outdoor-run"],
   },
 ];
 

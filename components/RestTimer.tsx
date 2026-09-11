@@ -26,6 +26,8 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s % 60)
  */
 export default function RestTimer({
   seconds,
+  mode = "rest",
+  workLabel,
   nextExerciseId,
   nextWeight,
   nextReps,
@@ -33,13 +35,28 @@ export default function RestTimer({
   onEnd,
 }: {
   seconds: number;
+  /**
+   * `rest` is the gap between sets. `work` is the set itself, which only
+   * cardio has: a treadmill is twenty minutes of doing the thing, not four
+   * blocks with a wait between, so the clock she sets is the clock that runs.
+   */
+  mode?: "rest" | "work";
+  /** The lift being done, named, in work mode. */
+  workLabel?: string;
   /** The set you are resting before, if there is one. */
   nextExerciseId?: string;
   nextWeight?: number;
   nextReps?: number;
-  onDone: () => void;
+  /**
+   * In work mode this hands back the minutes actually spent, which is not
+   * always the minutes asked for. Somebody who sets twenty and steps off at
+   * twelve did twelve, and logging the twenty would be the app writing down a
+   * number she did not do.
+   */
+  onDone: (minutesDone?: number) => void;
   onEnd: () => void;
 }) {
+  const working = mode === "work";
   // A target timestamp, not a decrementing counter: phones suspend timers when
   // the screen locks, and coming back to a stalled clock is worse than none.
   const endsAt = useRef(Date.now() + seconds * 1000);
@@ -70,12 +87,28 @@ export default function RestTimer({
     }
   }, [done]);
 
+  /** Minutes actually spent, rounded to the nearest one and never zero. */
+  const spent = () => Math.max(1, Math.round((seconds - left) / 60));
+
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-      <p className="label text-center text-cyan">{done ? "Ready when you are" : "Resting"}</p>
+      <p className="label text-center text-cyan">
+        {working
+          ? done
+            ? "That is your time"
+            : (workLabel ?? "Working")
+          : done
+            ? "Ready when you are"
+            : "Resting"}
+      </p>
 
       <div className="mt-8 flex justify-center">
-        <svg viewBox="0 0 200 200" className="w-[240px]" role="img" aria-label={`${clock(left)} of rest remaining`}>
+        <svg
+          viewBox="0 0 200 200"
+          className="w-[240px]"
+          role="img"
+          aria-label={`${clock(left)} ${working ? "left on the clock" : "of rest remaining"}`}
+        >
           <circle cx="100" cy="100" r="92" className="fill-card" />
           <circle cx="100" cy="100" r="92" className="fill-none stroke-raise" strokeWidth="6" />
           {/* Four spokes, as on the plate. */}
@@ -118,7 +151,7 @@ export default function RestTimer({
         <p className="text-body text-dim">of {clock(seconds)}</p>
       </div>
 
-      {nextExerciseId && (
+      {!working && nextExerciseId && (
         <div className="mt-[104px] rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Next up</p>
           <div className="mt-1.5 flex items-baseline justify-between gap-3">
@@ -140,7 +173,9 @@ export default function RestTimer({
       )}
 
       <div className="mt-auto pt-8">
-        <Pill onClick={onDone}>{done ? "Next set" : "Skip the rest"}</Pill>
+        <Pill onClick={() => onDone(working ? (done ? undefined : spent()) : undefined)}>
+          {working ? (done ? "Log it" : "Stop here and log it") : done ? "Next set" : "Skip the rest"}
+        </Pill>
         <button
           type="button"
           onClick={onEnd}

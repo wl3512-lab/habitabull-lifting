@@ -685,3 +685,36 @@ describe("cardio is counted differently because it is a different thing", () => 
     expect(nextTarget("push-up", cleared, "experienced").note).toMatch(/reps/i);
   });
 });
+
+describe("cardio keeps the incline she set", () => {
+  const ran = (date: string, minutes: number, incline: number): Session => ({
+    date,
+    label: "Cardio",
+    completedAt: `${date}T18:00:00.000Z`,
+    exercises: [{ exerciseId: "treadmill", sets: [{ weight: incline, reps: minutes, done: true }] }],
+  });
+
+  it("starts flat when there is no history", () => {
+    expect(nextTarget("treadmill", [], "new").weight).toBe(0);
+  });
+
+  it("holds the last incline rather than resetting to flat", () => {
+    // She set 5% on Monday; Wednesday must not hand her 0% back.
+    expect(nextTarget("treadmill", [ran("2026-09-07", 20, 5)], "new").weight).toBe(5);
+  });
+
+  it("never raises the incline on its own", () => {
+    // Clearing the target is what adds a plate on a loaded lift. How steep a
+    // treadmill is stays her call.
+    expect(nextTarget("treadmill", [ran("2026-09-07", 99, 5)], "new").weight).toBe(5);
+  });
+
+  it("never cuts the incline after a rough run of sessions", () => {
+    const rough = [ran("2026-09-07", 1, 8), ran("2026-09-05", 1, 8), ran("2026-09-03", 1, 8)];
+    expect(nextTarget("treadmill", rough, "new").weight).toBe(8);
+  });
+
+  it("still offers twenty minutes as the duration", () => {
+    expect(nextTarget("treadmill", [ran("2026-09-07", 35, 5)], "new").reps).toBe(20);
+  });
+});

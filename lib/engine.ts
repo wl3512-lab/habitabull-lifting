@@ -32,6 +32,18 @@ const LEVEL_REPS: Record<Level, number> = { new: 8, returning: 6, experienced: 5
 export function repsFor(ex: Exercise, level: Level): number {
   // Seconds, for anything you hold. A machine crunch is a rep like any other.
   if (ex.hold) return 30;
+  /*
+    Minutes, for anything you do continuously. It used to fall through to the
+    rep branch and come out as `LEVEL_REPS + 4`, so a treadmill was prescribed
+    nine minutes because a cable fly gets nine reps: a number arrived at by
+    accident and only coincidentally in the right units.
+
+    Twenty, for every level. Duration is the one variable here the app does
+    not manage — it says "go a little longer" and leaves the amount to the
+    person on the machine — so this is a starting point to adjust, not a
+    progression to climb, and it does not need three of them.
+  */
+  if (ex.cardio) return 20;
   if (ex.heavy) return Math.min(5, LEVEL_REPS[level]);
   return ex.compound ? LEVEL_REPS[level] : LEVEL_REPS[level] + 4;
 }
@@ -116,6 +128,36 @@ export function generateRoutine(
     const circuit = tpl.style === "circuit";
     const used = new Set<string>();
     const exercises: PlannedExercise[] = [];
+
+    /*
+      A template that names its lifts skips the picker entirely: the first one
+      her kit allows, and nothing else on the day. Cardio is the only one, and
+      it is one lift on purpose — a treadmill for twenty minutes is a session,
+      and offering four machines beside it is a decision nobody wanted to make
+      before a run.
+    */
+    const named = tpl.lifts
+      ?.map((id) => byId(id))
+      .filter((ex): ex is Exercise => Boolean(ex));
+    const fixed = named?.find((ex) => eq.includes(ex.equipment)) ?? named?.at(-1);
+    if (fixed) {
+      return {
+        day,
+        label: tpl.label,
+        template: tpl.id,
+        exercises: [
+          {
+            exerciseId: fixed.id,
+            // One set, because that is what continuous work is.
+            sets: 1,
+            reps: repsFor(fixed, level),
+            // Flat to start. The incline is hers to raise.
+            weight: 0,
+          },
+        ],
+      };
+    }
+
     for (const m of muscles) {
       // A circuit wants things you can start immediately, so bodyweight first.
       const ex = circuit
@@ -186,6 +228,28 @@ export function nextTarget(
 
   const last = hist[0];
   const lastWeight = last.length ? Math.max(...last.map((s) => s.weight)) : startingWeight(ex, level);
+
+  /*
+    Cardio carries its incline and nothing else.
+
+    That field holds a percent rather than a load here, so none of the
+    progression below applies to it: there is no increment to add, and cutting
+    it ten percent on a rough week would be the app deciding how steep her
+    treadmill is. But resetting it to flat every session is the other wrong
+    answer, and it was the one in place — she set 5% on Monday and found 0% on
+    Wednesday, from an app whose whole claim is that it remembers.
+
+    So it holds. Duration is hers to move and so is the incline; what the app
+    owes her is not making her set it twice.
+  */
+  if (ex.cardio) {
+    return {
+      weight: lastWeight,
+      reps: targetReps,
+      sets,
+      note: "Same as last time. Change the time or the incline if you want to.",
+    };
+  }
   const clearedAll = last.length >= sets && last.every((s) => s.reps >= targetReps);
 
   if (clearedAll) {

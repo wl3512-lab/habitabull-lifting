@@ -72,6 +72,9 @@ export default function LogSession({
     exerciseId: string;
     weight: number;
     reps: number;
+    /** `work` is the cardio set itself running, not the gap after it. */
+    mode?: "rest" | "work";
+    label?: string;
   } | null>(null);
   const [index, setIndex] = useState(() => {
     const i = session.exercises.findIndex((e) => e.sets.some((s) => !s.done));
@@ -149,10 +152,18 @@ export default function LogSession({
     writeSets(exercise.sets.map((s, j) => (j === i ? next : s)));
   }
 
-  function completeSet(i: number) {
+  /**
+   * `patch` is for the caller that already knows the set changed as it closed.
+   *
+   * Cardio stops the clock and logs in one move, and doing that as two — write
+   * the minutes, then complete — read the set back out of this render's
+   * closure and wrote the planned time instead of the time spent. One write,
+   * so there is no window between them to be stale in.
+   */
+  function completeSet(i: number, patch?: Partial<LoggedSet>) {
     if (!exercise) return;
-    const set = exercise.sets[i];
-    const sets = exercise.sets.map((s, j) => (j === i ? { ...s, done: true } : s));
+    const set = { ...exercise.sets[i], ...patch };
+    const sets = exercise.sets.map((s, j) => (j === i ? { ...set, done: true } : s));
     // Carry what you actually did into the sets ahead, so the next row is
     // already right and needs zero taps in the common case. This write happens
     // now, not after the confirmation — the set is in the book the instant she
@@ -432,10 +443,19 @@ export default function LogSession({
     return (
       <RestTimer
         seconds={rest.seconds}
+        mode={rest.mode}
+        workLabel={rest.label}
         nextExerciseId={rest.exerciseId}
         nextWeight={rest.weight}
         nextReps={rest.reps}
-        onDone={() => setRest(null)}
+        onDone={(minutesDone) => {
+          const wasWork = rest.mode === "work";
+          setRest(null);
+          if (!wasWork) return;
+          // Stopping early logs the time actually spent, not the time asked
+          // for. Running it out logs what was set.
+          completeSet(activeSet, minutesDone === undefined ? undefined : { reps: minutesDone });
+        }}
         onEnd={() => {
           setRest(null);
           onFinish();
@@ -550,7 +570,30 @@ export default function LogSession({
       <nav className="sticky bottom-0 bg-ground px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         {!exerciseDone ? (
           <>
-            <Pill onClick={() => completeSet(activeSet)}>Log set</Pill>
+            {/*
+              Cardio is the one lift where the set has a duration you spend
+              rather than a count you finish, so the clock comes first and the
+              log comes after it. Everything else logs on the tap.
+            */}
+            {isCardio ? (
+              <Pill
+                onClick={() => {
+                  const set = exercise.sets[activeSet];
+                  setRest({
+                    seconds: Math.max(60, set.reps * 60),
+                    exerciseId: exercise.exerciseId,
+                    weight: set.weight,
+                    reps: set.reps,
+                    mode: "work",
+                    label: nameOf(exercise.exerciseId),
+                  });
+                }}
+              >
+                Start the clock
+              </Pill>
+            ) : (
+              <Pill onClick={() => completeSet(activeSet)}>Log set</Pill>
+            )}
             <p className="mt-2.5 text-center text-body text-dim">
               {activeSet === exercise.sets.length - 1 && isLastExercise
                 ? "Last set of the session."
