@@ -589,7 +589,7 @@ export default function LogSession({
                   });
                 }}
               >
-                Start the clock
+                Go
               </Pill>
             ) : (
               <Pill onClick={() => completeSet(activeSet)}>Log set</Pill>

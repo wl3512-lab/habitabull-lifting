@@ -674,6 +674,23 @@ export function makeCustomExercise(
 }
 
 /** Cardio machines for the add-a-lift picker's own Cardio category. */
-export function cardioLifts(exclude: string[] = []): Exercise[] {
-  return EXERCISES.filter((e) => e.cardio && !exclude.includes(e.id));
+/**
+ * The cardio machines, as a set of their own.
+ *
+ * Cardio does not sort by muscle the way everything else does. A treadmill is
+ * filed under quads and a rower under back, so asking for "another quads lift"
+ * to swap a treadmill offers back squats, and the rower cannot be reached from
+ * the treadmill at all. They are alternatives to each other and to nothing
+ * else, which is what this returns.
+ *
+ * `equipment` is optional because the two callers want different things. The
+ * week builder passes it: she is planning against the kit she said she has.
+ * Adding a lift mid-session does not, because she is standing in the gym
+ * looking at what is actually in front of her.
+ */
+export function cardioLifts(exclude: string[] = [], equipment?: Equipment[]): Exercise[] {
+  const kit = equipment ? new Set<Equipment>([...equipment, "bodyweight"]) : null;
+  return EXERCISES.filter(
+    (e) => e.cardio && !exclude.includes(e.id) && (!kit || kit.has(e.equipment))
+  );
 }

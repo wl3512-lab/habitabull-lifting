@@ -75,12 +75,26 @@ export function roundToIncrement(weight: number, increment: number): number {
   return Math.max(increment, Math.round(weight / increment) * increment);
 }
 
-/** Pick the best available exercise for a muscle given the user's equipment. */
+/**
+ * Pick the best available exercise for a muscle given the user's equipment.
+ *
+ * `variant` rotates through the candidates instead of always taking the best.
+ * It exists for one slot: every template in the app ends in core, and this
+ * function is deterministic, so the same core lift was landing on every day of
+ * every week. Somebody on a four-day plan got a plank four times and asked,
+ * reasonably, why it was on every day.
+ *
+ * It is not used anywhere else on purpose. Everywhere else the first candidate
+ * is first because it is the right answer — rotating a novice off a back squat
+ * onto a bodyweight squat for variety's sake would be the generator choosing
+ * novelty over the lift that carries the session.
+ */
 export function pickExercise(
   muscle: Muscle,
   equipment: Equipment[],
   exclude: Set<string>,
-  favourites: string[] = []
+  favourites: string[] = [],
+  variant = 0
 ): Exercise | null {
   const usable = allExercises().filter(
     (e) => e.primary === muscle && equipment.includes(e.equipment) && !exclude.has(e.id)
@@ -94,7 +108,7 @@ export function pickExercise(
       Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
       Number(b.compound) - Number(a.compound)
   );
-  return usable[0];
+  return usable[((variant % usable.length) + usable.length) % usable.length];
 }
 
 export function startingWeight(ex: Exercise, level: Level): number {
@@ -160,11 +174,13 @@ export function generateRoutine(
 
     for (const m of muscles) {
       // A circuit wants things you can start immediately, so bodyweight first.
+      // Core rotates by day so the week is not the same plank five times over.
+      const v = m === "core" ? i : 0;
       const ex = circuit
-        ? pickExercise(m, ["bodyweight"], used, favourites) ??
-          pickExercise(m, eq, used, favourites)
-        : pickExercise(m, eq, used, favourites) ??
-          pickExercise(m, ["bodyweight"], used, favourites);
+        ? pickExercise(m, ["bodyweight"], used, favourites, v) ??
+          pickExercise(m, eq, used, favourites, v)
+        : pickExercise(m, eq, used, favourites, v) ??
+          pickExercise(m, ["bodyweight"], used, favourites, v);
       if (!ex) continue;
       used.add(ex.id);
       exercises.push({

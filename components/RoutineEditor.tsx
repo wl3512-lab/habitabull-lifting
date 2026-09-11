@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
-import { byId, makeCustomExercise, nameOf } from "@/lib/exercises";
+import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
 import { count } from "@/lib/plural";
 import type { Equipment, Exercise, Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
 
@@ -412,9 +412,18 @@ export default function RoutineEditor({
         {routine.exercises.map((e) => {
           const meta = byId(e.exerciseId);
           const open = openId === e.exerciseId;
-          const alts = meta
-            ? alternativesFor(meta.primary, profile.equipment, used, profile.favourites ?? [])
-            : [];
+          /*
+            Cardio swaps for cardio. Filed by muscle, a treadmill is a quads
+            lift and a rower is a back lift, so the muscle-based list offered
+            squats in place of a run and put the rower somewhere a treadmill
+            could never reach. LogSession already knew this when adding a lift
+            mid-session; the week builder did not.
+          */
+          const alts = !meta
+            ? []
+            : meta.cardio
+              ? cardioLifts(used, profile.equipment)
+              : alternativesFor(meta.primary, profile.equipment, used, profile.favourites ?? []);
           return (
             <li key={e.exerciseId} className="rounded-2xl bg-card">
               <button
@@ -451,32 +460,72 @@ export default function RoutineEditor({
 
               {open && (
                 <div className="rise border-t border-line px-[18px] pb-[18px] pt-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex-1 text-body text-dim">Sets</span>
-                    <Stepper
-                      value={e.sets}
-                      min={1}
-                      max={6}
-                      onChange={(n) => update(e.exerciseId, { sets: n })}
-                      label="sets"
-                    />
-                  </div>
-                  <div className="mt-2.5 flex items-center gap-3">
-                    <span className="flex-1 text-body text-dim">Reps</span>
-                    <Stepper
-                      value={e.reps}
-                      min={1}
-                      max={60}
-                      step={meta?.increment === 0 ? 5 : 1}
-                      onChange={(n) => update(e.exerciseId, { reps: n })}
-                      label="reps"
-                    />
-                  </div>
+                  {/*
+                    Cardio is set the way it is done: a time you spend and how
+                    steep it is. Sets and reps are the wrong two numbers for
+                    it — there is only ever one set, so a stepper offering six
+                    is offering something the engine will not build, and "reps"
+                    on a treadmill has never meant reps. This panel asks for
+                    what the machine actually has.
+                  */}
+                  {meta?.cardio ? (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="flex-1 text-body text-dim">Time</span>
+                        <Stepper
+                          value={e.reps}
+                          min={5}
+                          max={120}
+                          step={5}
+                          onChange={(n) => update(e.exerciseId, { reps: n })}
+                          label="minutes"
+                        />
+                      </div>
+                      {meta.incline && (
+                        <div className="mt-2.5 flex items-center gap-3">
+                          <span className="flex-1 text-body text-dim">Incline</span>
+                          <Stepper
+                            value={e.weight}
+                            min={0}
+                            max={15}
+                            onChange={(n) => update(e.exerciseId, { weight: n })}
+                            label="percent"
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="flex-1 text-body text-dim">Sets</span>
+                        <Stepper
+                          value={e.sets}
+                          min={1}
+                          max={6}
+                          onChange={(n) => update(e.exerciseId, { sets: n })}
+                          label="sets"
+                        />
+                      </div>
+                      <div className="mt-2.5 flex items-center gap-3">
+                        <span className="flex-1 text-body text-dim">Reps</span>
+                        <Stepper
+                          value={e.reps}
+                          min={1}
+                          max={60}
+                          step={meta?.increment === 0 ? 5 : 1}
+                          onChange={(n) => update(e.exerciseId, { reps: n })}
+                          label="reps"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {alts.length > 0 && (
                     <>
                       <p className="label mt-5 text-dim">
-                        Swap for another {meta?.primary} lift
+                        {meta?.cardio
+                          ? "Swap for different cardio"
+                          : `Swap for another ${meta?.primary} lift`}
                       </p>
                       <div className="mt-2.5 flex flex-wrap gap-2">
                         {alts.map((a) => (
