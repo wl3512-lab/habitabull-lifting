@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AfterWorkout from "@/components/AfterWorkout";
 import Calendar from "@/components/Calendar";
 import DayDetail from "@/components/DayDetail";
@@ -11,13 +11,21 @@ import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
+import ProfileScreen from "@/components/Profile";
+import Arrival from "@/components/Arrival";
+import Comeback from "@/components/Comeback";
+import ImportWorkout from "@/components/ImportWorkout";
 import Progress from "@/components/Progress";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar, { type Tab } from "@/components/TabBar";
+import TabView from "@/components/TabView";
 import Today from "@/components/Today";
 import WeekSetup from "@/components/WeekSetup";
 import {
   buildSession,
+  rememberLineup,
+  mergeDayLibrary,
+  overlayDayLibrary,
   generateRoutine,
   mergeRebuild,
   personalRecord,
@@ -26,12 +34,25 @@ import {
 import { enabled, publishPlan, pushCheckins } from "@/lib/cloud";
 import { setCustomExercises } from "@/lib/exercises";
 import { challengeFor } from "@/lib/crew";
-import { EMPTY, load, save, sessionFor, todayISO, upsertSession } from "@/lib/storage";
+import { launchPlaylist } from "@/lib/spotify";
+import { greetingMood } from "@/lib/voice";
+import {
+  EMPTY,
+  load,
+  save,
+  sessionFor,
+  todayISO,
+  upsertSession,
+  upsertWeighIn,
+} from "@/lib/storage";
+import { arrivalMood, lastGreeting, rememberGreeting, type ArrivalMood } from "@/lib/arrival";
+import { nextTrainingDay } from "@/lib/schedule";
+import { setBusy } from "@/lib/busy";
 import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "import";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -43,16 +64,60 @@ export default function Page() {
   const [detail, setDetail] = useState<{ id: string; from: View } | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [copying, setCopying] = useState<{ day: SharedDay; from: string } | null>(null);
+  /*
+    The beat the app opens on, and whether it has already played.
+
+    `arrival` is the mood being shown right now and null the rest of the time;
+    `welcomed` records that today's beat was a welcome back, which is what stops
+    the same person being welcomed a second time when they start their workout.
+    Both are decided once, on the load that reads storage, because the answer
+    depends on the state that load returns and must not change under them
+    afterwards.
+  */
+  const [arrival, setArrival] = useState<ArrivalMood | null>(null);
+  const [welcomed, setWelcomed] = useState(false);
+  // Set when the beat hands over, so Today rises into place rather than simply
+  // appearing. A ref, not state: it is read during the render that dismissing
+  // the beat already causes, and never needs to cause one of its own.
+  const handedOff = useRef(false);
 
   useEffect(() => {
-    setState(load());
-    setToday(todayISO());
+    const loaded = load();
+    const t = todayISO();
+    setState(loaded);
+    setToday(t);
     setReady(true);
+
+    const greeted = lastGreeting();
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const mood = arrivalMood(loaded, t, { greeted, reduced });
+    if (mood) {
+      setArrival(mood);
+      rememberGreeting({ date: t, mood });
+    }
+    // A welcome already given today counts whether it was given this minute or
+    // this morning, or closing the app would buy a second one.
+    setWelcomed(mood === "return" || (greeted?.date === t && greeted.mood === "return"));
   }, []);
 
   useEffect(() => {
+    // Whether this landed is broadcast by `save` and picked up by NotSaving at
+    // the root, which is the only element that renders on every path.
     if (ready) save(state);
   }, [state, ready]);
+
+  /*
+    The stretch nobody may interrupt: a workout, from the first set to the beat
+    that ends it. StayFresh reads this before picking up a new build, because
+    the one place a reload costs something is standing at a rack halfway
+    through a session. Everywhere else the app rebuilds from storage and lands
+    where a resumed app lands anyway.
+  */
+  const mid = view === "log" || view === "done" || view === "comeback";
+  useEffect(() => {
+    setBusy(mid);
+    return () => setBusy(false);
+  }, [mid]);
 
   /*
     Tell the crew which days she trained — the dates, and nothing else. It runs
@@ -112,6 +177,28 @@ export default function Page() {
     );
   }
 
+  /*
+    Before anything else the app has to show, once a day: what today is.
+
+    Sits after onboarding and before every other view, because it is about the
+    day rather than about a screen — and whether it appears at all was decided
+    on load, in `arrivalMood`, against rules that keep it quiet far more often
+    than not.
+  */
+  if (arrival) {
+    return (
+      <Arrival
+        mood={arrival}
+        seed={today.length + profile.name.length}
+        nextDay={nextTrainingDay(profile.trainingDays, today)}
+        onDone={() => {
+          handedOff.current = true;
+          setArrival(null);
+        }}
+      />
+    );
+  }
+
   const dow = new Date(today + "T00:00:00").getDay();
   const scheduled = routines.find((r) => r.day === dow) ?? null;
   const draft = sessionFor(sessions, today);
@@ -140,6 +227,23 @@ export default function Page() {
 
   function startLogging() {
     if (!profile) return;
+    /*
+      Fired here, on the same tick as the tap, so the browser still treats the
+      window it opens as user-activated. Before the state write rather than
+      after: if music is going to fail it should fail before anything has been
+      committed, and the call itself swallows everything anyway.
+    */
+    launchPlaylist(profile.playlistId);
+    // A gap of a week or more turns starting into a comeback, which gets its
+    // own beat before the first set. Judged on completed sessions before today.
+    const lastDone = state.sessions
+      .filter((x) => x.completedAt && x.date < today)
+      .map((x) => x.date)
+      .sort()
+      .pop();
+    // Unless the arrival beat already said it this morning. One welcome back a
+    // day, at the door rather than again on the way to the bar.
+    const isComeback = !welcomed && greetingMood(lastDone, today) === "return";
     if (!draft && routine) {
       setState((s) => ({
         ...s,
@@ -149,7 +253,7 @@ export default function Page() {
         }),
       }));
     }
-    setView("log");
+    setView(isComeback ? "comeback" : "log");
   }
 
   /**
@@ -170,10 +274,13 @@ export default function Page() {
       ...s,
       sessions: upsertSession(
         s.sessions.filter((x) => x.date !== today || x.completedAt),
-        mergeRebuild(
-          sessionFor(s.sessions, today),
-          buildSession(rebuilt, s.sessions, profile.level, today)
-        )
+        {
+          ...mergeRebuild(
+            sessionFor(s.sessions, today),
+            buildSession(rebuilt, s.sessions, profile.level, today)
+          ),
+          adapted: true,
+        }
       ),
     }));
   }
@@ -185,6 +292,14 @@ export default function Page() {
   function openExercise(id: string, from: View) {
     setDetail({ id, from });
     setView("exercise");
+  }
+
+  /** One entry per day; logging twice corrects the day rather than appending. */
+  function saveWeighIn(lb: number) {
+    setState((s) => ({
+      ...s,
+      weighIns: upsertWeighIn(s.weighIns ?? [], { date: today, lb }),
+    }));
   }
 
   function saveGoal(g: Goal) {
@@ -203,15 +318,28 @@ export default function Page() {
       .map((e) => e.exerciseId);
 
     setRecords(hit);
-    setState((s) => ({
-      ...s,
-      sessions: upsertSession(s.sessions, {
-        ...draft,
-        // Drop untouched sets so history reflects what was actually done.
-        exercises: draft.exercises.map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) })),
-        completedAt: new Date().toISOString(),
-      }),
-    }));
+    setState((s) => {
+      // Remember the lineup you actually trained. buildSession takes its
+      // exercise list from the routine, so writing today's lineup back means the
+      // next time this day comes up your workout returns — the lift you added,
+      // the one you dropped — instead of the starting template. Weights still
+      // progress from history, so only the choice of exercises is carried over.
+      // A one-off "something hurts" rebuild is exempt: it changes only today.
+      // Next time this day comes up, the workout you actually did returns; the
+      // day library keeps it per day type, so pressing that day again does too.
+      const routines = rememberLineup(s.routines, draft);
+      return {
+        ...s,
+        routines,
+        dayLibrary: mergeDayLibrary(s.dayLibrary, routines),
+        sessions: upsertSession(s.sessions, {
+          ...draft,
+          // Drop untouched sets so history reflects what was actually done.
+          exercises: draft.exercises.map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) })),
+          completedAt: new Date().toISOString(),
+        }),
+      };
+    });
     setView("done");
   }
 
@@ -227,11 +355,14 @@ export default function Page() {
     );
   }
 
+
   /** Wraps a top-level screen with the tab bar. Modes never get one. */
   function placed(node: React.ReactNode, tab: Tab) {
     return (
       <>
-        {node}
+        <TabView tab={tab} handoff={handedOff.current}>
+          {node}
+        </TabView>
         <TabBar active={tab} onChange={(t) => setView(t)} />
       </>
     );
@@ -274,6 +405,7 @@ export default function Page() {
       <RoutineEditor
         profile={profile}
         routines={routines}
+        library={state.dayLibrary}
         onAddCustom={(e) => {
           /*
             The registry is filled here, not left to `save`. It is a module
@@ -293,6 +425,7 @@ export default function Page() {
           setState((s) => ({
             ...s,
             routines: r,
+            dayLibrary: mergeDayLibrary(s.dayLibrary, r),
             profile: s.profile ? { ...s.profile, planChosen: true } : s.profile,
           }));
           setView("today");
@@ -308,10 +441,15 @@ export default function Page() {
         profile={profile}
         onSave={(p: Profile) => {
           // A changed week means changed routines; sessions already logged stay.
+          // Overlay the saved day library so a rebuilt week keeps the day types
+          // the user has already shaped, instead of reverting them to defaults.
           setState((s) => ({
             ...s,
             profile: p,
-            routines: generateRoutine(p.level, p.trainingDays, p.equipment),
+            routines: overlayDayLibrary(
+              generateRoutine(p.level, p.trainingDays, p.equipment),
+              s.dayLibrary
+            ),
           }));
           // First time through, days are only half the answer — go straight on
           // to what each day is, rather than dropping her back on a home screen
@@ -319,6 +457,31 @@ export default function Page() {
           setView(profile.planChosen ? "today" : "routine");
         }}
         onSkip={() => setView(profile.planChosen ? "today" : "routine")}
+        onImport={() => setView("import")}
+      />
+    );
+  }
+
+  if (view === "import" && profile) {
+    return (
+      <ImportWorkout
+        profile={profile}
+        onCancel={() => setView("week")}
+        onDone={(routines, customs) => {
+          const nextCustoms = [...(state.customExercises ?? []), ...customs];
+          setCustomExercises(nextCustoms);
+          setState((s) => ({
+            ...s,
+            routines,
+            customExercises: nextCustoms,
+            profile: {
+              ...profile,
+              planChosen: true,
+              trainingDays: [...new Set(routines.map((r) => r.day))].sort((a, b) => a - b),
+            },
+          }));
+          setView("today");
+        }}
       />
     );
   }
@@ -374,6 +537,7 @@ export default function Page() {
       <Calendar
         profile={profile}
         sessions={sessions}
+        routines={routines}
         onOpenDay={(d: string) => {
           setDayOpen(d);
           setView("day");
@@ -415,12 +579,42 @@ export default function Page() {
     );
   }
 
+  if (view === "profile" && profile) {
+    return placed(
+      <ProfileScreen
+        profile={profile}
+        state={state}
+        today={today}
+        onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
+        onWeighIn={saveWeighIn}
+        onImport={(next: AppState) => {
+          setState(next);
+          setView("today");
+        }}
+        onEditPlan={() => setView("routine")}
+        onEditWeek={() => setView("week")}
+      />,
+      "profile"
+    );
+  }
+
+  if (view === "comeback") {
+    const seed = today.length + (profile?.name.length ?? 0);
+    return <Comeback seed={seed} onDone={() => setView("log")} />;
+  }
+
   if (view === "log" && draft) {
     return (
       <LogSession
         session={draft}
         history={sessions.filter((s) => s.date !== today)}
+        profile={profile}
         onChange={updateDraft}
+        onAddCustom={(e) => {
+          const next = [...(state.customExercises ?? []), e];
+          setCustomExercises(next);
+          setState((s) => ({ ...s, customExercises: next }));
+        }}
         onFinish={finish}
         onExit={() => setView("today")}
         onExercise={(id) => openExercise(id, "log")}

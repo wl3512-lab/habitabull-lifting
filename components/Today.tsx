@@ -3,17 +3,18 @@
 import { useState } from "react";
 import Bull, { BULL } from "./Bull";
 import CrewToday from "./CrewToday";
+import PlaylistRow from "./PlaylistRow";
 import { Card, GoalBar, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { goalProgress, nextTarget, personalRecord, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
-import { anchorLabel, anchorOf, observedAnchor, primaryAnchor } from "@/lib/schedule";
+import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor } from "@/lib/schedule";
 import type { CrewDay } from "@/lib/cloud";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
-const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /**
  * The opening screen. It is a logging screen, not a dashboard — the single
@@ -86,6 +87,9 @@ export default function Today({
       trained: done.some((s) => s.date === iso),
       isToday: iso === today,
       planned: profile.trainingDays.includes(i),
+      // A gym day still ahead of you this week — dotted the same orange as the
+      // calendar. A planned day already past stays quiet: absence, not failure.
+      upcoming: iso > today,
     };
   });
 
@@ -152,7 +156,7 @@ export default function Today({
               setWhyDraft(profile.motivation ?? "");
               setEditingWhy(true);
             }}
-            className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+            className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
           >
             Change
           </button>
@@ -167,7 +171,7 @@ export default function Today({
             maxLength={160}
             autoFocus
             aria-label="Why you work out"
-            className="w-full resize-none rounded-xl bg-raise p-3.5 text-[17px] leading-snug text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
+            className="w-full resize-none rounded-xl bg-raise p-3.5 text-emphasis leading-snug text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
           />
           <div className="mt-2.5 flex gap-2">
             <Pill
@@ -183,14 +187,14 @@ export default function Today({
             <button
               type="button"
               onClick={() => setEditingWhy(false)}
-              className="head h-12 shrink-0 px-4 text-[15px] text-dim transition-colors hover:text-fg"
+              className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : profile.motivation ? (
-        <blockquote className="statement mt-2 text-[26px] leading-tight text-fg">
+        <blockquote className="statement mt-2 text-title leading-tight text-fg">
           &ldquo;{profile.motivation}&rdquo;
         </blockquote>
       ) : (
@@ -206,7 +210,7 @@ export default function Today({
           is the fastest way to get an answer nobody meant.
         */
         <>
-          <p className="mt-2 text-[17px] leading-snug text-dim">
+          <p className="mt-2 text-emphasis leading-snug text-dim">
             One line, in your words. It comes back on the days you would rather not.
           </p>
           <button
@@ -215,14 +219,14 @@ export default function Today({
               setWhyDraft("");
               setEditingWhy(true);
             }}
-            className="head tap mt-2.5 text-[15px] text-cyan transition-opacity hover:opacity-70"
+            className="head tap mt-2.5 text-body text-cyan transition-opacity hover:opacity-70"
           >
             Write your reason
           </button>
         </>
       )}
       {mood === "return" && profile.motivation && !editingWhy && (
-        <p className="mt-2.5 text-[15px] text-dim">Still true. The gap does not undo it.</p>
+        <p className="mt-2.5 text-body text-dim">Still true. The gap does not undo it.</p>
       )}
     </section>
   );
@@ -287,12 +291,12 @@ export default function Today({
         <button
           type="button"
           onClick={onGoal}
-          className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
         >
           Change
         </button>
       </div>
-      <p className="statement mt-2 text-[26px] leading-tight text-fg">
+      <p className="statement mt-2 text-title leading-tight text-fg">
         {nameOf(goal.exerciseId)} {goal.targetWeight} lb by{" "}
         {new Date(goal.targetDate + "T00:00:00").toLocaleDateString(undefined, {
           month: "long",
@@ -313,17 +317,8 @@ export default function Today({
     </section>
   ) : null;
 
-  // The next day she said she would train, named rather than counted.
-  const nextDayLabel = (() => {
-    const days = profile.trainingDays;
-    if (!days.length) return "soon";
-    const dow = new Date(today + "T00:00:00").getDay();
-    for (let i = 1; i <= 7; i++) {
-      const d = (dow + i) % 7;
-      if (days.includes(d)) return i === 1 ? "tomorrow" : FULL_DAYS[d];
-    }
-    return "soon";
-  })();
+  // Shared with the arrival beat, so both name the same day the same way.
+  const nextDayLabel = nextTrainingDay(profile.trainingDays, today) ?? "soon";
 
   // Only when there is a session to describe — on a rest day the headline
   // already says it, and repeating it under itself reads like a bug.
@@ -358,7 +353,7 @@ export default function Today({
             {weeks > 0 && ` · Week ${weeks}`}
           </p>
         </div>
-        <h1 className="statement mt-2 text-[44px] text-fg">
+        <h1 className="statement mt-2 text-figure text-fg">
           {unchosen
             ? "Your first workout"
             : routine
@@ -367,7 +362,7 @@ export default function Today({
                 ? "Logged"
                 : "Rest day"}
         </h1>
-        {subtitle && <p className="mt-1.5 text-[17px] text-dim">{subtitle}</p>}
+        {subtitle && <p className="mt-1.5 text-emphasis text-dim">{subtitle}</p>}
       </header>
 
       {/*
@@ -391,10 +386,10 @@ export default function Today({
           className="mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
         >
           <span className="label block text-cyan">Noticed</span>
-          <span className="head mt-1.5 block text-[19px] text-fg">
+          <span className="head mt-1.5 block text-head text-fg">
             You train in the {anchorOf(drift.anchor).label.toLowerCase()}, not {anchorLabel(profile.anchors) ?? "when you planned"}.
           </span>
-          <span className="mt-0.5 block text-[15px] text-dim">
+          <span className="mt-0.5 block text-body text-dim">
             {drift.count} of your last {drift.total}. Make it the plan?
           </span>
         </button>
@@ -412,8 +407,8 @@ export default function Today({
           className="mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
         >
           <span className="label block text-cyan">Now the useful bit</span>
-          <span className="head mt-1.5 block text-[19px] text-fg">Set up your week</span>
-          <span className="mt-0.5 block text-[15px] text-dim">
+          <span className="head mt-1.5 block text-head text-fg">Set up your week</span>
+          <span className="mt-0.5 block text-body text-dim">
             You have done one. Pick the days you can actually keep.
           </span>
         </button>
@@ -434,11 +429,11 @@ export default function Today({
           <>
             <div className="rounded-2xl bg-card p-[18px]">
               <p className="label text-dim">Today</p>
-              <p className="statement mt-1.5 text-[26px] text-fg">
+              <p className="statement mt-1.5 text-title text-fg">
                 {loggedSets} {loggedSets === 1 ? "set" : "sets"} done
                 {loggedVolume > 0 && `, ${loggedVolume.toLocaleString()} lb moved`}
               </p>
-              <p className="mt-1.5 text-[15px] text-dim">That is the whole job. See you {nextDayLabel}.</p>
+              <p className="mt-1.5 text-body text-dim">That is the whole job. See you {nextDayLabel}.</p>
             </div>
             <Pill variant="ghost" onClick={onStart}>
               Add to today&apos;s session
@@ -449,6 +444,8 @@ export default function Today({
             {unchosen ? "Build your workout" : routine ? "Start workout" : "Train anyway"}
           </Pill>
         )}
+        {/* Under the action, because that is the thing it happens alongside. */}
+        {!unchosen && <PlaylistRow profile={profile} onProfile={onProfile} />}
         {open ? (
           <Card className="rise p-[18px]">
             <label htmlFor="note" className="label block text-dim">
@@ -461,7 +458,7 @@ export default function Today({
               rows={2}
               autoFocus
               placeholder="Only dumbbells today, and my shoulder is tweaked"
-              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <div className="mt-2.5 flex gap-2">
               <Pill
@@ -475,7 +472,7 @@ export default function Today({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="head h-12 shrink-0 px-4 text-[15px] text-dim transition-colors hover:text-fg"
+                className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
               >
                 Cancel
               </button>
@@ -490,7 +487,7 @@ export default function Today({
           )
         )}
         {understood && (
-          <p className="text-[15px] text-dim">
+          <p className="text-body text-dim">
             {understood}
             {offline && " Worked that out offline — the smart parser was unreachable."}
           </p>
@@ -504,24 +501,27 @@ export default function Today({
             <li key={d.iso} className="flex flex-1 flex-col items-center gap-2">
               <span
                 aria-hidden
-                className={`grid h-10 w-10 place-items-center rounded-full border-2 transition-colors duration-200 ${
+                className={`grid h-10 w-10 place-items-center rounded-full border-2 transition-colors duration-standard ${
                   d.trained
-                    ? "border-green bg-green"
+                    ? "border-done bg-done"
                     : d.isToday
                       ? "border-cyan"
-                      : d.planned
-                        ? "border-line"
-                        : "border-raise"
+                      : d.planned && d.upcoming
+                        ? "border-action"
+                        : d.planned
+                          ? "border-line"
+                          : "border-raise"
                 }`}
               />
-              <span className={`text-[13px] ${d.isToday ? "text-fg" : "text-dim"}`}>
+              <span className={`text-caption ${d.isToday ? "text-fg" : "text-dim"}`}>
                 {d.initial}
               </span>
             </li>
           ))}
         </ul>
         <p className="sr-only">
-          {done.filter((s) => week.some((d) => d.iso === s.date)).length} sessions logged this week.
+          {count(done.filter((s) => week.some((d) => d.iso === s.date)).length, "session")} logged this
+          week.
         </p>
       </section>
 
@@ -542,13 +542,13 @@ export default function Today({
             <span className="mb-3 flex justify-center">
               <Bull size={BULL.companion} />
             </span>
-            <span className="head block text-[19px] text-fg">Nothing here yet</span>
-            <span className="mt-1 block text-[15px] leading-snug text-dim">
+            <span className="head block text-head text-fg">Nothing here yet</span>
+            <span className="mt-1 block text-body leading-snug text-dim">
               Say which days you can train, then what each one is — leg day, push day,
               cardio, or full body, which is where most people should start. Or describe
               the week you want and the app will build it.
             </span>
-            <span className="head mt-2.5 block text-[15px] text-cyan">Build your workout →</span>
+            <span className="head mt-2.5 block text-body text-cyan">Build your workout →</span>
           </button>
         </section>
       ) : routine ? (
@@ -560,8 +560,8 @@ export default function Today({
               className="mb-3 block w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
             >
               <span className="label block text-cyan">Before you start</span>
-              <span className="head mt-1.5 block text-[19px] text-fg">Name your days</span>
-              <span className="mt-0.5 block text-[15px] text-dim">
+              <span className="head mt-1.5 block text-head text-fg">Name your days</span>
+              <span className="mt-0.5 block text-body text-dim">
                 Leg day, push day, cardio — or leave it full body, which is what the app picked.
               </span>
             </button>
@@ -571,7 +571,7 @@ export default function Today({
             <button
               type="button"
               onClick={onEditRoutine}
-              className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+              className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
               Edit
             </button>
@@ -584,19 +584,19 @@ export default function Today({
                   <button
                     type="button"
                     onClick={() => onExercise(e.exerciseId)}
-                    className="flex w-full items-center justify-between gap-3 rounded-2xl bg-card px-[18px] py-4 text-left transition-colors duration-150 hover:bg-raise"
+                    className="flex w-full items-center justify-between gap-3 rounded-2xl bg-card px-[18px] py-4 text-left transition-colors duration-quick hover:bg-raise"
                   >
                     <span className="min-w-0">
-                      <span className="head block truncate text-[17px] text-fg">
+                      <span className="head block truncate text-emphasis text-fg">
                         {nameOf(e.exerciseId)}
                       </span>
                       {t.weight > 0 && (
-                        <span className="tabular statement block text-[26px] text-fg">
+                        <span className="tabular statement block text-title text-fg">
                           {t.weight} lb
                         </span>
                       )}
                     </span>
-                    <span className="tabular statement shrink-0 text-[20px] text-cyan">
+                    <span className="tabular statement shrink-0 text-head text-cyan">
                       {t.sets} × {t.reps}
                     </span>
                   </button>
@@ -610,14 +610,14 @@ export default function Today({
         // and that is fine" is the sentence this whole product is arguing for.
         <Card className="mt-8 flex flex-col items-center p-[18px] text-center">
           <Bull size={BULL.companion} />
-          <h2 className="head mt-3 text-[17px] text-fg">Nothing here.</h2>
-          <p className="mt-1 text-[15px] text-dim">
+          <h2 className="head mt-3 text-emphasis text-fg">Nothing here.</h2>
+          <p className="mt-1 text-body text-dim">
             Rest is part of progress. If you want to train anyway, pull up your next session.
           </p>
         </Card>
       )}
 
-      <p className="mt-auto pt-8 text-[15px] text-dim">
+      <p className="mt-auto pt-8 text-body text-dim">
         {alreadyLogged
           ? line("done", done.length)
           : routine

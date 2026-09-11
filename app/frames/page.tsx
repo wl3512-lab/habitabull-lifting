@@ -13,8 +13,13 @@ import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
+import Arrival from "@/components/Arrival";
+import Comeback from "@/components/Comeback";
+import ImportWorkout from "@/components/ImportWorkout";
+import ProfileScreen from "@/components/Profile";
 import Progress from "@/components/Progress";
 import RestTimer from "@/components/RestTimer";
+import SetLogged from "@/components/SetLogged";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar from "@/components/TabBar";
 import Today from "@/components/Today";
@@ -60,7 +65,7 @@ function Frame({
   name: string;
   note: string;
   /** Screens that sit at the top level carry the bar; modes do not. */
-  tab?: "today" | "calendar" | "progress" | "crew";
+  tab?: "today" | "calendar" | "progress" | "crew" | "profile";
   children: ReactNode;
 }) {
   const shot = useContext(Shot);
@@ -78,7 +83,7 @@ function Frame({
         <p className="label text-cyan">
           {n} · {name}
         </p>
-        <p className="mt-1 text-[14px] leading-snug text-dim">{note}</p>
+        <p className="mt-1 text-caption leading-snug text-dim">{note}</p>
       </figcaption>
       <div className="relative h-[844px] w-[390px] overflow-hidden rounded-[28px] bg-ground shadow-[0_0_0_1px_var(--color-line),0_24px_48px_-16px_rgb(0_0_0/0.6)]">
         <div className="flex h-full w-full flex-col overflow-y-auto no-scrollbar">
@@ -99,7 +104,7 @@ function Captured({
 }: {
   n: string;
   scroll: number;
-  tab?: "today" | "calendar" | "progress" | "crew";
+  tab?: "today" | "calendar" | "progress" | "crew" | "profile";
   children: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -135,10 +140,10 @@ function NotBuilt({ n, name, why }: { n: string; name: string; why: string }) {
         <p className="label text-dim">
           {n} · {name}
         </p>
-        <p className="mt-1 text-[14px] leading-snug text-dim">{why}</p>
+        <p className="mt-1 text-caption leading-snug text-dim">{why}</p>
       </figcaption>
       <div className="grid h-[844px] w-[390px] place-items-center rounded-[28px] border border-dashed border-line-strong">
-        <p className="statement px-10 text-center text-[26px] text-dim">Not built</p>
+        <p className="statement px-10 text-center text-title text-dim">Not built</p>
       </div>
     </figure>
   );
@@ -149,8 +154,8 @@ function Group({ title, sub, children }: { title: string; sub: string; children:
   if (useContext(Shot) !== null) return <>{children}</>;
   return (
     <section className="mt-14 first:mt-0">
-      <h2 className="statement text-[34px] text-fg">{title}</h2>
-      <p className="mt-1 text-[17px] text-dim">{sub}</p>
+      <h2 className="statement text-display text-fg">{title}</h2>
+      <p className="mt-1 text-emphasis text-dim">{sub}</p>
       <div className="mt-6 flex flex-wrap gap-x-8 gap-y-12">{children}</div>
     </section>
   );
@@ -176,6 +181,12 @@ function gallery(challenge: Challenge) {
           </Group>
 
           <Group title="The loop" sub="One action per screen, in the same place every time.">
+            <Frame n="01a" name="Opening, on a training day" note="The first open of a calendar day, and only the first: someone reopening the app between sets is not here for a greeting. It arrives from below and braces, and the bull nods. Every line is an existing pool in voice.ts — no copy was written for this screen.">
+              <Arrival mood="greet" seed={1} preview onDone={f.noop} />
+            </Frame>
+            <Frame n="01b" name="Opening, on a rest day" note="The same beat, told apart by how it moves rather than by what colour it is: it comes down and lands instead of rising, holds 2800ms instead of 2400, and the bull stays still. Giving the rest day its own field was refused — there are two drenched screens in this product and spending that scarcity here would cost Welcome and the PR both of theirs. It names when you are next in, so a day off points at the next session rather than reading as a closed door, and it never appears at all for someone with nothing logged yet.">
+              <Arrival mood="rest" seed={0} nextDay="Friday" preview onDone={f.noop} />
+            </Frame>
             <Frame n="01" name="Today" tab="today" note="“Full body A”, not “Monday”. A weekday is not a description of a workout.">
               <Today
                 profile={f.profile}
@@ -197,11 +208,25 @@ function gallery(challenge: Challenge) {
               <LogSession
                 session={f.draft}
                 history={f.sessions}
+                profile={f.profile}
                 onChange={f.noop}
+                onAddCustom={f.noop}
                 onFinish={f.noop}
                 onExit={f.noop}
                 onExercise={f.noop}
               />
+            </Frame>
+            <Frame n="04b" name="Set logged" note="The beat between tapping Log set and the rest timer. Not a loading page — the set is already written; this is the acknowledgement for a moment about to be spent resting anyway. ~650ms, tap to skip, and nothing at all under reduced motion.">
+              <SetLogged summary="145 lb × 6" best={false} resting onSkip={f.noop} />
+            </Frame>
+            <Frame n="04c" name="Set logged · a best" note="The same beat when the set beats a real prior number — cyan for arrival rather than green for done. Never on a first-ever log of a lift: a best has to have something to beat, or the word means nothing.">
+              <SetLogged summary="150 lb × 6" best resting={false} onSkip={f.noop} />
+            </Frame>
+            <Frame n="04d" name="Comeback" note="The one the product is built for: opening a workout after a week or more away. Retention is the unsolved problem and coming back is the skill, so returning gets its own beat before the first set — in cyan, the colour this system uses for arrival, with the bull doing the work rather than a badge. No day count, no 'you missed N days'; the gap is not a mark against anyone.">
+              <Comeback seed={3} onDone={f.noop} />
+            </Frame>
+            <Frame n="03b" name="Import a workout" note="Paste a plan you already have — from notes, a coach, anywhere — and the model reads it into routines, validated against the real library. Lifts the app doesn't have are created as customs; weights are never taken from the text. You confirm before it saves.">
+              <ImportWorkout profile={f.profile} onDone={f.noop} onCancel={f.noop} />
             </Frame>
             <Frame n="05" name="Rest" note="The 45 lb plate from the 2023 app icon, doing a job. It never nags and never advances on its own.">
               <RestTimer
@@ -348,8 +373,20 @@ function gallery(challenge: Challenge) {
                 onImport={f.noop}
               />
             </Frame>
+            <Frame n="08b" name="Profile" tab="profile" note="You, and the setup that is yours rather than today's — name, your reason, body weight (moved here from Progress), the plan with its sets and reps, schedule, equipment, gym playlist, and the data export. Visited rarely, which is what lets Today and Progress each stay about one thing.">
+              <ProfileScreen
+                profile={f.profile}
+                state={f.state}
+                today={f.today}
+                onProfile={f.noop}
+                onWeighIn={f.noop}
+                onImport={f.noop}
+                onEditPlan={f.noop}
+                onEditWeek={f.noop}
+              />
+            </Frame>
             <Frame n="11" name="Calendar" tab="calendar" note="Weeks, not days. The Figma's “you're on fire” was cut — PRODUCT.md bans hustle language by name.">
-              <Calendar profile={f.profile} sessions={f.sessions} onOpenDay={f.noop} />
+              <Calendar profile={f.profile} sessions={f.sessions} routines={f.routines ?? []} onOpenDay={f.noop} />
             </Frame>
             <Frame n="17" name="Day detail" note="What you lifted, what you wrote, what you looked like. A rest day says so rather than apologising.">
               <DayDetail
@@ -480,7 +517,7 @@ function gallery(challenge: Challenge) {
             />
           </Group>
 
-          <p className="mt-16 max-w-[70ch] text-[15px] text-dim">
+          <p className="mt-16 max-w-[70ch] text-body text-dim">
             Photos are stored per browser, so the calendar and day-detail frames show their
             empty photo state here unless you have added some in this browser.
           </p>
@@ -515,8 +552,8 @@ export default function Frames() {
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="label text-cyan">HabitaBull</p>
-            <h1 className="statement mt-2 text-[52px] text-fg">Every screen at once</h1>
-            <p className="mt-1.5 max-w-[62ch] text-[17px] text-dim">
+            <h1 className="statement mt-2 text-hero text-fg">Every screen at once</h1>
+            <p className="mt-1.5 max-w-[62ch] text-emphasis text-dim">
               The real components against stand-in data — not exported images, so this cannot
               drift out of date. Each frame is clipped to 390 × 844, the only size the app is
               designed at. Screens scroll inside their own frame.
@@ -530,7 +567,7 @@ export default function Frames() {
                 type="button"
                 onClick={() => setScale(s)}
                 aria-pressed={scale === s}
-                className={`head h-11 rounded-full border px-4 text-[15px] transition-colors ${
+                className={`head h-11 rounded-full border px-4 text-body transition-colors ${
                   scale === s
                     ? "border-cyan bg-cyan text-ground"
                     : "border-line-strong text-dim hover:border-fg"

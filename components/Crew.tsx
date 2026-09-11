@@ -24,6 +24,7 @@ import {
 } from "@/lib/crew";
 import { formatCode, isValidCode } from "@/lib/joincode";
 import type { Challenge, Profile, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -172,12 +173,12 @@ export default function Crew({
 
   async function share() {
     const text = code
-      ? `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull Lifting. Join my crew with ${formatCode(code)}.`
-      : `I'm doing ${challenge.target} sessions in ${monthName} on HabitaBull Lifting. Come do it with me.`;
+      ? `I'm doing ${count(challenge.target, "session")} in ${monthName} on HabitaBull. Join my crew with ${formatCode(code)}.`
+      : `I'm doing ${count(challenge.target, "session")} in ${monthName} on HabitaBull. Come do it with me.`;
     const url = typeof window === "undefined" ? "" : window.location.origin;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "HabitaBull Lifting", text, url });
+        await navigator.share({ title: "HabitaBull", text, url });
         setShared("idle");
         return;
       }
@@ -196,7 +197,7 @@ export default function Crew({
         <p className="label text-cyan">Your crew</p>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">
+      <h1 className="statement mt-2 text-figure text-fg">
         {roster.length > 1 ? `${roster.length} of you.` : "Just you, for now."}
       </h1>
       {/* Somebody is here either way. */}
@@ -205,33 +206,33 @@ export default function Crew({
           <Bull size={BULL.companion} />
         </div>
       )}
-      <p className="mt-1.5 text-[17px] text-dim">
+      <p className="mt-1.5 text-emphasis text-dim">
         No rankings. No weights. Just who turned up.
       </p>
 
       <section className="mt-6 rounded-2xl bg-card p-[18px]">
         <p className="label text-dim">This month</p>
-        <p className="statement mt-2 text-[30px] leading-tight text-fg">
+        <p className="statement mt-2 text-display leading-tight text-fg">
           {challenge.target} {challenge.target === 1 ? "session" : "sessions"} in {monthName}.
         </p>
 
-        <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-raise" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${done} of ${challenge.target} sessions this month`}>
+        <div className="mt-4 h-3 w-full overflow-hidden rounded-full bg-raise" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${done} of ${count(challenge.target, "session")} this month`}>
           <div
-            className="h-full w-full origin-left rounded-full bg-green transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+            className="h-full w-full origin-left rounded-full bg-done transition-transform duration-deliberate ease-[cubic-bezier(0.25,1,0.5,1)]"
             style={{ transform: `scaleX(${pct / 100})` }}
           />
         </div>
 
         <div className="mt-2.5 flex items-baseline justify-between gap-3">
-          <span className="tabular text-[15px] text-dim">
+          <span className="tabular text-body text-dim">
             {done} done{left > 0 && ` · ${left} to go`}
           </span>
-          <span className="head tabular shrink-0 text-[15px] text-cyan">
+          <span className="head tabular shrink-0 text-body text-cyan">
             {daysLeft} {daysLeft === 1 ? "day" : "days"} left
           </span>
         </div>
 
-        <p className="mt-3 text-[15px] text-dim">
+        <p className="mt-3 text-body text-dim">
           {left === 0
             ? "Target met. The rest of the month is yours."
             : left <= daysLeft
@@ -240,10 +241,15 @@ export default function Crew({
         </p>
 
         <div className="mt-4 flex items-center gap-2.5 border-t border-line pt-4">
-          <span className="flex-1 text-[15px] text-dim">
+          <span className="flex-1 text-body text-dim">
             Adjust the target
+            {/*
+              The hint below was `dim/70`, which is 3.78:1 on this card. It is
+              already a step down by size; it does not need to be a step down
+              in colour as well, and this palette could not afford it.
+            */}
             {challenge.target !== suggested && (
-              <span className="block text-[14px] text-dim/70">
+              <span className="block text-caption text-dim">
                 Your schedule says {suggested}.
               </span>
             )}
@@ -253,7 +259,7 @@ export default function Crew({
             onClick={() => bump(-1)}
             disabled={challenge.target <= 1}
             aria-label="Lower the target"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-raise text-[22px] leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
           >
             −
           </button>
@@ -261,7 +267,7 @@ export default function Crew({
             type="button"
             onClick={() => bump(1)}
             aria-label="Raise the target"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-raise text-[22px] leading-none text-cyan transition-colors hover:bg-line"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line"
           >
             +
           </button>
@@ -275,7 +281,7 @@ export default function Crew({
       {!enabled() && !crewPreview ? (
         <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Nobody here yet</p>
-          <p className="mt-2 text-[17px] leading-snug text-fg">
+          <p className="mt-2 text-emphasis leading-snug text-fg">
             When someone joins, you&apos;ll see whether they trained. Not what they lifted.
           </p>
         </section>
@@ -295,14 +301,14 @@ export default function Crew({
           <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
             <div className="flex items-baseline justify-between gap-3">
               <p className="label text-dim">Who&apos;s in</p>
-              <p className="tabular head shrink-0 text-[15px] text-cyan">{formatCode(code)}</p>
+              <p className="tabular head shrink-0 text-body text-cyan">{formatCode(code)}</p>
             </div>
 
             {/* Labelled once, not per person: seven identical rows of letters
                 would be noise, and one row orients all of them. */}
             <ul className="mt-3 flex gap-1.5" aria-hidden>
               {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-                <li key={i} className="flex-1 text-center text-[12px] text-dim">
+                <li key={i} className="flex-1 text-center text-caption text-dim">
                   {d}
                 </li>
               ))}
@@ -316,16 +322,23 @@ export default function Crew({
                     <button
                       type="button"
                       onClick={() => setFriend(m)}
-                      className="flex w-full items-baseline justify-between gap-3 text-left"
+                      // 26px as drawn — the line box of the name and nothing
+                      // else, well under the 44px floor this app enforces
+                      // everywhere else. Padding grows the target and the
+                      // matching negative margin gives the space back, so the
+                      // row sits exactly where it did. Same trick as `.tap`,
+                      // inline because that helper forces inline-flex and this
+                      // row needs to stay a full-width flex container.
+                      className="-my-2.5 flex w-full items-baseline justify-between gap-3 py-2.5 text-left"
                     >
-                      <span className="head truncate text-[17px] text-fg">
+                      <span className="head truncate text-emphasis text-fg">
                         {m.name}
                         {m.id === meId && <span className="text-dim"> · you</span>}
                       </span>
                       {trainedToday ? (
-                        <span className="head shrink-0 text-[15px] text-green">in today</span>
+                        <span className="head shrink-0 text-body text-done">in today</span>
                       ) : (
-                        <span className="head shrink-0 text-[15px] text-cyan">See</span>
+                        <span className="head shrink-0 text-body text-cyan">See</span>
                       )}
                     </button>
                     <ul className="mt-2 flex gap-1.5" aria-hidden>
@@ -334,7 +347,7 @@ export default function Crew({
                           key={d.iso}
                           className={`h-2.5 flex-1 rounded-full ${
                             m.days.includes(d.iso)
-                              ? "bg-green"
+                              ? "bg-done"
                               : d.iso === todayIso
                                 ? "bg-line-strong"
                                 : "bg-raise"
@@ -356,15 +369,15 @@ export default function Crew({
                 type="checkbox"
                 checked={profile.shareWeek !== false}
                 onChange={(e) => onProfile?.({ ...profile, shareWeek: e.target.checked })}
-                className="peer h-5 w-5 shrink-0 appearance-none rounded-md border-2 border-line-strong bg-transparent transition-colors checked:border-cyan checked:bg-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                className="peer h-5 w-5 shrink-0 appearance-none rounded-xl border-2 border-line-strong bg-transparent transition-colors checked:border-cyan checked:bg-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
               />
               <span
                 aria-hidden
-                className="pointer-events-none -ml-[29px] mr-[9px] h-5 w-5 shrink-0 text-center text-[13px] leading-5 text-ground opacity-0 peer-checked:opacity-100"
+                className="pointer-events-none -ml-[29px] mr-[9px] h-5 w-5 shrink-0 text-center text-caption leading-5 text-ground opacity-0 peer-checked:opacity-100"
               >
                 ✓
               </span>
-              <span className="flex-1 text-[15px] leading-snug text-dim">
+              <span className="flex-1 text-body leading-snug text-dim">
                 Let them copy your week. Which lifts, never how much.
               </span>
             </label>
@@ -396,17 +409,17 @@ export default function Crew({
                         alt=""
                         loading="lazy"
                         decoding="async"
-                        className="h-16 w-[52px] shrink-0 rounded-lg object-cover"
+                        className="h-16 w-[52px] shrink-0 rounded-xl object-cover"
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="head block truncate text-[17px] text-fg">
+                        <span className="head block truncate text-emphasis text-fg">
                           {p.mine ? "You" : p.memberName}
                         </span>
-                        <span className="mt-0.5 block truncate text-[15px] text-dim">
+                        <span className="mt-0.5 block truncate text-body text-dim">
                           {p.caption || dayLabel(p.day)}
                         </span>
                         {(p.likes > 0 || p.replies.length > 0) && (
-                          <span className="mt-1 block text-[14px] text-cyan">
+                          <span className="mt-1 block text-caption text-cyan">
                             {[
                               p.likes > 0 && `${p.likes} ${p.likes === 1 ? "like" : "likes"}`,
                               p.replies.length > 0 &&
@@ -427,14 +440,14 @@ export default function Crew({
           {/* Adding someone is the point of the screen, not a footnote on it. */}
           <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
             <p className="label text-dim">Add someone</p>
-            <p className="mt-2 text-[17px] leading-snug text-fg">
+            <p className="mt-2 text-emphasis leading-snug text-fg">
               Read them the code, or send it.
             </p>
             <button
               type="button"
               onClick={() => void copyCode()}
               aria-label={`Copy the crew code ${formatCode(code)}`}
-              className="tabular statement mt-3 w-full rounded-xl bg-raise py-4 text-center text-[30px] tracking-[0.1em] text-cyan transition-colors hover:bg-line"
+              className="tabular statement mt-3 w-full rounded-xl bg-raise py-4 text-center text-display tracking-[0.1em] text-cyan transition-colors hover:bg-line"
             >
               {formatCode(code)}
             </button>
@@ -444,7 +457,7 @@ export default function Crew({
               </Pill>
             </div>
             {shared === "copied" && (
-              <p role="status" className="mt-2.5 text-center text-[15px] text-dim">
+              <p role="status" className="mt-2.5 text-center text-body text-dim">
                 Copied. Paste it wherever they&apos;ll see it.
               </p>
             )}
@@ -453,7 +466,7 @@ export default function Crew({
       ) : (
         <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Train with someone</p>
-          <p className="mt-2 text-[17px] leading-snug text-fg">
+          <p className="mt-2 text-emphasis leading-snug text-fg">
             They&apos;ll see the days you trained and any photo you share. Nothing else.
           </p>
 
@@ -478,18 +491,18 @@ export default function Crew({
               placeholder="Their code"
               aria-label="A crew code"
               aria-invalid={trouble === "no-such-crew"}
-              className="tabular min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[17px] tracking-[0.12em] text-fg placeholder:tracking-normal placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+              className="tabular min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis tracking-[0.12em] text-fg placeholder:tracking-normal placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <button
               type="submit"
               disabled={!isValidCode(entry) || busy}
-              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
             >
               Join
             </button>
           </form>
           {trouble !== "none" && (
-            <p role="status" className="mt-2 text-[15px] text-dim">
+            <p role="status" className="mt-2 text-body text-dim">
               {trouble === "no-such-crew"
                 ? "No crew with that code. Check a character and try again."
                 : "Could not reach your crew just now. Your training is saved either way — try again in a moment."}
@@ -500,7 +513,7 @@ export default function Crew({
             type="button"
             onClick={() => void doCreate()}
             disabled={busy}
-            className="head tap mt-4 self-start text-[15px] text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
+            className="head tap mt-4 self-start text-body text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
           >
             {busy ? "One moment…" : "Or start one and get a code"}
           </button>
@@ -536,7 +549,7 @@ export default function Crew({
               Send this to someone
             </Pill>
             {shared === "copied" && (
-              <p className="mt-2.5 text-center text-[15px] text-dim">
+              <p className="mt-2.5 text-center text-body text-dim">
                 Copied. Paste it wherever they&apos;ll see it.
               </p>
             )}
@@ -547,7 +560,7 @@ export default function Crew({
             type="button"
             onClick={() => void doLeave()}
             disabled={busy}
-            className="tap mx-auto mt-4 block text-[15px] text-dim underline underline-offset-4 transition-colors hover:text-fg disabled:opacity-40"
+            className="tap mx-auto mt-4 block text-body text-dim underline underline-offset-4 transition-colors hover:text-fg disabled:opacity-40"
           >
             Leave this crew
           </button>

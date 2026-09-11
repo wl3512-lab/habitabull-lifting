@@ -459,6 +459,154 @@ export const EXERCISES: Exercise[] = [
     ],
     mistakes: ["Lifting the elbows off the pad to get more range.", "Stopping short at the bottom, which is where it is hardest."],
   },
+  {
+    id: "hip-abductor", name: "Hip Abductor", equipment: "machine", primary: "glutes", increment: 2.5, compound: false,
+    cue: "Drive the pads apart with your outer hips, not by leaning back.",
+    steps: [
+      "Sit tall, pads against the outside of your knees",
+      "Push your knees apart to the machine's full range",
+      "Return slow, keeping the tension in your glutes",
+    ],
+    mistakes: [
+      "Leaning back to force the weight open",
+      "Snapping the legs apart",
+      "Cutting the range short",
+    ],
+  },
+  {
+    id: "hip-adductor", name: "Hip Adductor", equipment: "machine", primary: "glutes", increment: 2.5, compound: false,
+    cue: "Squeeze from the inner thigh, and control the way back out.",
+    steps: [
+      "Sit tall, pads against the inside of your knees",
+      "Squeeze your knees together to the full range",
+      "Open slow, never letting the stack pull you back",
+    ],
+    mistakes: [
+      "Letting the pads fling your legs open",
+      "Loading more than you can control",
+      "Rushing the return",
+    ],
+  },
+  {
+    id: "seated-leg-curl", name: "Seated Leg Curl", equipment: "machine", primary: "hamstrings", increment: 2.5, compound: false,
+    cue: "Curl your heels under the seat with your hips pinned to the pad.",
+    steps: [
+      "Pad low on your shins, thighs strapped down",
+      "Curl your heels down and under as far as they go",
+      "Return slow, stopping just short of straight",
+    ],
+    mistakes: [
+      "Lifting your hips off the pad",
+      "Half-repping the curl",
+      "Letting the weight drop back",
+    ],
+  },
+  {
+    id: "calf-raise", name: "Calf Raise", equipment: "machine", primary: "calves", increment: 2.5, compound: false,
+    cue: "Full stretch at the bottom, tall on your toes at the top.",
+    steps: [
+      "Balls of your feet on the platform, heels hanging",
+      "Drop the heels for a deep stretch",
+      "Press all the way onto your toes and pause",
+    ],
+    mistakes: [
+      "Bouncing out of the bottom",
+      "Cutting the height short",
+      "Rushing the reps",
+    ],
+  },
+  {
+    id: "hack-squat", name: "Hack Squat", equipment: "machine", primary: "quads", increment: 2.5, compound: true,
+    cue: "Sit down between your heels, knees tracking over your toes.",
+    steps: [
+      "Shoulders under the pads, feet mid-platform",
+      "Break at the knees and hips, sink to depth",
+      "Drive through your whole foot back up",
+    ],
+    mistakes: [
+      "Coming up onto your toes",
+      "Cutting the depth short",
+      "Letting the knees cave inward",
+    ],
+  },
+  {
+    id: "rear-delt-fly-machine", name: "Rear Delt Fly", equipment: "machine", primary: "shoulders", increment: 2.5, compound: false,
+    cue: "Lead with your elbows, not your hands.",
+    steps: [
+      "Chest on the pad, handles out in front",
+      "Sweep your arms back in a wide arc",
+      "Squeeze the rear delts, then return slow",
+    ],
+    mistakes: [
+      "Shrugging the traps up",
+      "Bending the arms to cheat the weight",
+      "Rushing the return",
+    ],
+  },
+  {
+    id: "assisted-pull-up", name: "Assisted Pull-up", equipment: "machine", primary: "back", increment: 2.5, compound: true,
+    cue: "More weight on the pad means more help, so chase less over time.",
+    steps: [
+      "Kneel or stand on the pad, hands wide",
+      "Pull your chest toward the bar, elbows down",
+      "Lower under control to a full hang",
+    ],
+    mistakes: [
+      "Bouncing out of the bottom",
+      "Stopping short of a full hang",
+      "Shrugging instead of pulling",
+    ],
+  },
+  {
+    id: "assisted-dip", name: "Assisted Dip", equipment: "machine", primary: "chest", increment: 2.5, compound: true,
+    cue: "Lean forward to feel it in your chest; stay upright for triceps.",
+    steps: [
+      "Kneel on the pad, arms locked out",
+      "Lower until your shoulders reach your elbows",
+      "Press back up to a strong lockout",
+    ],
+    mistakes: [
+      "Dropping too fast",
+      "Cutting the depth short",
+      "Letting the shoulders roll forward",
+    ],
+  },
+  {
+    id: "treadmill", name: "Treadmill", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true, incline: true,
+    cue: "Run or walk tall. Land under your hips, not out in front.",
+    steps: ["Set a pace you can hold a short conversation at.", "Relax the shoulders, quick light steps.", "Ease the pace down for the last minute rather than stopping dead."],
+    mistakes: ["Gripping the rails, which takes the work out of it.", "Starting far too fast to hold."],
+  },
+  {
+    id: "stairmaster", name: "Stairmaster", equipment: "machine", primary: "glutes", increment: 0, compound: false, cardio: true, incline: true,
+    cue: "Stand tall, full steps, no leaning on the rails.",
+    steps: ["Set a steady speed you can keep for the whole time.", "Drive through the whole foot on each step.", "Ease the speed down to finish."],
+    mistakes: ["Hanging on the rails and leaning back.", "Tiny half-steps instead of full ones."],
+  },
+  {
+    id: "elliptical", name: "Elliptical", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true, incline: true,
+    cue: "Push and pull evenly. Let the legs lead, not the arms.",
+    steps: ["Set a resistance you can hold a smooth rhythm against.", "Drive through the legs, arms following.", "Spin easy for the last minute."],
+    mistakes: ["Bouncing on the toes.", "Letting the arms do the work."],
+  },
+  {
+    id: "bike", name: "Bike", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Smooth circles, not stomping. Keep the cadence up.",
+    steps: ["Set a resistance you can spin steadily against.", "Aim for a quick, even cadence.", "Spin easy for the last minute."],
+    mistakes: ["Resistance so high the cadence crawls.", "Rocking in the saddle to force the pedals."],
+  },
+  {
+    id: "rowing", name: "Rowing", equipment: "machine", primary: "back", increment: 0, compound: false, cardio: true,
+    cue: "Legs, then back, then arms. Reverse it coming back.",
+    steps: ["Drive with the legs first.", "Swing the back, finish with the arms to the ribs.", "Arms out, body over, knees bend, in that order."],
+    mistakes: ["Pulling with the arms first.", "Rounding the back at the catch."],
+  },
+  {
+    id: "outdoor-run", name: "Run", equipment: "bodyweight", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Conversational pace. If you can't speak, ease off.",
+    steps: ["Start easy for the first few minutes.", "Settle into a rhythm you could hold a chat at.", "Walk the last stretch to bring the heart rate down."],
+    mistakes: ["Going out too hard and fading.", "Overstriding, reaching the foot too far ahead."],
+  },
 ];
 
 /**
@@ -523,4 +671,26 @@ export function makeCustomExercise(
       "Chasing the number when the form has already gone.",
     ],
   };
+}
+
+/** Cardio machines for the add-a-lift picker's own Cardio category. */
+/**
+ * The cardio machines, as a set of their own.
+ *
+ * Cardio does not sort by muscle the way everything else does. A treadmill is
+ * filed under quads and a rower under back, so asking for "another quads lift"
+ * to swap a treadmill offers back squats, and the rower cannot be reached from
+ * the treadmill at all. They are alternatives to each other and to nothing
+ * else, which is what this returns.
+ *
+ * `equipment` is optional because the two callers want different things. The
+ * week builder passes it: she is planning against the kit she said she has.
+ * Adding a lift mid-session does not, because she is standing in the gym
+ * looking at what is actually in front of her.
+ */
+export function cardioLifts(exclude: string[] = [], equipment?: Equipment[]): Exercise[] {
+  const kit = equipment ? new Set<Equipment>([...equipment, "bodyweight"]) : null;
+  return EXERCISES.filter(
+    (e) => e.cardio && !exclude.includes(e.id) && (!kit || kit.has(e.equipment))
+  );
 }

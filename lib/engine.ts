@@ -1,6 +1,6 @@
 import { allExercises, byId } from "./exercises";
 import { templateOf, defaultTemplates, type TemplateId } from "./templates";
-import type { Equipment, Exercise, Goal, Level, Muscle, PlannedExercise, Routine, Session } from "./types";
+import type { Equipment, Exercise, Goal, Level, Muscle, PlannedExercise, Routine, Session, RestPref } from "./types";
 
 /**
  * The rules engine owns every number in this app: sets, reps, starting load,
@@ -32,6 +32,18 @@ const LEVEL_REPS: Record<Level, number> = { new: 8, returning: 6, experienced: 5
 export function repsFor(ex: Exercise, level: Level): number {
   // Seconds, for anything you hold. A machine crunch is a rep like any other.
   if (ex.hold) return 30;
+  /*
+    Minutes, for anything you do continuously. It used to fall through to the
+    rep branch and come out as `LEVEL_REPS + 4`, so a treadmill was prescribed
+    nine minutes because a cable fly gets nine reps: a number arrived at by
+    accident and only coincidentally in the right units.
+
+    Twenty, for every level. Duration is the one variable here the app does
+    not manage — it says "go a little longer" and leaves the amount to the
+    person on the machine — so this is a starting point to adjust, not a
+    progression to climb, and it does not need three of them.
+  */
+  if (ex.cardio) return 20;
   if (ex.heavy) return Math.min(5, LEVEL_REPS[level]);
   return ex.compound ? LEVEL_REPS[level] : LEVEL_REPS[level] + 4;
 }
@@ -63,12 +75,26 @@ export function roundToIncrement(weight: number, increment: number): number {
   return Math.max(increment, Math.round(weight / increment) * increment);
 }
 
-/** Pick the best available exercise for a muscle given the user's equipment. */
+/**
+ * Pick the best available exercise for a muscle given the user's equipment.
+ *
+ * `variant` rotates through the candidates instead of always taking the best.
+ * It exists for one slot: every template in the app ends in core, and this
+ * function is deterministic, so the same core lift was landing on every day of
+ * every week. Somebody on a four-day plan got a plank four times and asked,
+ * reasonably, why it was on every day.
+ *
+ * It is not used anywhere else on purpose. Everywhere else the first candidate
+ * is first because it is the right answer — rotating a novice off a back squat
+ * onto a bodyweight squat for variety's sake would be the generator choosing
+ * novelty over the lift that carries the session.
+ */
 export function pickExercise(
   muscle: Muscle,
   equipment: Equipment[],
   exclude: Set<string>,
-  favourites: string[] = []
+  favourites: string[] = [],
+  variant = 0
 ): Exercise | null {
   const usable = allExercises().filter(
     (e) => e.primary === muscle && equipment.includes(e.equipment) && !exclude.has(e.id)
@@ -82,7 +108,7 @@ export function pickExercise(
       Number(starred.has(b.id)) - Number(starred.has(a.id)) ||
       Number(b.compound) - Number(a.compound)
   );
-  return usable[0];
+  return usable[((variant % usable.length) + usable.length) % usable.length];
 }
 
 export function startingWeight(ex: Exercise, level: Level): number {
@@ -116,13 +142,45 @@ export function generateRoutine(
     const circuit = tpl.style === "circuit";
     const used = new Set<string>();
     const exercises: PlannedExercise[] = [];
+
+    /*
+      A template that names its lifts skips the picker entirely: the first one
+      her kit allows, and nothing else on the day. Cardio is the only one, and
+      it is one lift on purpose — a treadmill for twenty minutes is a session,
+      and offering four machines beside it is a decision nobody wanted to make
+      before a run.
+    */
+    const named = tpl.lifts
+      ?.map((id) => byId(id))
+      .filter((ex): ex is Exercise => Boolean(ex));
+    const fixed = named?.find((ex) => eq.includes(ex.equipment)) ?? named?.at(-1);
+    if (fixed) {
+      return {
+        day,
+        label: tpl.label,
+        template: tpl.id,
+        exercises: [
+          {
+            exerciseId: fixed.id,
+            // One set, because that is what continuous work is.
+            sets: 1,
+            reps: repsFor(fixed, level),
+            // Flat to start. The incline is hers to raise.
+            weight: 0,
+          },
+        ],
+      };
+    }
+
     for (const m of muscles) {
       // A circuit wants things you can start immediately, so bodyweight first.
+      // Core rotates by day so the week is not the same plank five times over.
+      const v = m === "core" ? i : 0;
       const ex = circuit
-        ? pickExercise(m, ["bodyweight"], used, favourites) ??
-          pickExercise(m, eq, used, favourites)
-        : pickExercise(m, eq, used, favourites) ??
-          pickExercise(m, ["bodyweight"], used, favourites);
+        ? pickExercise(m, ["bodyweight"], used, favourites, v) ??
+          pickExercise(m, eq, used, favourites, v)
+        : pickExercise(m, eq, used, favourites, v) ??
+          pickExercise(m, ["bodyweight"], used, favourites, v);
       if (!ex) continue;
       used.add(ex.id);
       exercises.push({
@@ -169,7 +227,15 @@ export function nextTarget(
   if (!ex) return fallback;
 
   const targetReps = repsFor(ex, level);
-  const sets = LEVEL_SETS[level];
+  /*
+    Cardio is one set, and that is not a preference — it is what the type says
+    and what `import.ts` has always clamped an imported plan to. The engine
+    was the one path that never asked, so a bike added to a day came back as
+    four blocks of nine minutes with a rest timer between each, which is not a
+    thing anybody does. Everything else keeps the level's set count; a plank
+    held three or four times is exactly right.
+  */
+  const sets = ex.cardio ? 1 : LEVEL_SETS[level];
   const hist = historyFor(sessions, exerciseId);
 
   if (hist.length === 0) {
@@ -178,11 +244,40 @@ export function nextTarget(
 
   const last = hist[0];
   const lastWeight = last.length ? Math.max(...last.map((s) => s.weight)) : startingWeight(ex, level);
+
+  /*
+    Cardio carries its incline and nothing else.
+
+    That field holds a percent rather than a load here, so none of the
+    progression below applies to it: there is no increment to add, and cutting
+    it ten percent on a rough week would be the app deciding how steep her
+    treadmill is. But resetting it to flat every session is the other wrong
+    answer, and it was the one in place — she set 5% on Monday and found 0% on
+    Wednesday, from an app whose whole claim is that it remembers.
+
+    So it holds. Duration is hers to move and so is the incline; what the app
+    owes her is not making her set it twice.
+  */
+  if (ex.cardio) {
+    return {
+      weight: lastWeight,
+      reps: targetReps,
+      sets,
+      note: "Same as last time. Change the time or the incline if you want to.",
+    };
+  }
   const clearedAll = last.length >= sets && last.every((s) => s.reps >= targetReps);
 
   if (clearedAll) {
     const weight = ex.increment === 0 ? 0 : roundToIncrement(lastWeight + ex.increment, ex.increment);
-    return { weight, reps: targetReps, sets, note: ex.increment === 0 ? "Add two reps this time." : `Up ${ex.increment} lb. You earned it.` };
+    /*
+      What "more" means depends on what the lift is counted in. A bike is
+      logged in minutes and a plank in seconds, and both were being told to
+      add two reps. No number here where the app is not the one setting it:
+      on a lift it cannot load, going longer is the user's call.
+    */
+    const more = ex.cardio || ex.hold ? "Go a little longer this time." : "Add two reps this time.";
+    return { weight, reps: targetReps, sets, note: ex.increment === 0 ? more : `Up ${ex.increment} lb. You earned it.` };
   }
 
   const missedStreak = hist.slice(0, 3).filter((sets_) => !(sets_.length && sets_.every((s) => s.reps >= targetReps))).length;
@@ -251,6 +346,74 @@ export function buildSession(routine: Routine, sessions: Session[], level: Level
       };
     }),
   };
+}
+
+/**
+ * Carry a finished day's lineup back onto its routine.
+ *
+ * buildSession takes a day's exercise *list* from the routine, so the next time
+ * that day comes up it rebuilds from the original template and any lift you
+ * added or dropped last time is forgotten. Writing the lineup you actually
+ * trained back onto the matching routine (matched by label, the day's name)
+ * makes your workout return instead. Only the choice of exercises is carried
+ * over; weights keep progressing from history through nextTarget.
+ *
+ * Two exemptions: a one-off "something hurts" rebuild (`adapted`) changes only
+ * today and must not overwrite the plan, and an empty session never blanks a
+ * routine.
+ */
+export function rememberLineup(routines: Routine[], session: Session): Routine[] {
+  if (session.adapted || session.exercises.length === 0) return routines;
+  return routines.map((r) =>
+    r.label === session.label
+      ? {
+          ...r,
+          exercises: session.exercises.map((e) => ({
+            exerciseId: e.exerciseId,
+            sets: e.sets.length,
+            reps:
+              e.sets[0]?.reps ??
+              r.exercises.find((p) => p.exerciseId === e.exerciseId)?.reps ??
+              10,
+            weight: e.sets[0]?.weight ?? 0,
+          })),
+        }
+      : r
+  );
+}
+
+/**
+ * Remember the user's version of each named day type, keyed by template. Called
+ * whenever routines change, so pressing "Leg day" later brings back the leg day
+ * they actually shaped, not the generated default. Full-body is skipped: it is
+ * meant to vary slot to slot.
+ */
+export function mergeDayLibrary(
+  library: Record<string, PlannedExercise[]> = {},
+  routines: Routine[]
+): Record<string, PlannedExercise[]> {
+  const next = { ...library };
+  for (const r of routines) {
+    if (r.template && r.template !== "full-body" && r.exercises.length) {
+      next[r.template] = r.exercises;
+    }
+  }
+  return next;
+}
+
+/**
+ * When days are generated from templates, swap in the user's saved version of
+ * any day type they have shaped before, so a rebuilt week keeps their days.
+ */
+export function overlayDayLibrary(
+  routines: Routine[],
+  library: Record<string, PlannedExercise[]> = {}
+): Routine[] {
+  return routines.map((r) =>
+    r.template && r.template !== "full-body" && library[r.template]?.length
+      ? { ...r, exercises: library[r.template] }
+      : r
+  );
 }
 
 /**
@@ -324,11 +487,15 @@ export const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
  *
  * It is guidance, not a deadline. Nothing in the app penalises overrunning it.
  */
-export function restSeconds(exerciseId: string): number {
+export function restSeconds(exerciseId: string, pref: RestPref = "standard"): number {
   const ex = byId(exerciseId);
-  if (!ex) return 90;
-  if (ex.increment === 0) return 60;
-  return ex.compound ? 120 : 90;
+  // Base rest by the kind of lift: a heavy compound needs more than an
+  // isolation, a timed hold least of all.
+  const base = !ex ? 90 : ex.increment === 0 ? 60 : ex.compound ? 120 : 90;
+  // The signup preference shifts all of it up or down together. It is a pace,
+  // not a precise number — someone picks what fits and changes it any time.
+  const mult = pref === "short" ? 0.66 : pref === "long" ? 1.5 : 1;
+  return Math.round((base * mult) / 5) * 5;
 }
 
 /**

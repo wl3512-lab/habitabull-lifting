@@ -16,6 +16,14 @@ import type { Profile, Session } from "@/lib/types";
  * saying "knees caving in?" is a different thing from a label reading FORM.
  * Cutting him here would turn coaching back into documentation.
  */
+/**
+ * Small counts as words, because "the 4 steps above" reads like a spec and
+ * this sentence is meant to sound like somebody telling you not to worry.
+ * Anything past the list falls back to the digit rather than inventing a word.
+ */
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight"];
+const spell = (n: number) => WORDS[n] ?? String(n);
+
 export default function ExerciseInfo({
   exerciseId,
   profile,
@@ -37,7 +45,7 @@ export default function ExerciseInfo({
   if (!ex) {
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-        <p className="text-[17px] text-dim">That exercise is not in the library.</p>
+        <p className="text-emphasis text-dim">That exercise is not in the library.</p>
         <div className="mt-auto pt-10">
           <Pill onClick={onBack}>Back</Pill>
         </div>
@@ -66,7 +74,7 @@ export default function ExerciseInfo({
             }}
             aria-pressed={starred}
             aria-label={starred ? `Unstar ${ex.name}` : `Star ${ex.name}`}
-            className={`grid h-11 w-11 place-items-center rounded-full text-[19px] transition-colors ${
+            className={`grid h-11 w-11 place-items-center rounded-full text-head transition-colors ${
               starred ? "text-cyan" : "text-dim hover:text-fg"
             }`}
           >
@@ -75,20 +83,20 @@ export default function ExerciseInfo({
           <button
             type="button"
             onClick={onBack}
-            className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+            className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
           >
             Back
           </button>
         </div>
       </div>
 
-      <h1 className="statement mt-2 text-[42px] text-fg">{ex.name}</h1>
+      <h1 className="statement mt-2 text-figure text-fg">{ex.name}</h1>
 
       {/* He says it. The bubble is his, not the screen's. */}
       <div className="mt-5 flex items-end gap-2">
         <Bull size={BULL.speak} className="shrink-0" />
         <div className="relative flex-1 rounded-2xl rounded-bl-sm bg-cyan px-5 py-4">
-          <p className="aside text-[24px] text-ground">{ex.cue}</p>
+          <p className="aside text-title text-ground">{ex.cue}</p>
         </div>
       </div>
 
@@ -99,11 +107,11 @@ export default function ExerciseInfo({
             <li key={i} className="flex gap-3.5">
               <span
                 aria-hidden
-                className="tabular statement grid h-7 w-7 shrink-0 place-items-center rounded-full bg-cyan text-[15px] text-ground"
+                className="tabular statement grid h-7 w-7 shrink-0 place-items-center rounded-full bg-cyan text-body text-ground"
               >
                 {i + 1}
               </span>
-              <span className="text-[15px] leading-snug text-fg">{s}</span>
+              <span className="text-body leading-snug text-fg">{s}</span>
             </li>
           ))}
         </ol>
@@ -121,13 +129,13 @@ export default function ExerciseInfo({
                 is the one. `line-strong` reaches 3:1 on this card's ground.
               */}
               <span aria-hidden className="h-5 w-[3px] shrink-0 rounded-full bg-dim" />
-              <span className="text-[16px] leading-snug text-fg">{m}</span>
+              <span className="text-emphasis leading-snug text-fg">{m}</span>
             </li>
           ))}
         </ul>
       </section>
 
-      <p className="mt-4 text-[14px] leading-snug text-dim">
+      <p className="mt-4 text-caption leading-snug text-dim">
         Shown once, on the set where it usually goes wrong. Not every set.
       </p>
 
@@ -140,8 +148,16 @@ export default function ExerciseInfo({
         </div>
         {demoAsked && (
           // Better an honest empty hand than a button that pretends.
-          <p className="mt-2.5 text-center text-[14px] text-dim">
-            No clip for this one yet. The three steps above are the whole movement.
+          //
+          // The count is read off the lift rather than typed. It said "three"
+          // for every lift in the library, and thirty-eight of the fifty-three
+          // have four — so the sentence written to reassure somebody that the
+          // missing clip hides nothing was itself miscounting the thing it was
+          // pointing at. "Write the true number" is a rule in DESIGN.md and
+          // this was the screen breaking it.
+          <p className="mt-2.5 text-center text-caption text-dim">
+            No clip for this one yet. The {spell(ex.steps.length)} steps above are the
+            whole movement.
           </p>
         )}
       </div>

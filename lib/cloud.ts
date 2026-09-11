@@ -94,6 +94,8 @@ function rememberCrew(code: string | null) {
   } catch {
     // Blocked storage costs a button, not the feature.
   }
+  if (code) flushPlan();
+  else pendingPlan = undefined;
 }
 
 /**
@@ -160,23 +162,40 @@ export const fetchCrew = async () => {
 };
 
 /**
- * Push the days she has trained, so the crew sees presence and nothing else.
+ * The week she has, waiting for somebody to show it to.
  *
- * Only what the server has not already been told. Sending the whole history on
- * every launch is correct — the upsert is idempotent — but it costs bandwidth
- * proportional to how long someone has been using the app, forever, which is
- * exactly backwards: the loyal user pays the most. The acknowledged set lives
- * beside the crew code and is cleared when she leaves.
+ * `undefined` means there is nothing to send; `null` is a withdrawal, which is
+ * a thing worth sending. Held rather than dropped so that joining a crew
+ * shares the plan she already had, instead of waiting for her next edit.
  */
+let pendingPlan: SharedDay[] | null | undefined;
+
 /**
  * Share the week for the crew to copy, or pass null to withdraw it.
  *
  * Day labels and exercise ids only. No weight, no set, no rep — what crosses
  * is which lifts somebody does, never how much they lift, and anyone copying
  * it gets their own engine's numbers.
+ *
+ * Outside a crew there is nobody to publish to and the server would refuse, so
+ * asking anyway is a request on every single launch that can only ever be a
+ * 403. It waits for a crew instead.
  */
-export const publishPlan = (plan: SharedDay[] | null) =>
-  call<{ ok: true; shared: boolean }>("publish", { plan });
+export const publishPlan = (plan: SharedDay[] | null) => {
+  if (!crewCode()) {
+    pendingPlan = plan;
+    return Promise.resolve(null);
+  }
+  return call<{ ok: true; shared: boolean }>("publish", { plan });
+};
+
+/** A crew has appeared. Tell it about the week that was waiting. */
+function flushPlan() {
+  if (pendingPlan === undefined) return;
+  const plan = pendingPlan;
+  pendingPlan = undefined;
+  void call<{ ok: true; shared: boolean }>("publish", { plan });
+}
 
 const SENT_KEY = "habitabull.checkins";
 
@@ -189,8 +208,19 @@ function acknowledged(): Set<string> {
   }
 }
 
+/**
+ * Push the days she has trained, so the crew sees presence and nothing else.
+ *
+ * Only what the server has not already been told. Sending the whole history on
+ * every launch is correct — the upsert is idempotent — but it costs bandwidth
+ * proportional to how long someone has been using the app, forever, which is
+ * exactly backwards: the loyal user pays the most. The acknowledged set lives
+ * beside the crew code and is cleared when she leaves.
+ */
 export async function pushCheckins(days: string[]) {
-  if (!enabled()) return null;
+  // Same as publishing: presence is only meaningful inside a crew, and a
+  // refused write is never acknowledged, so a solo user would re-send forever.
+  if (!enabled() || !crewCode()) return null;
   const sent = acknowledged();
   const fresh = days.filter((d) => !sent.has(d));
   if (fresh.length === 0) return { ok: true } as const;

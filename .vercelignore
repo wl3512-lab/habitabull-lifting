@@ -1,0 +1,4 @@
+# Provenance, not assets. Source art is kept in git because where the drawing
+# came from is worth keeping, and kept out of the deploy because no screen ever
+# fetches it. See art/README.md.
+art/

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
-import { byId, makeCustomExercise, nameOf } from "@/lib/exercises";
+import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
+import { count } from "@/lib/plural";
 import type { Equipment, Exercise, Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
 
 const FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -13,6 +14,7 @@ const MUSCLES: { id: Muscle; label: string }[] = [
   { id: "quads", label: "Quads" },
   { id: "hamstrings", label: "Hamstrings" },
   { id: "glutes", label: "Glutes" },
+  { id: "calves", label: "Calves" },
   { id: "chest", label: "Chest" },
   { id: "back", label: "Back" },
   { id: "shoulders", label: "Shoulders" },
@@ -36,6 +38,7 @@ const MUSCLES: { id: Muscle; label: string }[] = [
 export default function RoutineEditor({
   profile,
   routines,
+  library,
   onSave,
   onAddCustom,
   initialAdding = null,
@@ -43,6 +46,8 @@ export default function RoutineEditor({
 }: {
   profile: Profile;
   routines: Routine[];
+  /** The user's saved version of each named day type, keyed by template id. */
+  library?: Record<string, PlannedExercise[]>;
   onSave: (r: Routine[]) => void;
   /** A lift the library does not have, added by hand. */
   onAddCustom?: (e: Exercise) => void;
@@ -193,7 +198,7 @@ export default function RoutineEditor({
   if (!routine) {
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-        <p className="text-[17px] text-dim">No training days yet. Set up your week first.</p>
+        <p className="text-emphasis text-dim">No training days yet. Set up your week first.</p>
         <div className="mt-auto pt-10">
           <Pill onClick={onBack}>Back</Pill>
         </div>
@@ -254,7 +259,12 @@ export default function RoutineEditor({
     setOpenId(id);
   };
 
-  /** Changing the day type rebuilds that day from the template. */
+  /**
+   * Changing the day type brings back the version of that day you already made
+   * — another day of the same type this week, then your saved library — and
+   * only falls back to a fresh default when you have never shaped it. Full-body
+   * is exempt: it is meant to vary, so it always rebuilds.
+   */
   function setTemplate(id: TemplateId) {
     const [rebuilt] = generateRoutine(
       profile.level,
@@ -264,7 +274,12 @@ export default function RoutineEditor({
       [id]
     );
     if (!rebuilt) return;
-    setDraft(draft.map((r, i) => (i === dayIndex ? { ...rebuilt, day: r.day } : r)));
+    const saved =
+      id === "full-body"
+        ? undefined
+        : draft.find((r) => r.template === id && r.exercises.length)?.exercises ?? library?.[id];
+    const exercises = saved?.length ? saved : rebuilt.exercises;
+    setDraft(draft.map((r, i) => (i === dayIndex ? { ...rebuilt, day: r.day, exercises } : r)));
     setOpenId(null);
     setAdding(null);
   }
@@ -284,14 +299,14 @@ export default function RoutineEditor({
         <button
           type="button"
           onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
         >
           Cancel
         </button>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">{FULL[routine.day]}</h1>
-      <p className="mt-1 text-[17px] text-dim">{templateOf(routine.template ?? "full-body").label}</p>
+      <h1 className="statement mt-2 text-figure text-fg">{FULL[routine.day]}</h1>
+      <p className="mt-1 text-emphasis text-dim">{templateOf(routine.template ?? "full-body").label}</p>
 
       {days.length > 1 && (
         <div className="mt-4 flex gap-2">
@@ -305,7 +320,7 @@ export default function RoutineEditor({
                 setAdding(null);
               }}
               aria-pressed={i === dayIndex}
-              className={`head h-11 flex-1 rounded-full border text-[17px] transition-colors duration-150 ${
+              className={`head h-11 flex-1 rounded-full border text-emphasis transition-colors duration-quick ${
                 i === dayIndex
                   ? "border-cyan bg-cyan text-ground"
                   : "border-line-strong text-dim hover:border-fg"
@@ -328,17 +343,17 @@ export default function RoutineEditor({
                 type="button"
                 onClick={() => setTemplate(t.id)}
                 aria-pressed={on}
-                className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+                className={`rounded-xl border p-3.5 text-left transition-colors duration-quick ${
                   on ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
                 }`}
               >
-                <span className="head flex items-baseline gap-2 text-[17px] text-fg">
+                <span className="head flex items-baseline gap-2 text-emphasis text-fg">
                   {t.label}
                   {t.recommended && (
                     <span className="label text-cyan">Recommended</span>
                   )}
                 </span>
-                <span className="block text-[15px] text-dim">{t.hint}</span>
+                <span className="block text-body text-dim">{t.hint}</span>
               </button>
             );
           })}
@@ -363,18 +378,18 @@ export default function RoutineEditor({
               maxLength={200}
               placeholder="I want to focus on legs, and one easy day"
               aria-label="Describe the week you want"
-              className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+              className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <button
               type="submit"
               disabled={!weekAsk.trim() || weekBusy}
-              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
             >
               {weekBusy ? "…" : "Build"}
             </button>
           </form>
           {weekWhy && (
-            <p role="status" className="mt-2.5 text-[15px] leading-snug text-dim">
+            <p role="status" className="mt-2.5 text-body leading-snug text-dim">
               {weekWhy} Change any day above.
             </p>
           )}
@@ -386,7 +401,7 @@ export default function RoutineEditor({
           — she should know that and then decide for herself.
         */}
         {!thorough && (
-          <p className="mt-3 text-[15px] text-dim">
+          <p className="mt-3 text-body text-dim">
             This week trains some muscles once. Twice a week is what makes the difference —
             full body, or run these days again.
           </p>
@@ -397,9 +412,18 @@ export default function RoutineEditor({
         {routine.exercises.map((e) => {
           const meta = byId(e.exerciseId);
           const open = openId === e.exerciseId;
-          const alts = meta
-            ? alternativesFor(meta.primary, profile.equipment, used, profile.favourites ?? [])
-            : [];
+          /*
+            Cardio swaps for cardio. Filed by muscle, a treadmill is a quads
+            lift and a rower is a back lift, so the muscle-based list offered
+            squats in place of a run and put the rower somewhere a treadmill
+            could never reach. LogSession already knew this when adding a lift
+            mid-session; the week builder did not.
+          */
+          const alts = !meta
+            ? []
+            : meta.cardio
+              ? cardioLifts(used, profile.equipment)
+              : alternativesFor(meta.primary, profile.equipment, used, profile.favourites ?? []);
           return (
             <li key={e.exerciseId} className="rounded-2xl bg-card">
               <button
@@ -409,47 +433,99 @@ export default function RoutineEditor({
                 className="flex w-full items-center justify-between gap-3 p-[18px] text-left"
               >
                 <span className="min-w-0">
-                  <span className="head block truncate text-[17px] text-fg">
+                  <span className="head block truncate text-emphasis text-fg">
                     {nameOf(e.exerciseId)}
                   </span>
-                  <span className="block text-[15px] text-dim">
-                    {e.sets} × {e.reps}
-                    {e.weight > 0 && ` · ${e.weight} lb`}
+                  {/*
+                    What this row can change, and nothing else.
+
+                    It used to print the weight too, which is not editable on
+                    this screen and is not hers to set anyway: the engine picks
+                    the load from her history every time the day is built, so a
+                    number shown here is a number she cannot act on and that
+                    will have moved by the session. On a cardio lift it was
+                    also plain wrong — that field carries the incline, so a
+                    treadmill at 5% read "5 lb".
+                  */}
+                  <span className="block text-body text-dim">
+                    {byId(e.exerciseId)?.cardio
+                      ? count(e.reps, "minute")
+                      : `${e.sets} × ${e.reps}`}
                   </span>
                 </span>
-                <span aria-hidden className="shrink-0 text-[15px] text-cyan">
+                <span aria-hidden className="shrink-0 text-body text-cyan">
                   {open ? "Done" : "Edit"}
                 </span>
               </button>
 
               {open && (
                 <div className="rise border-t border-line px-[18px] pb-[18px] pt-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex-1 text-[15px] text-dim">Sets</span>
-                    <Stepper
-                      value={e.sets}
-                      min={1}
-                      max={6}
-                      onChange={(n) => update(e.exerciseId, { sets: n })}
-                      label="sets"
-                    />
-                  </div>
-                  <div className="mt-2.5 flex items-center gap-3">
-                    <span className="flex-1 text-[15px] text-dim">Reps</span>
-                    <Stepper
-                      value={e.reps}
-                      min={1}
-                      max={60}
-                      step={meta?.increment === 0 ? 5 : 1}
-                      onChange={(n) => update(e.exerciseId, { reps: n })}
-                      label="reps"
-                    />
-                  </div>
+                  {/*
+                    Cardio is set the way it is done: a time you spend and how
+                    steep it is. Sets and reps are the wrong two numbers for
+                    it — there is only ever one set, so a stepper offering six
+                    is offering something the engine will not build, and "reps"
+                    on a treadmill has never meant reps. This panel asks for
+                    what the machine actually has.
+                  */}
+                  {meta?.cardio ? (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="flex-1 text-body text-dim">Time</span>
+                        <Stepper
+                          value={e.reps}
+                          min={5}
+                          max={120}
+                          step={5}
+                          onChange={(n) => update(e.exerciseId, { reps: n })}
+                          label="minutes"
+                        />
+                      </div>
+                      {meta.incline && (
+                        <div className="mt-2.5 flex items-center gap-3">
+                          <span className="flex-1 text-body text-dim">Incline</span>
+                          <Stepper
+                            value={e.weight}
+                            min={0}
+                            max={15}
+                            onChange={(n) => update(e.exerciseId, { weight: n })}
+                            label="percent"
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="flex-1 text-body text-dim">Sets</span>
+                        <Stepper
+                          value={e.sets}
+                          min={1}
+                          max={6}
+                          onChange={(n) => update(e.exerciseId, { sets: n })}
+                          label="sets"
+                        />
+                      </div>
+                      <div className="mt-2.5 flex items-center gap-3">
+                        <span className="flex-1 text-body text-dim">Reps</span>
+                        <Stepper
+                          value={e.reps}
+                          min={1}
+                          max={60}
+                          step={meta?.increment === 0 ? 5 : 1}
+                          onChange={(n) => update(e.exerciseId, { reps: n })}
+                          label="reps"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {alts.length > 0 && (
                     <>
                       <p className="label mt-5 text-dim">
-                        Swap for another {meta?.primary} lift
+                        {meta?.cardio
+                          ? "Swap for different cardio"
+                          : `Swap for another ${meta?.primary} lift`}
                       </p>
                       <div className="mt-2.5 flex flex-wrap gap-2">
                         {alts.map((a) => (
@@ -457,7 +533,7 @@ export default function RoutineEditor({
                             key={a.id}
                             type="button"
                             onClick={() => swap(e.exerciseId, a.id)}
-                            className="head rounded-full border border-line-strong px-4 py-2.5 text-[15px] text-dim transition-colors hover:border-fg hover:text-fg"
+                            className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
                           >
                             {a.name}
                           </button>
@@ -469,7 +545,7 @@ export default function RoutineEditor({
                   <button
                     type="button"
                     onClick={() => remove(e.exerciseId)}
-                    className="head tap mt-5 text-[15px] text-dim transition-colors hover:text-fg"
+                    className="head tap mt-5 text-body text-dim transition-colors hover:text-fg"
                   >
                     Take this out
                   </button>
@@ -481,7 +557,7 @@ export default function RoutineEditor({
       </ul>
 
       {routine.exercises.length === 0 && (
-        <p className="mt-4 text-[15px] text-dim">
+        <p className="mt-4 text-body text-dim">
           Nothing on this day. Add a lift, or leave it as a rest day.
         </p>
       )}
@@ -493,7 +569,7 @@ export default function RoutineEditor({
             <button
               type="button"
               onClick={closeAdd}
-              className="head tap shrink-0 text-[15px] text-cyan"
+              className="head tap shrink-0 text-body text-cyan"
             >
               Cancel
             </button>
@@ -504,7 +580,7 @@ export default function RoutineEditor({
                 key={a.id}
                 type="button"
                 onClick={() => add(a.id)}
-                className="head rounded-full border border-line-strong px-4 py-2.5 text-[15px] text-dim transition-colors hover:border-fg hover:text-fg"
+                className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
               >
                 {a.name}
               </button>
@@ -531,12 +607,12 @@ export default function RoutineEditor({
                 maxLength={200}
                 placeholder={`Something for ${adding} that is easy on the wrists`}
                 aria-label={`Ask for help choosing a ${adding} lift`}
-                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
               />
               <button
                 type="submit"
                 disabled={!ask.trim() || asking}
-                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
               >
                 {asking ? "…" : "Ask"}
               </button>
@@ -562,17 +638,17 @@ export default function RoutineEditor({
                   maxLength={40}
                   placeholder="Cable crossover"
                   aria-label="The name of a lift to add yourself"
-                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
                 />
                 <button
                   type="submit"
                   disabled={!ownName.trim() || ownBusy}
-                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-raise px-5 text-[15px] text-cyan transition-opacity disabled:opacity-30"
+                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-raise px-5 text-body text-cyan transition-opacity disabled:opacity-30"
                 >
                   {ownBusy ? "…" : "Add"}
                 </button>
               </form>
-              <p className="mt-2 text-[15px] leading-snug text-dim">
+              <p className="mt-2 text-body leading-snug text-dim">
                 Type the name and it gets filed for you. There is no form guidance for a
                 lift you added — that part only exists where a person wrote it.
               </p>
@@ -581,14 +657,14 @@ export default function RoutineEditor({
 
           {suggested && byId(suggested.id) && (
               <div role="status" className="mt-3 rounded-xl bg-raise/50 p-3.5">
-                <p className="head text-[17px] text-fg">{nameOf(suggested.id)}</p>
+                <p className="head text-emphasis text-fg">{nameOf(suggested.id)}</p>
                 {suggested.why && (
-                  <p className="mt-1 text-[15px] leading-snug text-dim">{suggested.why}</p>
+                  <p className="mt-1 text-body leading-snug text-dim">{suggested.why}</p>
                 )}
                 <button
                   type="button"
                   onClick={() => add(suggested.id)}
-                  className="head tap mt-2 text-[15px] text-cyan transition-opacity hover:opacity-70"
+                  className="head tap mt-2 text-body text-cyan transition-opacity hover:opacity-70"
                 >
                   Add it
                 </button>
@@ -605,7 +681,7 @@ export default function RoutineEditor({
                 key={m.id}
                 type="button"
                 onClick={() => setAdding(m.id)}
-                className="head rounded-full border border-line-strong px-4 py-2.5 text-[15px] text-dim transition-colors hover:border-fg hover:text-fg"
+                className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
               >
                 {m.label}
               </button>
@@ -622,8 +698,8 @@ export default function RoutineEditor({
                       onClick={() => add(sg.tryThis)}
                       className="w-full rounded-xl bg-raise/50 p-3.5 text-left transition-colors hover:bg-raise"
                     >
-                      <span className="head block text-[17px] text-fg">{nameOf(sg.tryThis)}</span>
-                      <span className="block text-[15px] text-dim">
+                      <span className="head block text-emphasis text-fg">{nameOf(sg.tryThis)}</span>
+                      <span className="block text-body text-dim">
                         You star {nameOf(sg.because)} — same muscle, different feel.
                       </span>
                     </button>
@@ -634,7 +710,7 @@ export default function RoutineEditor({
           )}
 
           {profile.level === "new" && (
-            <p className="mt-3 text-[15px] text-dim">
+            <p className="mt-3 text-body text-dim">
               Your days are full body on purpose. Hitting everything twice a week beats a
               clever split you have to remember.
             </p>
@@ -649,7 +725,14 @@ export default function RoutineEditor({
   );
 }
 
-/** A compact inline ± for numbers that live inside a row. */
+/**
+ * A compact inline ± for numbers that live inside a row.
+ *
+ * `handed` is here for the same reason it is in components/Stepper.tsx: taps
+ * arrive faster than renders, and reading the `value` prop inside the handler
+ * made every tap in a burst compute from the same stale number, so holding +
+ * changed sets by one and looked like a control that had stopped working.
+ */
 function Stepper({
   value,
   onChange,
@@ -665,24 +748,32 @@ function Stepper({
   step?: number;
   label: string;
 }) {
+  const handed = useRef(value);
+  handed.current = value;
+  const bump = (dir: 1 | -1) => {
+    const next = Math.min(max, Math.max(min, handed.current + dir * step));
+    handed.current = next;
+    onChange(next);
+  };
+
   return (
     <div className="flex shrink-0 items-center gap-2">
       <button
         type="button"
-        onClick={() => onChange(Math.max(min, value - step))}
+        onClick={() => bump(-1)}
         disabled={value <= min}
         aria-label={`Fewer ${label}`}
-        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-[22px] leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
+        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
       >
         −
       </button>
-      <span className="tabular statement w-10 text-center text-[24px] text-fg">{value}</span>
+      <span className="tabular statement w-10 text-center text-title text-fg">{value}</span>
       <button
         type="button"
-        onClick={() => onChange(Math.min(max, value + step))}
+        onClick={() => bump(1)}
         disabled={value >= max}
         aria-label={`More ${label}`}
-        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-[22px] leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
+        className="grid h-11 w-11 place-items-center rounded-full bg-raise text-head leading-none text-cyan transition-colors hover:bg-line disabled:opacity-30"
       >
         +
       </button>

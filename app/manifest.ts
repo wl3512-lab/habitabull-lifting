@@ -17,7 +17,7 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "HabitaBull Lifting",
+    name: "HabitaBull",
     short_name: "HabitaBull",
     description: "A gym companion for when you keep losing the habit by week three.",
     start_url: "/",
@@ -28,11 +28,11 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#16181d",
     categories: ["health", "fitness", "lifestyle"],
     icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-192.png?v=3", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png?v=3", sizes: "512x512", type: "image/png", purpose: "any" },
       // Android crops to whatever shape the launcher wants, so this one keeps
       // the bull inside the 40% safe zone.
-      { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/icon-maskable-512.png?v=3", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

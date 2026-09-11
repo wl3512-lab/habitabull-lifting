@@ -90,29 +90,36 @@ export default function Finished({
 
   if (best) {
     return (
-      <div className="flex flex-1 flex-col bg-orange text-ground">
+      /*
+        Secondary text on this field is /90 and not lower. The celebration
+        inverts the whole screen to `action`, and dark text at 75-80% over it
+        composites to 3.97 and 4.39:1 — under the 4.5 that Apple requires up to
+        17pt. It cleared the bar against the old brighter orange and stopped
+        clearing it when the accent moved to oxide. /90 measures 5.17:1.
+      */
+      <div className="flex flex-1 flex-col bg-action text-ground">
         <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-          <p className="label text-center text-ground/75">Personal record</p>
+          <p className="label text-center text-ground/90">Personal record</p>
 
           {/* 180 × 218 in the Figma. */}
           <div className="rise mt-4 flex flex-col items-center">
             <Bull size={BULL.hero} react />
           </div>
 
-          <h1 className="statement mt-5 text-center text-[42px] text-ground">
+          <h1 className="statement mt-5 text-center text-figure text-ground">
             {best.by} lb more than you&apos;ve ever done.
           </h1>
 
           <div className="rise mt-6 rounded-2xl bg-ground px-5 py-6 text-center">
             <p className="label text-dim">{nameOf(best.id)}</p>
-            <p className="tabular statement mt-2 text-[56px] text-orange">{best.now} lb</p>
-            <p className="mt-1.5 text-[17px] text-fg">
+            <p className="tabular statement mt-2 text-hero text-action">{best.now} lb</p>
+            <p className="mt-1.5 text-emphasis text-fg">
               Up from {best.was} lb. You beat it by {best.by}.
             </p>
           </div>
 
           <div className="mt-auto pt-10">
-            <p className="mb-3 text-center text-[15px] text-ground/80">
+            <p className="mb-3 text-center text-body text-ground/90">
               Only your own numbers. Nobody else is in this.
             </p>
             <Pill variant="onOrange" onClick={onHome}>
@@ -121,7 +128,7 @@ export default function Finished({
             <button
               type="button"
               onClick={onAddDetail}
-              className="head tap mt-2.5 block w-full text-center text-[15px] text-ground/80 transition-opacity hover:opacity-100"
+              className="head tap mt-2.5 block w-full text-center text-body text-ground/90 transition-opacity hover:opacity-100"
             >
               Add a note or photo
             </button>
@@ -129,7 +136,7 @@ export default function Finished({
               <button
                 type="button"
                 onClick={onSetGoal}
-                className="head mt-1 h-12 w-full text-[15px] text-ground/80 transition-opacity hover:opacity-100"
+                className="head mt-1 h-12 w-full text-body text-ground/90 transition-opacity hover:opacity-100"
               >
                 Now pick something to aim at
               </button>
@@ -150,7 +157,7 @@ export default function Finished({
           "you lifted more than you ever have" is a claim with nothing behind
           it. The honest version of that is the "first time on X" chips below.
         */}
-        <p className="head mt-4 max-w-[26ch] text-center text-[19px] leading-snug">
+        <p className="head mt-4 max-w-[26ch] text-center text-head leading-snug">
           {line("done", sessions.length)}
         </p>
       </div>
@@ -169,7 +176,7 @@ export default function Finished({
           {records.map((id) => (
             <li
               key={id}
-              className="head rounded-full border border-line-strong px-4 py-2 text-[15px] text-cyan"
+              className="head rounded-full border border-line-strong px-4 py-2 text-body text-cyan"
             >
               First time on {nameOf(id)}
             </li>
@@ -180,10 +187,10 @@ export default function Finished({
       {justStarted && !installed && (
         <div className="mt-8 rounded-2xl border border-line-strong p-[18px]">
           <p className="label text-cyan">Keep this</p>
-          <p className="mt-1.5 text-[17px] leading-snug text-fg">
-            Add HabitaBull Lifting to your home screen.
+          <p className="mt-1.5 text-emphasis leading-snug text-fg">
+            Add HabitaBull to your home screen.
           </p>
-          <p className="mt-1 text-[15px] leading-snug text-dim">
+          <p className="mt-1 text-body leading-snug text-dim">
             Everything you log lives in this browser, and phones clear that for sites
             you have not saved. Share, then Add to Home Screen.
           </p>
@@ -195,7 +202,7 @@ export default function Finished({
         <button
           type="button"
           onClick={onAddDetail}
-          className="head tap mt-2.5 block w-full text-center text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70"
         >
           Add a note or photo
         </button>
@@ -203,7 +210,7 @@ export default function Finished({
           <button
             type="button"
             onClick={onSetGoal}
-            className="head mt-1 h-12 w-full text-[15px] text-cyan transition-opacity hover:opacity-70"
+            className="head mt-1 h-12 w-full text-body text-cyan transition-opacity hover:opacity-70"
           >
             Now pick something to aim at
           </button>

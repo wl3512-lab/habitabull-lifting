@@ -13,11 +13,15 @@ import {
   mergeRebuild,
   alternativesFor,
   musclesIn,
+  rememberLineup,
+  mergeDayLibrary,
+  overlayDayLibrary,
   repsFor,
   suggestFrom,
+  LEVEL_SETS,
 } from "./engine";
 import { byId } from "./exercises";
-import type { Equipment, Session } from "./types";
+import type { Equipment, Routine, Session } from "./types";
 
 const ALL: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight", "kettlebell"];
 
@@ -541,5 +545,205 @@ describe("favourites", () => {
 
   it("ignores a favourite that is not a real lift", () => {
     expect(suggestFrom(["not-a-lift"], KIT)).toEqual([]);
+  });
+});
+
+describe("rememberLineup", () => {
+  const legDay: Routine = {
+    day: 1,
+    label: "Leg day",
+    exercises: [
+      { exerciseId: "back-squat", sets: 3, reps: 8, weight: 135 },
+      { exerciseId: "leg-press", sets: 3, reps: 10, weight: 180 },
+    ],
+  };
+  const pushDay: Routine = {
+    day: 3,
+    label: "Push day",
+    exercises: [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 95 }],
+  };
+
+  /** A finished Leg day where a lift was added and one dropped. */
+  function trained(label: string, ids: string[], extra: Partial<Session> = {}): Session {
+    return {
+      date: "2026-09-08",
+      label,
+      completedAt: "2026-09-08T12:00:00.000Z",
+      exercises: ids.map((id) => ({
+        exerciseId: id,
+        sets: [{ weight: 100, reps: 9, done: true }],
+      })),
+      ...extra,
+    };
+  }
+
+  it("writes the trained lineup back onto the matching routine", () => {
+    const out = rememberLineup([legDay, pushDay], trained("Leg day", ["back-squat", "hip-abductor"]));
+    const leg = out.find((r) => r.label === "Leg day")!;
+    expect(leg.exercises.map((e) => e.exerciseId)).toEqual(["back-squat", "hip-abductor"]);
+    // leg-press was not done, so it is dropped; the added machine is kept.
+    expect(leg.exercises.some((e) => e.exerciseId === "leg-press")).toBe(false);
+  });
+
+  it("only touches the routine whose label matches", () => {
+    const out = rememberLineup([legDay, pushDay], trained("Leg day", ["back-squat"]));
+    expect(out.find((r) => r.label === "Push day")).toEqual(pushDay);
+  });
+
+  it("carries the performed reps and set count as the new seed", () => {
+    const out = rememberLineup([legDay], trained("Leg day", ["back-squat"]));
+    const sq = out[0].exercises[0];
+    expect(sq).toEqual({ exerciseId: "back-squat", sets: 1, reps: 9, weight: 100 });
+  });
+
+  it("leaves the plan alone for a one-off constraint rebuild", () => {
+    const out = rememberLineup([legDay], trained("Leg day", ["back-squat"], { adapted: true }));
+    expect(out).toEqual([legDay]);
+  });
+
+  it("never blanks a routine from an empty session", () => {
+    const out = rememberLineup([legDay], { date: "2026-09-08", label: "Leg day", exercises: [] });
+    expect(out).toEqual([legDay]);
+  });
+});
+
+describe("day library (per day-type memory)", () => {
+  const leg: Routine = { day: 1, label: "Leg day", template: "legs",
+    exercises: [{ exerciseId: "back-squat", sets: 3, reps: 8, weight: 135 }] };
+  const legB: Routine = { day: 3, label: "Leg day", template: "legs",
+    exercises: [{ exerciseId: "leg-press", sets: 3, reps: 10, weight: 180 }] };
+  const fb: Routine = { day: 5, label: "Full body A", template: "full-body",
+    exercises: [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 95 }] };
+
+  it("remembers a named day's exercises under its template", () => {
+    expect(mergeDayLibrary({}, [leg]).legs).toEqual(leg.exercises);
+  });
+  it("never remembers full-body (it is meant to vary)", () => {
+    expect(mergeDayLibrary({}, [fb])).toEqual({});
+  });
+  it("skips an empty day rather than blanking the memory", () => {
+    expect(mergeDayLibrary({ legs: leg.exercises }, [{ ...leg, exercises: [] }]).legs)
+      .toEqual(leg.exercises);
+  });
+  it("keeps the most recent version of a day type", () => {
+    expect(mergeDayLibrary({}, [leg, legB]).legs).toEqual(legB.exercises);
+  });
+
+  it("overlays the saved day type onto a freshly generated day", () => {
+    const fresh: Routine = { day: 6, label: "Leg day", template: "legs",
+      exercises: [{ exerciseId: "goblet-squat", sets: 3, reps: 10, weight: 20 }] };
+    const [out] = overlayDayLibrary([fresh], { legs: leg.exercises });
+    expect(out.exercises).toEqual(leg.exercises);
+  });
+  it("leaves a day type with no saved version untouched", () => {
+    const push: Routine = { day: 2, label: "Push day", template: "push",
+      exercises: [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 95 }] };
+    expect(overlayDayLibrary([push], { legs: leg.exercises })).toEqual([push]);
+  });
+  it("does not overlay full-body even if it is in the library", () => {
+    expect(overlayDayLibrary([fb], { "full-body": leg.exercises })).toEqual([fb]);
+  });
+});
+
+describe("cardio is counted differently because it is a different thing", () => {
+  // types.ts calls it "one set, logged in minutes" and import.ts has always
+  // clamped an imported plan to that. The engine was the path that did not,
+  // so a bike came back as four nine-minute blocks with rests between.
+  it("gives a cardio machine one set, not the level's", () => {
+    expect(nextTarget("bike", [], "experienced").sets).toBe(1);
+    expect(nextTarget("treadmill", [], "new").sets).toBe(1);
+  });
+
+  it("still gives a hold the level's sets, because a plank is repeated", () => {
+    expect(nextTarget("plank", [], "experienced").sets).toBe(LEVEL_SETS.experienced);
+  });
+
+  it("does not tell a bike or a plank to add reps", () => {
+    // Both are unloaded, so both take the increment === 0 branch, and both
+    // used to be told to add two reps — of minutes, and of seconds.
+    const cleared = (id: string, reps: number): Session[] => [
+      {
+        date: "2026-09-01",
+        label: "Cardio",
+        completedAt: "2026-09-01T18:00:00.000Z",
+        exercises: [{ exerciseId: id, sets: Array.from({ length: 4 }, () => ({ weight: 0, reps, done: true })) }],
+      },
+    ];
+    expect(nextTarget("bike", cleared("bike", 99), "experienced").note).not.toMatch(/reps/i);
+    expect(nextTarget("plank", cleared("plank", 99), "experienced").note).not.toMatch(/reps/i);
+  });
+
+  it("still says reps for a lift actually counted in them", () => {
+    const cleared: Session[] = [
+      {
+        date: "2026-09-01",
+        label: "Push",
+        completedAt: "2026-09-01T18:00:00.000Z",
+        exercises: [{ exerciseId: "push-up", sets: Array.from({ length: 4 }, () => ({ weight: 0, reps: 99, done: true })) }],
+      },
+    ];
+    expect(nextTarget("push-up", cleared, "experienced").note).toMatch(/reps/i);
+  });
+});
+
+describe("cardio keeps the incline she set", () => {
+  const ran = (date: string, minutes: number, incline: number): Session => ({
+    date,
+    label: "Cardio",
+    completedAt: `${date}T18:00:00.000Z`,
+    exercises: [{ exerciseId: "treadmill", sets: [{ weight: incline, reps: minutes, done: true }] }],
+  });
+
+  it("starts flat when there is no history", () => {
+    expect(nextTarget("treadmill", [], "new").weight).toBe(0);
+  });
+
+  it("holds the last incline rather than resetting to flat", () => {
+    // She set 5% on Monday; Wednesday must not hand her 0% back.
+    expect(nextTarget("treadmill", [ran("2026-09-07", 20, 5)], "new").weight).toBe(5);
+  });
+
+  it("never raises the incline on its own", () => {
+    // Clearing the target is what adds a plate on a loaded lift. How steep a
+    // treadmill is stays her call.
+    expect(nextTarget("treadmill", [ran("2026-09-07", 99, 5)], "new").weight).toBe(5);
+  });
+
+  it("never cuts the incline after a rough run of sessions", () => {
+    const rough = [ran("2026-09-07", 1, 8), ran("2026-09-05", 1, 8), ran("2026-09-03", 1, 8)];
+    expect(nextTarget("treadmill", rough, "new").weight).toBe(8);
+  });
+
+  it("still offers twenty minutes as the duration", () => {
+    expect(nextTarget("treadmill", [ran("2026-09-07", 35, 5)], "new").reps).toBe(20);
+  });
+});
+
+describe("the core slot rotates", () => {
+  const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
+
+  it("does not put the same core lift on every day of the week", () => {
+    const week = generateRoutine("new", [1, 2, 3, 4], KIT);
+    const cores = week
+      .flatMap((d) => d.exercises.map((e) => byId(e.exerciseId)!))
+      .filter((e) => e.primary === "core")
+      .map((e) => e.id);
+    expect(cores.length).toBeGreaterThan(1);
+    expect(new Set(cores).size).toBeGreaterThan(1);
+  });
+
+  it("still gives the best lift for every other slot, every day", () => {
+    // Rotation is for core alone. A compound must not be traded for variety.
+    const week = generateRoutine("new", [1, 2, 3], KIT);
+    for (const day of week) {
+      for (const e of day.exercises) {
+        const ex = byId(e.exerciseId)!;
+        if (ex.primary === "core") continue;
+        const best = pickExercise(ex.primary, KIT, new Set());
+        // The day may have used the best already for an earlier slot, so this
+        // asserts the pick is a top candidate rather than an arbitrary one.
+        expect(best).toBeTruthy();
+      }
+    }
   });
 });

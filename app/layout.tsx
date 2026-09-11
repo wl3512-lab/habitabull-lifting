@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
+import NotSaving from "@/components/NotSaving";
+import StayFresh from "@/components/StayFresh";
 
 /*
   Two faces, one family. Barlow Condensed carries headlines and every figure
@@ -23,14 +25,21 @@ const barlow = Barlow({
 });
 
 export const metadata: Metadata = {
-  title: "HabitaBull Lifting",
+  /*
+    Where a relative image URL below is resolved from. Without it Next falls
+    back to the per-deployment host, and the invite preview would then point at
+    a URL that changes with every push — the stable alias is the only one worth
+    putting in somebody's message thread.
+  */
+  metadataBase: new URL("https://habitabull.vercel.app"),
+  title: "HabitaBull",
   description: "Most people quit by week three. This one is built for coming back.",
-  applicationName: "HabitaBull Lifting",
+  applicationName: "HabitaBull",
   // The Crew screen sends a link to invite somebody; without this it previewed
   // as nothing at all, which is a poor first impression of a product whose
   // whole pitch is that it takes you seriously.
   openGraph: {
-    title: "HabitaBull Lifting",
+    title: "HabitaBull",
     description: "Most people quit by week three. This one is built for coming back.",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
     type: "website",
@@ -41,7 +50,7 @@ export const metadata: Metadata = {
   // days. See app/manifest.ts.
   appleWebApp: {
     capable: true,
-    title: "HabitaBull Lifting",
+    title: "HabitaBull",
     // "default", not "black-translucent": translucent puts the web view under
     // the status bar, and every screen here carries a fixed top padding rather
     // than a safe-area inset. Let iOS keep the clock out of the headline.
@@ -49,10 +58,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icon-192.png?v=3", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png?v=3", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png?v=3", sizes: "180x180", type: "image/png" }],
   },
   // Next emits the standardised `mobile-web-app-capable`. iOS before 16.4 only
   // understood the apple-prefixed spelling, and it costs one tag to keep those
@@ -97,12 +106,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <div
           id="device"
-          className="relative flex min-h-dvh w-full flex-col bg-ground desk:h-[844px] desk:min-h-0 desk:w-[390px] desk:shrink-0 desk:overflow-hidden desk:rounded-[44px] desk:shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-20px_rgb(0_0_0/0.7)]"
+          className="relative flex min-h-dvh w-full flex-col bg-ground desk:h-[844px] desk:min-h-0 desk:w-[390px] desk:shrink-0 desk:overflow-hidden desk:rounded-device desk:shadow-[0_0_0_1px_var(--color-line),0_40px_80px_-20px_rgb(0_0_0/0.7)]"
         >
           {/* Scrolls inside the device on desktop; the page itself scrolls on a phone. */}
           <div id="app-scroll" className="flex flex-1 flex-col desk:overflow-y-auto desk:no-scrollbar">
             {children}
           </div>
+          {/*
+            Outside the scroller and a sibling of it, so it pins to the device
+            rather than scrolling away with a screen. Renders nothing at all
+            until a write actually fails, which on a healthy phone is never.
+          */}
+          <NotSaving />
+          {/*
+            Renders nothing. It watches for a build newer than the one this
+            page is running, which is the only way an installed app that is
+            resumed rather than reloaded ever picks up a fix.
+          */}
+          <StayFresh />
         </div>
       </body>
     </html>

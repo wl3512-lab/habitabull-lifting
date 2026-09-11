@@ -2,8 +2,9 @@ import type { Anchor } from "./schedule";
 import type { TemplateId } from "./templates";
 
 export type Level = "new" | "returning" | "experienced";
+export type RestPref = "short" | "standard" | "long";
 export type Equipment = "barbell" | "dumbbell" | "machine" | "bodyweight" | "kettlebell";
-export type Muscle = "quads" | "hamstrings" | "glutes" | "chest" | "back" | "shoulders" | "arms" | "core";
+export type Muscle = "quads" | "hamstrings" | "glutes" | "calves" | "chest" | "back" | "shoulders" | "arms" | "core";
 
 export interface Exercise {
   id: string;
@@ -26,6 +27,10 @@ export interface Exercise {
    * single core lift was a plank.
    */
   hold?: boolean;
+  /** Time-based cardio: one set, logged in minutes, no weight. */
+  cardio?: boolean;
+  /** A cardio machine whose incline you can set. Logs an incline %% too. */
+  incline?: boolean;
   cue: string;
   /** How to do it, in order. Shown on the exercise screen. */
   steps: string[];
@@ -79,6 +84,27 @@ export interface Session {
    * free field, never a mood picker or a set of tags.
    */
   note?: string;
+  /**
+   * This day was rebuilt to work around a constraint ("something hurts"). It is
+   * a one-off for today, so finishing it must not write the reduced lineup back
+   * over the saved plan the way a deliberately edited day does.
+   */
+  adapted?: boolean;
+}
+
+/**
+ * A dated body-weight entry.
+ *
+ * Deliberately not part of `Session`: weighing yourself is not training, and
+ * tying the two together would mean a weigh-in on a rest day had nowhere to
+ * live — which is most weigh-ins. `lb` matches the unit the rest of the app
+ * logs in; there is no unit switch anywhere yet and adding one here alone
+ * would be the only place in the product that asked.
+ */
+export interface WeighIn {
+  /** ISO date, local, YYYY-MM-DD. One entry per day, last write wins. */
+  date: string;
+  lb: number;
 }
 
 export interface Profile {
@@ -133,6 +159,22 @@ export interface Profile {
    * chose one; otherwise the anchor supplies an hour for the calendar reminder.
    */
   trainingMinute?: number;
+  /**
+   * A Spotify playlist the user already has, launched when a workout starts.
+   *
+   * Stored as the bare playlist id rather than whichever of the four URL shapes
+   * Spotify handed us, so the value is the same whether it was pasted from the
+   * app, the web player, a share sheet or a `spotify:` URI.
+   *
+   * Optional and it stays optional: the app is fully usable with no music, no
+   * account and no network, and starting a workout must never wait on any of
+   * the three.
+   */
+  playlistId?: string;
+  /** What to call it on screen. Free text — we cannot read their library. */
+  playlistName?: string;
+  /** How long to rest between sets, chosen at signup. Scales restSeconds. */
+  restPref?: RestPref;
   createdAt: string;
 }
 
@@ -166,6 +208,14 @@ export interface AppState {
   /** Set once the user has declined to set a goal, so we stop asking. */
   goalDismissed?: boolean;
   challenge?: Challenge;
+  /** Dated body-weight entries, oldest first. */
+  weighIns?: WeighIn[];
   /** Lifts somebody added that the library does not have. */
   customExercises?: Exercise[];
+  /**
+   * The user's own version of each named day type, keyed by template id. Once
+   * they shape a "Leg day", pressing Leg day again brings back theirs, not the
+   * generated default. Full-body is deliberately excluded: it alternates.
+   */
+  dayLibrary?: Record<string, PlannedExercise[]>;
 }

@@ -11,6 +11,17 @@
   measures 7.96:1 and the brand memory survives intact. Orange carries the one
   action per screen; green means done. Nothing is red — a missed day is an
   absence, not an error.
+
+  The Oxide pass, 2026-09. The action and done colours were #F97316 and
+  #22C55E, which are Tailwind v3's stock orange-500 and green-500 — the two
+  loudest things in the app, and neither of them a decision. Measured in OKLCH
+  they sat at chroma 0.187 and 0.192 against the cyan's 0.043: about 4.5x. All
+  three were already matched in lightness (74.5 / 70.5 / 72.3%), which is why
+  the palette worked at all; the chroma gap is what made the orange read as
+  imported rather than chosen. The replacements sit at 0.100-0.118, roughly
+  2.5x the cyan, so the set reads as one pigment family.
+
+  Full derivation and the measured table: brand/brand-guide.md.
 */
 @theme inline {
   /* Grounds, darkest to lightest. */
@@ -34,12 +45,73 @@
   --color-cyan: #8eb4bd;
   --color-cyan-soft: #c1d4d9;
 
-  /* The single action colour, and the only "yes" in the system. */
-  --color-orange: #f97316;
-  --color-green: #22c55e;
+  /*
+    The single action colour, and the only "yes" in the system.
+
+    orange is a FILL, not a text colour: on --color-raise it measures 4.45:1,
+    under body AA. If it ever has to be text it goes on ground or card.
+  */
+  --color-action: #d57e5c; /* ink on it 5.89:1 */
+  --color-action-press: #c27151; /* held/pressed. ink on it 4.88:1 */
+  --color-done: #6bb88d; /* 7.50:1 on ground, 6.65 on card */
+
+  /*
+    A fault in the software — a save that failed, a sync that dropped, an
+    import that would not parse. Never user behaviour: a missed day stays an
+    absence, and this must never reach the calendar or the consistency grid.
+    Kept in the oxide family so it belongs to the set rather than arriving as
+    a browser-default red. 5.64:1 on ground, 5.00 on card; 4.26 on raise, so
+    not body text there.
+  */
+  --color-fault: #d9746d;
+
+  /* The mark on dark grounds, sampled from the mascot's horns. 8.75:1 on
+     ground. Never on orange — that pair is 1.49:1. */
+  --color-horn: #b8b898;
+
+  /*
+    Nine steps, down from nineteen ad-hoc pixel values.
+
+    Built around what was already load-bearing rather than imposed on top: 15
+    and 17 carried 206 of roughly 290 call sites and are untouched. The rest
+    fold the neighbours that were doing one job with three values — 12/13/14,
+    19/20/22, 24/26, 30/34, 40/42/44, 52/54/56.
+
+    `emphasis` is 17 and not 16 on purpose. Every text input in the app sits at
+    this step, and iOS Safari zooms the page when a focused field is under
+    16px — so this step is also a floor, and folding 16 upward keeps it.
+  */
+  --text-micro: 11px;
+  --text-caption: 13px;
+  --text-body: 15px;
+  --text-emphasis: 17px;
+  --text-head: 20px;
+  --text-title: 26px;
+  --text-display: 32px;
+  --text-figure: 44px;
+  --text-hero: 56px;
 
   --font-display: var(--font-barlow-condensed), system-ui, sans-serif;
   --font-body: var(--font-barlow), system-ui, sans-serif;
+
+  /*
+    Radius, four values. The app had ten, seven of which were one-offs — three
+    of them (3, 4 and 5px) doing the single job of rounding a grid cell.
+    rounded-xl (12) and rounded-2xl (16) are Tailwind's own and stay as they
+    are; these name the two that are ours.
+  */
+  --radius-tick: 5px; /* consistency-grid cells, legend swatches */
+  --radius-device: 44px; /* the desktop device frame, and nothing else */
+
+  /*
+    One curve, four durations. Anything that answers a tap gets `quick`;
+    nothing animates on its own. Named rather than numeric so the intent
+    survives a change of value.
+  */
+  --duration-instant: 90ms;
+  --duration-quick: 150ms;
+  --duration-standard: 220ms;
+  --duration-deliberate: 300ms;
 
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 
@@ -194,21 +266,194 @@ body {
   }
 }
 
+/*
+  The set-logged stamp. A quick over-then-settle on the confirmation check, so
+  logging a set lands with a small physical "done" even where the phone cannot
+  buzz — which, on iOS, is everywhere. Paired with .rise on the text beside it.
+*/
+/*
+  The set-logged beat's escalation. A routine set gets the check drawing itself
+  on plus one ring pulsing outward — contained, over in half a second, gone.
+  A personal best floods the whole screen instead (see SetLogged), so these two
+  never fire together.
+*/
+@keyframes check-draw {
+  from { stroke-dashoffset: 27; }
+  to { stroke-dashoffset: 0; }
+}
+.check-draw {
+  stroke-dasharray: 27;
+  animation: check-draw 240ms 110ms var(--ease-out-quart) both;
+}
+
+@keyframes ring-pulse {
+  from { opacity: 0.5; transform: scale(0.85); }
+  to { opacity: 0; transform: scale(1.9); }
+}
+.ring-pulse {
+  animation: ring-pulse 620ms var(--ease-out-quart) both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.flood {
+  animation: fade-in var(--duration-standard) var(--ease-out-quart) both;
+}
+
+/*
+  A dialog arriving, in two parts.
+
+  The covering surface fades and the column it carries rises behind it. One
+  gesture, decomposed, because translating the covering surface itself uncovers
+  a strip of the screen underneath along one edge for the length of the
+  animation — a seam where there should be a sheet. So the surface only fades,
+  and the travel belongs to the content.
+
+  Quicker than the rise it sits under: the scrim's job is to be established
+  before the content lands on it, not to arrive alongside it.
+*/
+.veil {
+  animation: fade-in var(--duration-quick) var(--ease-out-quart) both;
+}
+
+/*
+  A month arriving from the direction you asked for.
+
+  Back and forward looked identical, which on a calendar is the one thing they
+  must not: the whole content of the gesture is which way through time you just
+  moved. 14px is enough to read as a direction and short enough not to be a
+  transition you wait for.
+*/
+@keyframes from-earlier {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes from-later {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: none; }
+}
+.from-earlier {
+  animation: from-earlier var(--duration-standard) var(--ease-out-quart) backwards;
+}
+.from-later {
+  animation: from-later var(--duration-standard) var(--ease-out-quart) backwards;
+}
+
+/*
+  The rest-day arrival, which is `rise` turned over.
+
+  A training day arrives from below and braces: the whole gesture is forward.
+  A rest day comes down instead and lands, which is what breathing out looks
+  like, and it takes `deliberate` rather than `standard` to do it. Same 10px,
+  same curve, opposite direction — the difference between the two screens is
+  carried by how they move rather than by giving one of them a colour, because
+  this system only has two drenched screens and spending that scarcity on the
+  most frequent moment in the app would cost both of them their meaning.
+*/
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.settle {
+  animation: settle var(--duration-deliberate) var(--ease-out-quart) backwards;
+}
+
+/*
+  Leaving, so the next screen can arrive rather than cut in. Faster than any
+  entrance — an exit nobody is reading should not be paced like something they
+  are. `forwards`, not `backwards`, and it is one of the two exceptions in this
+  file: it ends at nothing, and handing the element back to its own styles
+  would put it straight back on screen.
+*/
+@keyframes depart {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.depart {
+  animation: depart var(--duration-quick) var(--ease-out-quart) forwards;
+}
+
+/*
+  The consistency grid drawing itself, oldest week first.
+
+  Only the days she trained animate. The missed cells are already on screen and
+  stay put, because an app whose whole argument is that a gap is not a failure
+  cannot then spend a third of a second drawing attention to every gap. What
+  arrives is the green — which is also the only thing in that lattice carrying
+  information.
+
+  No overshoot. The over-then-settle belongs to `stamp` and to one event, a set
+  going down; a record of twelve weeks is not twelve small celebrations.
+*/
+@keyframes cell-in {
+  from { opacity: 0; transform: scale(0.72); }
+  to { opacity: 1; transform: none; }
+}
+.cell-in {
+  animation: cell-in var(--duration-standard) var(--ease-out-quart) backwards;
+  /* Staggered by week, so the record reads left to right the way it was made. */
+  animation-delay: calc(90ms + var(--week) * 26ms);
+}
+
+@keyframes stamp {
+  0% { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.stamp {
+  animation: stamp 260ms var(--ease-out-quart) both;
+}
+
+/*
+  `backwards`, not `both`, and the difference is not cosmetic.
+
+  `both` retains the last keyframe, and a retained `transform: none` computes to
+  an identity matrix rather than to `none` — which still makes the element a
+  containing block for any `position: fixed` inside it, permanently, after the
+  animation is long over. A screen wrapped in this and holding a full-screen
+  overlay (the calendar's progress-photo lightbox) would find that overlay
+  pinned to the wrapper instead of the viewport, and scrolling away with it.
+
+  `backwards` holds the *first* keyframe through any delay and then hands the
+  element back to its own styles, which is where it was going anyway. Identical
+  on screen, and it leaves nothing behind.
+*/
 .rise {
-  animation: rise 220ms var(--ease-out-quart) both;
+  animation: rise var(--duration-standard) var(--ease-out-quart) backwards;
 }
 
 .nod {
   animation: nod 620ms var(--ease-out-quart);
 }
 
-/* The bull swaps pose instead of animating when motion is unwelcome. */
+/*
+  The bull swaps pose instead of animating when motion is unwelcome.
+
+  Delays are reset alongside durations, and that is not a formality. A
+  staggered entrance holds its later elements at `opacity: 0` for the length of
+  the delay whatever the duration is, so collapsing only the duration turns the
+  consistency grid's fill into twelve columns appearing one after another over
+  a third of a second — still motion, now with the smoothness taken out, which
+  is the worst of both. Zeroing the delay is what actually makes the screen
+  simply be there.
+*/
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }

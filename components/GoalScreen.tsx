@@ -68,13 +68,13 @@ export default function GoalScreen({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+            className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
           >
             Change
           </button>
         </div>
 
-        <h1 className="statement mt-2 text-[44px] text-fg">
+        <h1 className="statement mt-2 text-figure text-fg">
           {nameOf(goal.exerciseId)} {goal.targetWeight} lb by{" "}
           {new Date(goal.targetDate + "T00:00:00").toLocaleDateString(undefined, {
             month: "long",
@@ -91,7 +91,7 @@ export default function GoalScreen({
           />
         </Card>
 
-        <p className="mt-5 max-w-[34ch] text-[17px] text-dim">
+        <p className="mt-5 max-w-[34ch] text-emphasis text-dim">
           Measured from where you started, not from zero. Slow weeks do not take anything off it.
         </p>
 
@@ -109,18 +109,18 @@ export default function GoalScreen({
         <button
           type="button"
           onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
         >
           Back
         </button>
       </div>
-      <h1 className="statement mt-2 text-[44px] text-fg">Something to aim at</h1>
-      <p className="mt-1.5 text-[17px] text-dim">
+      <h1 className="statement mt-2 text-figure text-fg">Something to aim at</h1>
+      <p className="mt-1.5 text-emphasis text-dim">
         One lift, one number, one date. You can move it whenever you want.
       </p>
 
       {options.length === 0 ? (
-        <p className="mt-8 text-[17px] text-dim">
+        <p className="mt-8 text-emphasis text-dim">
           Log a session with a weighted lift first, then there is something to aim at.
         </p>
       ) : (
@@ -133,7 +133,7 @@ export default function GoalScreen({
                 type="button"
                 onClick={() => pick(id)}
                 aria-pressed={id === exerciseId}
-                className={`head h-11 rounded-full border px-5 text-[15px] transition-colors duration-150 ${
+                className={`head h-11 rounded-full border px-5 text-body transition-colors duration-quick ${
                   id === exerciseId
                     ? "border-cyan bg-cyan text-ground"
                     : "border-line-strong text-dim hover:border-fg"
@@ -163,7 +163,7 @@ export default function GoalScreen({
                 value={date}
                 min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDate(e.target.value)}
-                className="tabular head mt-2 h-12 w-full rounded-xl bg-raise px-4 text-[19px] text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
+                className="tabular head mt-2 h-12 w-full rounded-xl bg-raise px-4 text-head text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
               />
             </div>
           </div>
@@ -179,7 +179,7 @@ export default function GoalScreen({
               <button
                 type="button"
                 onClick={onClear}
-                className="head mt-1 h-12 w-full text-[15px] text-dim transition-colors hover:text-fg"
+                className="head mt-1 h-12 w-full text-body text-dim transition-colors hover:text-fg"
               >
                 Drop the goal
               </button>

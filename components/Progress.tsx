@@ -1,10 +1,12 @@
 "use client";
 
+import Chart from "./Chart";
 import { Card, GoalBar, Pill, Stat } from "./ui";
 import YourData from "./YourData";
 import { nameOf } from "@/lib/exercises";
 import { goalProgress } from "@/lib/engine";
 import type { AppState, Goal, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKS = 12;
@@ -91,10 +93,10 @@ export default function Progress({
         <p className="label text-cyan">Last {WEEKS} weeks</p>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">
+      <h1 className="statement mt-2 text-figure text-fg">
         {reliable ? `You show up on ${WEEKDAYS[topDay]}s.` : "Progress"}
       </h1>
-      <p className="mt-1.5 text-[17px] text-dim">
+      <p className="mt-1.5 text-emphasis text-dim">
         {reliable
           ? `Your most reliable day, ${byDay[topDay]} sessions in. Protect it.`
           : done.length === 0
@@ -106,42 +108,54 @@ export default function Progress({
         <div className="flex gap-1.5" aria-hidden>
           {columns.map((week, w) => (
             <div key={w} className="flex flex-1 flex-col gap-1.5">
-              {week.map((cell) => (
-                <div
-                  key={cell.iso}
-                  // Missed days sit at `line`, not `raise`: enough to read the
-                  // lattice so a green cell has a weekday, not enough to make
-                  // an empty day shout. It measures 1.44:1 against the card and
-                  // that is deliberate — the information here is the green, at
-                  // 7:1, and absence is drawn as absence. Documented in
-                  // DESIGN.md as a knowing deviation from 1.4.11.
-                  className={`aspect-square w-full rounded-[5px] ${
-                    cell.comeback
-                      ? "bg-cyan"
-                      : cell.trained
-                        ? "bg-green"
-                        : cell.future
-                          ? "bg-raise/40"
-                          : "bg-line"
-                  }`}
-                />
-              ))}
+              {week.map((cell) => {
+                // Only a day she trained arrives; the lattice is already there.
+                // Animating the gaps too would spend a third of a second
+                // drawing attention to every one of them, in the one app built
+                // for people who quit six others that did exactly that.
+                const logged = cell.trained || cell.comeback;
+                return (
+                  <div
+                    key={cell.iso}
+                    // Missed days sit at `line`, not `raise`: enough to read the
+                    // lattice so a green cell has a weekday, not enough to make
+                    // an empty day shout. It measures 1.44:1 against the card and
+                    // that is deliberate — the information here is the green, at
+                    // 7:1, and absence is drawn as absence. Documented in
+                    // DESIGN.md as a knowing deviation from 1.4.11.
+                    className={`aspect-square w-full rounded-tick ${
+                      logged ? "cell-in " : ""
+                    }${
+                      cell.comeback
+                        ? "bg-cyan"
+                        : cell.trained
+                          ? "bg-done"
+                          : cell.future
+                            ? "bg-raise/40"
+                            : "bg-line"
+                    }`}
+                    // Weeks land oldest first, so twelve weeks read left to
+                    // right the way they were lived.
+                    style={logged ? ({ "--week": w } as React.CSSProperties) : undefined}
+                  />
+                );
+              })}
             </div>
           ))}
         </div>
         <p className="sr-only">
-          {done.length} sessions in the last {WEEKS} weeks, {comebacks.size} of them after a
-          break of a week or more.
+          {count(done.length, "session")} in the last {WEEKS} weeks, {comebacks.size} of them
+          after a break of a week or more.
         </p>
-        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-dim">
+        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-caption text-dim">
           <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-green" /> Trained
+            <span aria-hidden className="h-3 w-3 rounded-tick bg-done" /> Trained
           </li>
           <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-cyan" /> Comeback
+            <span aria-hidden className="h-3 w-3 rounded-tick bg-cyan" /> Comeback
           </li>
           <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-3 rounded-[3px] bg-line" /> Missed
+            <span aria-hidden className="h-3 w-3 rounded-tick bg-line" /> Missed
           </li>
         </ul>
       </Card>
@@ -158,7 +172,7 @@ export default function Progress({
       </div>
 
       {comebacks.size > 0 && (
-        <p className="mt-3 text-[15px] text-dim">
+        <p className="mt-3 text-body text-dim">
           Comebacks are counted on purpose. Coming back is the skill.
         </p>
       )}
@@ -170,13 +184,13 @@ export default function Progress({
             <button
               type="button"
               onClick={onGoal}
-              className="head tap text-[15px] text-cyan transition-opacity hover:opacity-70"
+              className="head tap text-body text-cyan transition-opacity hover:opacity-70"
             >
               Change
             </button>
           </div>
           <Card className="mt-3 p-[18px]">
-            <p className="statement text-[26px] text-fg">
+            <p className="statement text-title text-fg">
               {nameOf(goal.exerciseId)} {goal.targetWeight} lb by{" "}
               {new Date(goal.targetDate + "T00:00:00").toLocaleDateString(undefined, {
                 month: "long",
@@ -210,35 +224,24 @@ export default function Progress({
         <section className="mt-8 flex flex-col gap-2.5">
           <p className="label text-dim">Lift by lift</p>
           {ranked.map(([id, points]) => {
-            const max = Math.max(...points.map((p) => p.weight), 1);
             const delta = points[points.length - 1].weight - points[0].weight;
             const latest = points[points.length - 1];
             return (
               <Card key={id} className="p-[18px]">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="head text-[17px] text-fg">{nameOf(id)}</h2>
-                  <span className="tabular statement shrink-0 text-[20px] text-fg">
-                    {latest.weight > 0 ? `${latest.weight} lb` : `${latest.reps} reps`}
-                    {delta > 0 && <span className="text-green"> +{delta}</span>}
+                  <h2 className="head text-emphasis text-fg">{nameOf(id)}</h2>
+                  <span className="tabular statement shrink-0 text-head text-fg">
+                    {latest.weight > 0 ? `${latest.weight} lb` : `${count(latest.reps, "rep")}`}
+                    {delta > 0 && <span className="text-done"> +{delta}</span>}
                   </span>
                 </div>
-                {/* One data point is not a trend, so it gets no chart. */}
-                {points.length > 1 && (
-                  <div className="mt-3.5 flex h-12 items-end gap-1.5" aria-hidden>
-                    {points.slice(-14).map((p, i, arr) => (
-                      <div
-                        key={i}
-                        className={`w-3 rounded-full ${i === arr.length - 1 ? "bg-cyan" : "bg-raise"}`}
-                        style={{ height: `${Math.max(10, (p.weight / max) * 100)}%` }}
-                      />
-                    ))}
-                  </div>
-                )}
-                <p className="mt-2.5 text-[15px] text-dim">
-                  {points.length === 1
-                    ? "First one logged. Come back and this becomes a line."
-                    : `${points.length} sessions logged`}
-                </p>
+                <div className="mt-3.5">
+                  <Chart
+                    points={points.map((pt) => ({ date: pt.date, value: pt.weight }))}
+                    label={nameOf(id)}
+                    showDelta={false}
+                  />
+                </div>
               </Card>
             );
           })}
