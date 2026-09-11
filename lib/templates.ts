@@ -95,7 +95,19 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "cardio",
     label: "Cardio",
-    hint: "Treadmill. Set a time and an incline, then walk it or run it",
+    /*
+      A list of what the day can be, like every hint beside it, plus the one
+      clause that makes cardio different from all of them: it is set in time
+      rather than in sets.
+
+      It used to say "Treadmill. Set a time and an incline, then walk it or
+      run it" — instructional where its siblings are descriptive, and wrong
+      twice over now. Treadmill is only the starting pick and five other
+      machines swap in behind it, and the incline belongs to three of the six,
+      so promising one to somebody who picks the rower is promising a control
+      that is not there.
+    */
+    hint: "Treadmill, bike, rower or a run. You set how long",
     // Kept as the fallback shape if the named lifts are ever unavailable.
     muscles: ["quads"],
     style: "circuit",
