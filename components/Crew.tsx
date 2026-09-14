@@ -7,6 +7,7 @@ import CrewPost from "./CrewPost";
 import FriendSheet from "./FriendSheet";
 import {
   createCrew,
+  crewCode,
   enabled,
   fetchCrew,
   fetchFeed,
@@ -80,11 +81,27 @@ export default function Crew({
   const [trouble, setTrouble] = useState<"none" | "no-such-crew" | "unreachable">("none");
   const [busy, setBusy] = useState(false);
 
+  /*
+    Whether the crew could not be reached, as opposed to not existing.
+
+    Underground these look identical from here: the request fails, the roster
+    comes back empty, and the screen said "Just you, for now." to somebody with
+    five people in her crew. That is the app inventing a fact about her life
+    out of a dropped connection.
+
+    The cached join code tells the two apart. It is written when she joins and
+    cleared when she leaves, so a code with no reachable crew behind it means
+    the network failed, not that everyone left.
+  */
+  const [unreachable, setUnreachable] = useState(false);
+
   const load = useCallback(() => {
     if (crewPreview || !enabled()) return;
     fetchCrew().then((res) => {
-      setCode(res?.code ?? null);
-      setRoster(res?.members ?? []);
+      setUnreachable(res === null && Boolean(crewCode()));
+      if (!res) return;
+      setCode(res.code);
+      setRoster(res.members);
     });
     fetchFeed().then((res) => setFeed(res?.photos ?? []));
   }, [crewPreview]);
@@ -198,10 +215,20 @@ export default function Crew({
       </div>
 
       <h1 className="statement mt-2 text-figure text-fg">
-        {roster.length > 1 ? `${roster.length} of you.` : "Just you, for now."}
+        {unreachable
+          ? "Can't reach your crew."
+          : roster.length > 1
+            ? `${roster.length} of you.`
+            : "Just you, for now."}
       </h1>
+      {unreachable && (
+        <p className="mt-1.5 text-emphasis text-dim">
+          No signal down here. Your own training is still being kept, and they will
+          see it when you are back up.
+        </p>
+      )}
       {/* Somebody is here either way. */}
-      {roster.length <= 1 && (
+      {!unreachable && roster.length <= 1 && (
         <div className="mt-4 flex justify-center">
           <Bull size={BULL.companion} />
         </div>

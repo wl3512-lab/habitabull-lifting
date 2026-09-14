@@ -66,6 +66,13 @@ export default function RoutineEditor({
   const [weekAsk, setWeekAsk] = useState("");
   const [weekBusy, setWeekBusy] = useState(false);
   const [weekWhy, setWeekWhy] = useState<string | null>(null);
+  /*
+    Set when the builder could not be reached. It is its own state rather than
+    a message pushed through `weekWhy`, because that slot is the model saying
+    why it chose a shape and this is the app saying it never got one. Reading
+    them out of the same variable is how a failure ends up phrased as a reason.
+  */
+  const [weekOffline, setWeekOffline] = useState(false);
   const [ownName, setOwnName] = useState("");
   const [ownBusy, setOwnBusy] = useState(false);
 
@@ -126,6 +133,7 @@ export default function RoutineEditor({
     if (weekBusy || !weekAsk.trim()) return;
     setWeekBusy(true);
     setWeekWhy(null);
+    setWeekOffline(false);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -150,7 +158,10 @@ export default function RoutineEditor({
         }
       }
     } catch {
-      // The shapes above still work. Nothing is blocked by this being down.
+      // The shapes above still work; nothing here is blocked by this being
+      // down. It used to say so by going quiet, which from the other side of
+      // the screen is a button that does nothing.
+      setWeekOffline(true);
     }
     setWeekBusy(false);
   }
@@ -391,6 +402,12 @@ export default function RoutineEditor({
           {weekWhy && (
             <p role="status" className="mt-2.5 text-body leading-snug text-dim">
               {weekWhy} Change any day above.
+            </p>
+          )}
+          {weekOffline && (
+            <p role="status" className="mt-2.5 text-body leading-snug text-dim">
+              No signal, so this one cannot answer. Pick the day types above and you
+              get the same week without it.
             </p>
           )}
         </div>

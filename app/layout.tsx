@@ -3,6 +3,7 @@ import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import NotSaving from "@/components/NotSaving";
 import StayFresh from "@/components/StayFresh";
+import Offline from "@/components/Offline";
 
 /*
   Two faces, one family. Barlow Condensed carries headlines and every figure
@@ -124,6 +125,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             resumed rather than reloaded ever picks up a fix.
           */}
           <StayFresh />
+          {/*
+            Also renders nothing. Registers the worker that caches the shell,
+            so the app opens two floors underground where the cell signal does
+            not reach.
+          */}
+          <Offline />
         </div>
       </body>
     </html>
