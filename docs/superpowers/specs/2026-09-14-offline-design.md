@@ -59,9 +59,31 @@ different URL and a cached one cannot be stale.
 A navigation with no verbatim cache entry falls back to the cached `/`, because
 this is a single page and every screen rebuilds from local storage anyway.
 
-The cache is capped at 80 entries, oldest evicted first. Each deploy adds a set
-of hashed chunks that will never be requested again; without a ceiling that is
-a slow leak on somebody's phone forever.
+## Two caches, not one
+
+This started as a single cache with a ceiling, and that was a bug that ate its
+own feature. Eviction is oldest-first and the document is cached first, so the
+one entry the whole thing depends on was the first one dropped. Eighty requests
+later there was no shell to fall back to, and nothing to notice it by until a
+basement.
+
+So the shell is its own cache, written at install and never evicted, and
+everything picked up along the way goes in a capped one. Measured: 120
+cacheable requests leave the runtime cache at exactly 80 and the shell
+untouched at 17, document included.
+
+## The first visit
+
+The worker registers while the page is loading, so the page's own requests have
+already gone out uncontrolled and the first visit cached nothing. Somebody who
+opened the app once at home and then went to a basement had nothing there.
+
+Install now fetches the document itself, reads the assets it names, and stores
+them. `next/font` preloads its faces in the head and those sit under the same
+prefix, so the type comes too: a first-ever visit followed immediately by no
+signal opens the app in real Barlow, interactive. Each asset is stored on its
+own rather than through `addAll`, which rejects the whole set if any single
+request fails and would trade a mostly-cached app for an uncached one.
 
 ## What speaks up, and what stays quiet
 

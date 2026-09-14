@@ -58,3 +58,53 @@ describe("what the worker keeps", () => {
     expect(call("/?next=/api/crew")).toBe("shell");
   });
 });
+
+describe("what the shell precache picks up", () => {
+  // The install parses the document and stores everything it names, so a first
+  // visit that is never followed by a second still opens underground.
+  const { assetsIn } = require("../public/sw.js") as { assetsIn: (html: string) => string[] };
+
+  it("finds the scripts and stylesheets", () => {
+    const html = `
+      <link rel="stylesheet" href="/_next/static/immutable/chunks/2cvdlr4fghv2a.css"/>
+      <script src="/_next/static/immutable/chunks/turbopack-0uj7abboueo7o.js"></script>`;
+    expect(assetsIn(html)).toEqual([
+      "/_next/static/immutable/chunks/2cvdlr4fghv2a.css",
+      "/_next/static/immutable/chunks/turbopack-0uj7abboueo7o.js",
+    ]);
+  });
+
+  it("finds the preloaded type, which lives under the same prefix", () => {
+    // next/font preloads its faces in the head. Without them a first offline
+    // visit renders the app in whatever the system offers instead.
+    const html = `<link rel="preload" as="font" href="/_next/static/immutable/media/0595f705-s.p.woff2"/>`;
+    expect(assetsIn(html)).toContain("/_next/static/immutable/media/0595f705-s.p.woff2");
+  });
+
+  it("does not store the same asset twice", () => {
+    const one = "/_next/static/immutable/chunks/a.js";
+    expect(assetsIn(`<script src="${one}"></script><script src="${one}"></script>`)).toHaveLength(1);
+  });
+
+  it("ignores anything that is not a build asset", () => {
+    const html = `<img src="/mascot.png"><a href="/api/crew/feed">x</a>`;
+    expect(assetsIn(html)).toEqual([]);
+  });
+});
+
+describe("the two caches", () => {
+  const sw = require("../public/sw.js") as { SHELL: string; RUNTIME: string };
+
+  it("keeps the shell apart from what it picks up along the way", () => {
+    // One cache meant eviction was oldest-first over the document too, and the
+    // document is cached first — so the entry the whole feature depends on was
+    // the first one dropped.
+    expect(sw.SHELL).not.toBe(sw.RUNTIME);
+  });
+
+  it("names both after the same version, so a bump clears both", () => {
+    const version = (require("../public/sw.js") as { VERSION: string }).VERSION;
+    expect(sw.SHELL).toContain(version);
+    expect(sw.RUNTIME).toContain(version);
+  });
+});
