@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { EXERCISES, byId } from "./exercises";
+import { EXERCISES, byId, searchLifts } from "./exercises";
 import { alternativesFor, repsFor } from "./engine";
-import type { Muscle } from "./types";
+import type { Equipment, Muscle } from "./types";
 
 const MUSCLES: Muscle[] = [
   "quads", "hamstrings", "glutes", "chest", "back", "shoulders", "arms", "core",
@@ -78,5 +78,41 @@ describe("weight steps match the equipment", () => {
     for (const e of EXERCISES.filter((x) => x.equipment === "bodyweight")) {
       expect(e.increment).toBe(0);
     }
+  });
+});
+
+describe("finding a lift by name", () => {
+  const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
+
+  it("finds the lift somebody is standing in front of", () => {
+    // Filed under hamstrings. Nobody standing at the machine thinks that.
+    const hit = searchLifts("leg curl", KIT).map((e) => e.id);
+    expect(hit).toContain("seated-leg-curl");
+    expect(hit).toContain("lying-leg-curl");
+  });
+
+  it("leads with names that start with the query", () => {
+    const [first] = searchLifts("cable", KIT);
+    expect(first.name.toLowerCase().startsWith("cable")).toBe(true);
+  });
+
+  it("only offers what her kit can do", () => {
+    const bodyweightOnly = searchLifts("press", ["bodyweight"]).map((e) => e.equipment);
+    expect(bodyweightOnly.every((e) => e === "bodyweight")).toBe(true);
+  });
+
+  it("leaves out what is already in the day", () => {
+    expect(searchLifts("leg curl", KIT, ["seated-leg-curl"]).map((e) => e.id))
+      .not.toContain("seated-leg-curl");
+  });
+
+  it("says nothing until there is enough to go on", () => {
+    // One letter matches half the library and is never what somebody meant.
+    expect(searchLifts("l", KIT)).toEqual([]);
+    expect(searchLifts("  ", KIT)).toEqual([]);
+  });
+
+  it("ignores case and surrounding space", () => {
+    expect(searchLifts("  SEATED leg CURL ", KIT).map((e) => e.id)).toContain("seated-leg-curl");
   });
 });

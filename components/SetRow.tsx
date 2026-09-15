@@ -20,11 +20,20 @@ import type { LoggedSet } from "@/lib/types";
 export default function SetRow({
   set,
   increment,
+  cardio = false,
+  incline = false,
+  hold = false,
   lastTime,
   onChange,
 }: {
   set: LoggedSet;
   increment: number;
+  /** Cardio logs one duration in minutes, not weight and reps. */
+  cardio?: boolean;
+  /** A cardio machine with a settable incline — logs an incline % as well. */
+  incline?: boolean;
+  /** An isometric hold (plank, wall sit): logs time in seconds, not reps. */
+  hold?: boolean;
   /** What this set was last time, if there is a last time. */
   lastTime?: string;
   onChange: (next: LoggedSet) => void;
@@ -41,15 +50,26 @@ export default function SetRow({
         />
       )}
       <Stepper
-        label="Reps"
+        label={cardio ? "Duration" : hold ? "Time" : "Reps"}
         value={set.reps}
-        step={1}
-        min={1}
-        suffix="reps"
+        step={cardio || hold ? 5 : 1}
+        min={cardio || hold ? 5 : 1}
+        suffix={cardio ? "min" : hold ? "sec" : "reps"}
         onChange={(reps) => onChange({ ...set, reps })}
       />
+      {cardio && incline && (
+        <Stepper
+          label="Incline"
+          value={set.weight}
+          step={1}
+          min={0}
+          max={40}
+          suffix="%"
+          onChange={(weight) => onChange({ ...set, weight })}
+        />
+      )}
       {lastTime && (
-        <p className="mt-1 flex items-center gap-2.5 text-[15px] text-dim">
+        <p className="mt-1 flex items-center gap-2.5 text-body text-dim">
           <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-dim" />
           Last time: {lastTime}
         </p>

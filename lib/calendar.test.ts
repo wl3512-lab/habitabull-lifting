@@ -4,6 +4,7 @@ import {
   longestComebackGap,
   monthMatrix,
   sessionsInMonth,
+  weekStrip,
   yearCounts,
 } from "./calendar";
 import type { Session } from "./types";
@@ -123,5 +124,75 @@ describe("month and year counts", () => {
     expect(counts[0]).toBe(1);
     expect(counts[11]).toBe(1);
     expect(counts[5]).toBe(0);
+  });
+});
+
+describe("weekStrip", () => {
+  // Wednesday 2024-05-15. The week containing it runs Sun 12th to Sat 18th.
+  const WED = "2024-05-15";
+
+  it("runs Sunday to Saturday around the given day", () => {
+    const days = weekStrip([], [], WED);
+    expect(days).toHaveLength(7);
+    expect(days[0].iso).toBe("2024-05-12");
+    expect(days[6].iso).toBe("2024-05-18");
+    expect(days.map((d) => d.initial).join("")).toBe("SMTWTFS");
+  });
+
+  it("indexes Sunday-first so trainingDays lines up with getDay()", () => {
+    // Monday and Thursday.
+    const days = weekStrip([], [1, 4], WED);
+    expect(days.filter((d) => d.planned).map((d) => d.iso)).toEqual([
+      "2024-05-13",
+      "2024-05-16",
+    ]);
+    expect(days.map((d) => d.index)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it("marks today, and only today", () => {
+    const days = weekStrip([], [], WED);
+    expect(days.filter((d) => d.isToday).map((d) => d.iso)).toEqual([WED]);
+  });
+
+  it("counts only completed sessions as trained", () => {
+    const days = weekStrip([session("2024-05-13"), session("2024-05-14", false)], [], WED);
+    expect(days.filter((d) => d.trained).map((d) => d.iso)).toEqual(["2024-05-13"]);
+  });
+
+  it("ignores sessions from other weeks", () => {
+    const days = weekStrip([session("2024-05-11"), session("2024-05-19")], [], WED);
+    expect(days.some((d) => d.trained)).toBe(false);
+  });
+
+  it("calls a planned day upcoming only while it is still ahead", () => {
+    // Every day planned: Mon and Tue are behind Wednesday, Thu onward is not.
+    const days = weekStrip([], [0, 1, 2, 3, 4, 5, 6], WED);
+    expect(days.filter((d) => d.upcoming).map((d) => d.iso)).toEqual([
+      "2024-05-16",
+      "2024-05-17",
+      "2024-05-18",
+    ]);
+  });
+
+  /*
+    The version that lived inside Today built each date with `toISOString()` on
+    a Date at local midnight, which is a UTC conversion: east of UTC it rolled
+    every day in the strip back by one, so a Wednesday session lit up Tuesday's
+    dot. This runs the whole strip through the same local-time helper the rest
+    of the file uses, and the assertion that catches a regression is that the
+    day marked today is the day that was asked for.
+  */
+  it("holds in a timezone east of UTC", () => {
+    const tz = process.env.TZ;
+    process.env.TZ = "Asia/Tokyo";
+    try {
+      const days = weekStrip([session(WED)], [3], WED);
+      expect(days[3].iso).toBe(WED);
+      expect(days[3].isToday).toBe(true);
+      expect(days[3].trained).toBe(true);
+      expect(days[3].planned).toBe(true);
+    } finally {
+      process.env.TZ = tz;
+    }
   });
 });

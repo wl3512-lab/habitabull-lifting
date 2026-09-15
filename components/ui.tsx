@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 /**
  * The 2026 language, in three primitives.
  *
- * One orange action per screen and never two — orange is the only fill in the
+ * One `action` fill per screen and never two — it is the only fill in the
  * system that isn't a shade of the ground, so a second one on the same screen
  * costs the first one its meaning. Everything else that is pressable is an
  * outline in cyan. The 2023 guide's light pills are gone with the light field:
@@ -13,9 +13,9 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: "lg" | "sm";
   /**
-   * primary  — the one action. Orange, ink text.
+   * primary  — the one action. `action` fill, ink text.
    * ghost    — everything else. Hairline border, cyan text.
-   * onCyan   — for the cyan welcome ground, where orange would fight the field.
+   * onCyan   — for the cyan welcome ground, where `action` would fight the field.
    * onOrange — for the celebration ground, where the whole screen is the accent
    *            and the button has to invert to stay the loudest thing on it.
    */
@@ -30,14 +30,14 @@ export function Pill({
   ...props
 }: ButtonProps & { href?: string }) {
   const dims =
-    size === "lg" ? "h-14 w-full px-8 text-[17px]" : "h-10 px-5 text-[13px]";
+    size === "lg" ? "h-14 w-full px-8 text-emphasis" : "h-10 px-5 text-caption";
   const skin = {
-    primary: "bg-orange text-ground border-orange hover:bg-orange/90",
+    primary: "bg-action text-ground border-action hover:bg-action/90",
     ghost: "border-line-strong bg-transparent text-cyan hover:bg-raise/60",
     onCyan: "border-ground bg-ground text-fg hover:bg-ground/90",
-    onOrange: "border-ground bg-ground text-orange hover:bg-ground/90",
+    onOrange: "border-ground bg-ground text-action hover:bg-ground/90",
   }[variant];
-  const shape = `head rounded-full border transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-[0.985] disabled:opacity-35 disabled:active:scale-100 ${dims} ${skin} ${className}`;
+  const shape = `head rounded-full border transition-[background-color,transform] duration-quick ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-[0.985] disabled:opacity-35 disabled:active:scale-100 ${dims} ${skin} ${className}`;
 
   /*
     With an href it is a link, because a link is what it is. window.open from a
@@ -98,10 +98,10 @@ export function Stat({
 }) {
   return (
     <div className="flex-1 rounded-2xl bg-card p-[18px]">
-      <div className={`tabular statement text-[40px] ${accent ? "text-cyan" : "text-fg"}`}>
+      <div className={`tabular statement text-figure ${accent ? "text-cyan" : "text-fg"}`}>
         {value}
       </div>
-      <div className="mt-1 text-[15px] leading-tight text-dim">{label}</div>
+      <div className="mt-1 text-body leading-tight text-dim">{label}</div>
     </div>
   );
 }
@@ -143,15 +143,15 @@ export function GoalBar({
         <div
           // scaleX, not width: animating width lays the page out again on
           // every frame of the fill.
-          className="h-full w-full origin-left rounded-full bg-cyan transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+          className="h-full w-full origin-left rounded-full bg-cyan transition-transform duration-deliberate ease-[cubic-bezier(0.25,1,0.5,1)]"
           style={{ transform: `scaleX(${p / 100})` }}
         />
       </div>
       {(caption || trailing) && (
         <div className="mt-2 flex items-baseline justify-between gap-3">
-          {caption && <span className="text-[14px] text-dim">{caption}</span>}
+          {caption && <span className="text-caption text-dim">{caption}</span>}
           {trailing && (
-            <span className="head tabular shrink-0 text-[14px] text-cyan">{trailing}</span>
+            <span className="head tabular shrink-0 text-caption text-cyan">{trailing}</span>
           )}
         </div>
       )}

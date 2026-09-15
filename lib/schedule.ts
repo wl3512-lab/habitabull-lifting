@@ -269,3 +269,23 @@ export function anchorLabel(anchors: Anchor[] | undefined): string | null {
   if (names.length === 1) return names[0];
   return names.slice(0, -1).join(", ") + " or " + names[names.length - 1];
 }
+
+const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * The next day she said she would train, named rather than counted.
+ *
+ * Named, because "in 2 days" is arithmetic she has to do to know whether it
+ * clashes with anything, and "Thursday" is not. Null when there is no schedule
+ * to read one out of, so a caller can leave the line out rather than print a
+ * shrug.
+ */
+export function nextTrainingDay(days: number[] | undefined, today: string): string | null {
+  if (!days?.length) return null;
+  const dow = new Date(today + "T00:00:00").getDay();
+  for (let i = 1; i <= 7; i++) {
+    const d = (dow + i) % 7;
+    if (days.includes(d)) return i === 1 ? "tomorrow" : FULL_DAYS[d];
+  }
+  return null;
+}

@@ -12,7 +12,8 @@ import {
 } from "@/lib/calendar";
 import { addPhoto, deletePhoto, listPhotos, photoUrl, type PhotoMeta } from "@/lib/photos";
 import { buildIcs, googleUrl } from "@/lib/ics";
-import type { Profile, Session } from "@/lib/types";
+import type { Profile, Routine, Session } from "@/lib/types";
+import { count } from "@/lib/plural";
 
 const DAY_HEADS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = [
@@ -61,9 +62,15 @@ function Thumb({
       {url ? (
         // Blobs from IndexedDB, so next/image would only get in the way.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="h-full w-full object-cover" />
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
       ) : null}
-      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ground/90 to-transparent px-2 pb-1.5 pt-5 text-left text-[13px] text-fg">
+      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ground/90 to-transparent px-2 pb-1.5 pt-5 text-left text-caption text-fg">
         {label}
       </span>
     </button>
@@ -82,10 +89,13 @@ function Thumb({
 export default function Calendar({
   profile,
   sessions,
+  routines,
   onOpenDay,
 }: {
   profile: Profile;
   sessions: Session[];
+  /** The weekly plan, so the calendar can dot the days you are due in the gym. */
+  routines: Routine[];
   onOpenDay: (date: string) => void;
 }) {
   const today = new Date();
@@ -96,7 +106,18 @@ export default function Calendar({
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Tapping a scheduled dot names the day type here rather than opening an
+  // empty detail screen for a day that has not happened yet.
+  const [peek, setPeek] = useState<{ iso: string; label: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Which day type is planned for each weekday, so a day you are due in the gym
+  // can be dotted and named on tap.
+  const schedule = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const r of routines) m.set(r.day, r.label);
+    return m;
+  }, [routines]);
 
   useEffect(() => {
     listPhotos().then(setPhotos);
@@ -147,7 +168,19 @@ export default function Calendar({
     setOpenId(null);
   }
 
-  const shift = (n: number) => setCursor(new Date(year, month + n, 1));
+  /*
+    Which way through time the last move went, so the month can arrive from
+    that side. Months run oldest-left, so stepping back brings the new month in
+    from the left and stepping forward from the right — the grid moves the way
+    the arrow you pressed points. Null for a jump rather than a step (picking a
+    month out of the year view), where there is no direction to honour.
+  */
+  const [heading, setHeading] = useState<-1 | 1 | null>(null);
+  const shift = (n: number) => {
+    setHeading(n < 0 ? -1 : 1);
+    setCursor(new Date(year, month + n, 1));
+  };
+  const arriving = heading === -1 ? "from-earlier" : heading === 1 ? "from-later" : "";
 
   /*
     Training days are the only thing a reminder actually needs. This used to
@@ -185,7 +218,13 @@ export default function Calendar({
       <div className="mt-2 flex items-baseline justify-between gap-3">
         {/* 34px, not the usual 44: "September 2026" plus the toggle has to
             hold one line at 390px, and a wrapped month name reads as a bug. */}
-        <h1 className="statement min-w-0 text-[34px] text-fg">
+        {/* Keyed and animated with the grid below it, so the name and the days
+            it names arrive as one move rather than the title cutting while the
+            grid slides. */}
+        <h1
+          key={view === "month" ? `${year}-${month}` : year}
+          className={`statement min-w-0 text-display text-fg ${view === "month" ? arriving : ""}`}
+        >
           {view === "month" ? MONTHS[month] : year}{" "}
           {view === "month" && <span className="text-dim">{year}</span>}
         </h1>
@@ -197,7 +236,7 @@ export default function Calendar({
               role="tab"
               aria-selected={view === v}
               onClick={() => setView(v)}
-              className={`head h-11 rounded-full px-4 text-[15px] capitalize transition-colors duration-150 ${
+              className={`head h-11 rounded-full px-4 text-body capitalize transition-colors duration-quick ${
                 view === v ? "bg-raise text-fg" : "text-dim hover:text-fg"
               }`}
             >
@@ -215,70 +254,98 @@ export default function Calendar({
                 type="button"
                 onClick={() => shift(-1)}
                 aria-label="Previous month"
-                className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+                className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
               >
                 ←
               </button>
-              <p className="text-[15px] text-dim">
+              <p className="text-body text-dim">
                 {thisMonth} {thisMonth === 1 ? "session" : "sessions"}
               </p>
               <button
                 type="button"
                 onClick={() => shift(1)}
                 aria-label="Next month"
-                className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+                className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
               >
                 →
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-7 gap-y-1">
+            <div key={`${year}-${month}`} className={`mt-3 grid grid-cols-7 gap-y-1 ${arriving}`}>
               {DAY_HEADS.map((d, i) => (
-                <div key={i} className="pb-1 text-center text-[13px] text-dim">
+                <div key={i} className="pb-1 text-center text-caption text-dim">
                   {d}
                 </div>
               ))}
-              {rows.flat().map((c, i) => (
+              {rows.flat().map((c, i) => {
+                // A day you are due in the gym: its weekday is on the plan and
+                // you have not already trained it. Named on tap, dotted here.
+                const sched =
+                  c.iso && !c.trained && (c.future || c.today)
+                    ? schedule.get(new Date(c.iso + "T00:00:00").getDay())
+                    : undefined;
                 // A leading blank in the month grid is spacing, not a control.
-                // Rendering it as a disabled, nameless button puts an unlabelled
-                // stop in the accessibility tree for nothing.
-                c.iso === null ? (
+                return c.iso === null ? (
                   <div key={`pad-${i}`} aria-hidden className="min-h-12" />
                 ) : (
                 <button
                   key={c.iso}
                   type="button"
-                  onClick={() => onOpenDay(c.iso!)}
-                  aria-label={`${c.day} ${MONTHS[month]}${c.trained ? ", trained" : ""}`}
+                  onClick={() =>
+                    sched ? setPeek({ iso: c.iso!, label: sched }) : (setPeek(null), onOpenDay(c.iso!))
+                  }
+                  aria-label={`${c.day} ${MONTHS[month]}${
+                    c.trained ? ", trained" : sched ? `, ${sched} planned` : ""
+                  }`}
                   className="flex min-h-12 flex-col items-center justify-center py-0.5"
                 >
                   <span
-                    className={`grid h-9 w-9 place-items-center rounded-full text-[15px] ${
+                    className={`grid h-9 w-9 place-items-center rounded-full text-body ${
+                      /*
+                        A day still to come used to be `dim` at half opacity,
+                        which measures 2.6:1 on this card and is a plain 1.4.3
+                        failure on a date somebody has to read and can tap.
+
+                        There is no fix by dimming. `dim` is 6.17:1 here, and
+                        the darkest text that still clears 4.5:1 on every
+                        surface the token lands on is #9099a6 against dim's
+                        #9aa3ae: a step you cannot see. This palette has no
+                        room below `dim`, so de-emphasis here cannot be a
+                        colour.
+
+                        It does not need to be. Today already carries the cyan
+                        ring, and a ring in a month grid is exactly the thing
+                        that separates behind from ahead. Both untrained
+                        states now read the same quiet `dim`, which is also
+                        what this product argues for: a day she missed and a
+                        day that has not arrived are both an absence, and
+                        neither is a mark against her.
+                      */
                       c.trained
-                        ? "bg-green text-ground"
+                        ? "bg-done text-ground"
                         : c.comeback
                           ? "bg-cyan text-ground"
                           : c.today
                             ? "text-fg ring-2 ring-cyan"
-                            : c.future
-                              ? "text-dim/50"
-                              : "text-dim"
+                            : "text-dim"
                     }`}
                   >
                     {c.day ?? ""}
                   </span>
                   <span
                     aria-hidden
-                    className={`mt-0.5 h-1 w-1 rounded-full ${c.hasPhoto ? "bg-cyan" : "bg-transparent"}`}
+                    className={`mt-0.5 h-1 w-1 rounded-full ${
+                      sched ? "bg-action" : c.hasPhoto ? "bg-cyan" : "bg-transparent"
+                    }`}
                   />
                 </button>
-                )
-              ))}
+                );
+              })}
             </div>
 
-            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[14px] text-dim">
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-caption text-dim">
               <li className="flex items-center gap-2">
-                <span aria-hidden className="h-3 w-3 rounded-full bg-green" /> Trained
+                <span aria-hidden className="h-3 w-3 rounded-full bg-done" /> Trained
               </li>
               <li className="flex items-center gap-2">
                 <span aria-hidden className="h-3 w-3 rounded-full bg-cyan" /> Came back
@@ -286,7 +353,24 @@ export default function Calendar({
               <li className="flex items-center gap-2">
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-cyan" /> Photo
               </li>
+              <li className="flex items-center gap-2">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-action" /> Gym day
+              </li>
             </ul>
+
+            {peek && (
+              <p className="mt-3 text-body">
+                <span className="text-dim">
+                  {new Date(peek.iso + "T00:00:00").toLocaleDateString(undefined, {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  ·{" "}
+                </span>
+                <span className="text-action">{peek.label}</span>
+              </p>
+            )}
           </div>
 
           {/*
@@ -295,12 +379,12 @@ export default function Calendar({
             rules out by name. The line underneath it was already right.
           */}
           <div className="mt-2.5 rounded-2xl bg-card p-[18px]">
-            <p className="statement text-[30px] text-fg">
+            <p className="statement text-display text-fg">
               {weeks} {weeks === 1 ? "week" : "weeks"} running
             </p>
-            <p className="mt-1.5 text-[15px] text-dim">
+            <p className="mt-1.5 text-body text-dim">
               {longest > 0
-                ? `Longest gap you have come back from: ${longest} days. A streak is a nice-to-have, not the score.`
+                ? `Longest gap you have come back from: ${count(longest, "day")}. A streak is a nice-to-have, not the score.`
                 : "A streak is a nice-to-have, not the score."}
             </p>
           </div>
@@ -312,18 +396,18 @@ export default function Calendar({
               type="button"
               onClick={() => setCursor(new Date(year - 1, month, 1))}
               aria-label="Previous year"
-              className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+              className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
             >
               ←
             </button>
-            <p className="text-[15px] text-dim">
-              {counts.reduce((a, b) => a + b, 0)} sessions in {year}
+            <p className="text-body text-dim">
+              {count(counts.reduce((a, b) => a + b, 0), "session")} in {year}
             </p>
             <button
               type="button"
               onClick={() => setCursor(new Date(year + 1, month, 1))}
               aria-label="Next year"
-              className="head grid h-11 w-11 place-items-center rounded-full text-[17px] text-cyan transition-colors hover:bg-raise"
+              className="head grid h-11 w-11 place-items-center rounded-full text-emphasis text-cyan transition-colors hover:bg-raise"
             >
               →
             </button>
@@ -334,16 +418,21 @@ export default function Calendar({
                 <button
                   type="button"
                   onClick={() => {
+                    setHeading(null);
                     setCursor(new Date(year, m, 1));
                     setView("month");
                   }}
-                  className={`w-full rounded-xl p-3 text-left transition-colors duration-150 ${
+                  className={`w-full rounded-xl p-3 text-left transition-colors duration-quick ${
                     n > 0 ? "bg-raise hover:bg-line" : "bg-ground hover:bg-raise/60"
                   }`}
                 >
-                  <span className="block text-[14px] text-dim">{MONTHS[m].slice(0, 3)}</span>
+                  <span className="block text-caption text-dim">{MONTHS[m].slice(0, 3)}</span>
                   <span
-                    className={`tabular statement block text-[24px] ${n > 0 ? "text-fg" : "text-dim/50"}`}
+                    // A month with nothing in it shows a quiet zero, not an
+                    // unreadable one: /50 measured 2.6:1. `dim` on this
+                    // button's ground is 6.95:1 and still recedes from the
+                    // `fg` of a month she trained in.
+                    className={`tabular statement block text-title ${n > 0 ? "text-fg" : "text-dim"}`}
                   >
                     {n}
                   </span>
@@ -362,7 +451,7 @@ export default function Calendar({
               type="button"
               onClick={() => setCompare(!compare)}
               aria-pressed={compare}
-              className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+              className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
               {compare ? "Show all" : "Compare months"}
             </button>
@@ -376,14 +465,14 @@ export default function Calendar({
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-[15px] text-dim">
+          <p className="mt-2 text-body text-dim">
             Nothing yet. One photo a month is enough to see the thing that daily
             mirrors hide.
           </p>
         )}
 
         {compare && strip.length > 1 && (
-          <p className="mt-2.5 text-[15px] text-dim">
+          <p className="mt-2.5 text-body text-dim">
             One photo per month, oldest first.
           </p>
         )}
@@ -403,7 +492,7 @@ export default function Calendar({
           </Pill>
         </div>
         {failed && (
-          <p className="mt-2 text-[15px] text-dim">
+          <p className="mt-2 text-body text-dim">
             Could not save that one. Private browsing blocks photo storage.
           </p>
         )}
@@ -420,11 +509,11 @@ export default function Calendar({
         <p className="label text-dim">Reminders</p>
         {reminderReady ? (
           <>
-            <p className="mt-2 text-[17px] leading-snug text-fg">
+            <p className="mt-2 text-emphasis leading-snug text-fg">
               Put your training days in the calendar you already look at, with a
               nudge fifteen minutes before.
             </p>
-            <p className="mt-1.5 text-[15px] leading-snug text-dim">
+            <p className="mt-1.5 text-body leading-snug text-dim">
               {profile.trainingMinute === undefined && (profile.anchors?.length ?? 0) === 0
                 ? "You said whenever you can, so it lands at six and you can drag it."
                 : "It repeats weekly, and you can move it whenever you like."}
@@ -451,23 +540,36 @@ export default function Calendar({
             </div>
           </>
         ) : (
-          <p className="mt-2 text-[15px] text-dim">
+          <p className="mt-2 text-body text-dim">
             Pick your training days in setup and this becomes a calendar reminder.
           </p>
         )}
       </section>
 
-      {openId && <Lightbox id={openId} onClose={() => setOpenId(null)} onDelete={remove} />}
+      {openId && (
+        <Lightbox
+          id={openId}
+          // The same date the thumbnail read out, formatted the same way.
+          label={new Date(
+            (photos.find((p) => p.id === openId)?.date ?? "") + "T00:00:00"
+          ).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+          onClose={() => setOpenId(null)}
+          onDelete={remove}
+        />
+      )}
     </main>
   );
 }
 
 function Lightbox({
   id,
+  label,
   onClose,
   onDelete,
 }: {
   id: string;
+  /** The date the thumbnail announced, so opening it does not lose it. */
+  label: string;
   onClose: () => void;
   onDelete: (id: string) => void;
 }) {
@@ -500,13 +602,13 @@ function Lightbox({
       className="fixed inset-0 z-50 flex flex-col bg-deep/95 p-5"
       role="dialog"
       aria-modal="true"
-      aria-label="Progress photo"
+      aria-label={`Progress photo from ${label}`}
     >
       <div className="flex justify-end">
         <button
           type="button"
           onClick={onClose}
-          className="head tap text-[17px] text-fg"
+          className="head tap text-emphasis text-fg"
           autoFocus
         >
           Close
@@ -521,7 +623,7 @@ function Lightbox({
       <button
         type="button"
         onClick={() => onDelete(id)}
-        className="head tap mx-auto mt-4 text-[15px] text-dim transition-colors hover:text-fg"
+        className="head tap mx-auto mt-4 text-body text-dim transition-colors hover:text-fg"
       >
         Delete this photo
       </button>

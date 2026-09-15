@@ -23,6 +23,63 @@ const iso = (d: Date) =>
 
 export const isoDate = iso;
 
+/** One day of the week strip, as the week actually stands. */
+export interface WeekDay {
+  /** Sunday-indexed, matching Date.getDay() and Profile.trainingDays. */
+  index: number;
+  /** The single letter under the dot. */
+  initial: string;
+  iso: string;
+  trained: boolean;
+  isToday: boolean;
+  planned: boolean;
+  /** A gym day still ahead of you this week. */
+  upcoming: boolean;
+}
+
+const INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/**
+ * The current week, Sunday first.
+ *
+ * It lived inside Today and is now read by the rest-day arrival as well, which
+ * draws the same seven days for the opposite reason: the home screen's strip
+ * says where you are in the week, and the arrival's says what is already
+ * banked. Two readings of one fact, and the one thing they must never do is
+ * disagree about which days those were.
+ *
+ * Built on the same local-time `iso` as everything else in this file. The
+ * version inside the component used `toISOString()` on a Date at local
+ * midnight, which is the same day only for timezones at or west of UTC; east
+ * of it every dot in the strip was a day early.
+ */
+export function weekStrip(
+  sessions: Session[],
+  trainingDays: number[],
+  today: string
+): WeekDay[] {
+  const done = sessions.filter((s) => s.completedAt);
+  const now = new Date(today + "T00:00:00");
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay());
+
+  return INITIALS.map((initial, index) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + index);
+    const day = iso(d);
+    return {
+      index,
+      initial,
+      iso: day,
+      trained: done.some((s) => s.date === day),
+      isToday: day === today,
+      planned: trainingDays.includes(index),
+      // A planned day already past stays quiet: absence, not failure.
+      upcoming: day > today,
+    };
+  });
+}
+
 /** Dates that were the first session back after a break of `gapDays` or more. */
 export function comebackDates(sessions: Session[], gapDays = 7): Set<string> {
   const done = sessions

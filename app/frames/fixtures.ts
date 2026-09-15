@@ -1,5 +1,5 @@
 import type { CrewDay, CrewMember, CrewPhoto } from "@/lib/cloud";
-import type { AppState, Profile, Routine, Session } from "@/lib/types";
+import type { AppState, WeighIn, Profile, Routine, Session } from "@/lib/types";
 
 /**
  * Stand-in data for the frame gallery.
@@ -116,7 +116,25 @@ export const draft: Session = {
 
 export const goal = { exerciseId: "back-squat", targetWeight: 185, targetDate: iso(-70) };
 
-export const state: AppState = { profile, routines, sessions, goal, challenge: undefined };
+/**
+ * Weekly weigh-ins across the same twelve weeks, drifting down about a pound a
+ * fortnight with the small ups a real scale gives you. Not monotonic on
+ * purpose: a chart that only ever descends is a chart nobody recognises.
+ */
+export const weighIns: WeighIn[] = (() => {
+  const out: WeighIn[] = [];
+  const wobble = [0, 0.5, -0.5, 1, -1, 0.5, 0, -0.5, 1, -1, 0, 0.5];
+  for (let w = 11; w >= 0; w--) {
+    const back = w * 7 + 2;
+    out.push({ date: iso(back), lb: 176 - (11 - w) * 0.5 + wobble[w] });
+  }
+  return out;
+})();
+
+/** The day the frames render as, matching the rest of the fixture dates. */
+export const today = iso(0);
+
+export const state: AppState = { profile, routines, sessions, goal, challenge: undefined, weighIns };
 
 /** Straight out of onboarding: a reason, no plan chosen, nothing trained. */
 export const firstRunProfile: Profile = { ...profile, planChosen: false };

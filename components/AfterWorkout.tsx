@@ -77,6 +77,12 @@ export default function AfterWorkout({
     month: "long",
   });
 
+  // The finish tiles: minutes (when timed) + lifts + sets + PRs (on a PR day).
+  // Three fit one even row; two or four read best two-up. Fitting the columns to
+  // the count keeps the tiles roomy instead of letting a long minute count push
+  // the row past the screen edge.
+  const statCount = (minutes !== null ? 1 : 0) + 2 + (records.length > 0 ? 1 : 0);
+
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -115,18 +121,17 @@ export default function AfterWorkout({
 
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-      <p className="label text-green">
-        Workout complete{minutes !== null && ` · ${minutes} min`}
-      </p>
-      <h1 className="statement mt-2 text-[44px] text-fg">{session.label}</h1>
+      <p className="label text-done">Workout complete</p>
+      <h1 className="statement mt-2 text-figure text-fg">{session.label}</h1>
 
-      <div className="mt-5 flex gap-2.5">
+      <div className={`mt-5 grid gap-2.5 ${statCount === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+        {minutes !== null && <Stat value={minutes} label="min" />}
         <Stat value={lifts.length} label={lifts.length === 1 ? "lift" : "lifts"} />
         <Stat value={sets} label={sets === 1 ? "set" : "sets"} />
         {records.length > 0 && (
           <div className="flex-1 rounded-2xl bg-card p-[18px]">
-            <div className="tabular statement text-[40px] text-orange">{records.length}</div>
-            <div className="mt-1 text-[15px] leading-tight text-dim">
+            <div className="tabular statement text-figure text-action">{records.length}</div>
+            <div className="mt-1 text-body leading-tight text-dim">
               {records.length === 1 ? "PR" : "PRs"}
             </div>
           </div>
@@ -148,20 +153,20 @@ export default function AfterWorkout({
         disabled={busy}
         className="mt-2.5 rounded-2xl border border-dashed border-line-strong p-6 text-center transition-colors hover:bg-raise/40 disabled:opacity-50"
       >
-        <span aria-hidden className="block text-[22px] leading-none text-cyan">
+        <span aria-hidden className="block text-head leading-none text-cyan">
           +
         </span>
-        <span className="head mt-2 block text-[17px] text-cyan">
+        <span className="head mt-2 block text-emphasis text-cyan">
           {busy ? "Saving…" : photoCount > 0 ? "Add another photo" : "Add a progress photo"}
         </span>
-        <span className="mt-0.5 block text-[15px] text-dim">
+        <span className="mt-0.5 block text-body text-dim">
           {photoCount > 0
             ? `${photoCount} on the calendar for ${dayLabel}`
             : `Goes on the calendar for ${dayLabel}`}
         </span>
       </button>
       {failed && (
-        <p className="mt-2 text-[15px] text-dim">
+        <p className="mt-2 text-body text-dim">
           Could not save that one. Private browsing blocks photo storage.
         </p>
       )}
@@ -177,7 +182,7 @@ export default function AfterWorkout({
           rows={3}
           maxLength={500}
           placeholder="Felt strong. Bar speed was good on the last set — go up 5 lb next time."
-          className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[17px] italic leading-snug text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+          className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-emphasis italic leading-snug text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
         />
       </div>
 
@@ -192,19 +197,19 @@ export default function AfterWorkout({
             type="checkbox"
             checked={share}
             onChange={(e) => setShare(e.target.checked)}
-            className="peer h-6 w-6 shrink-0 appearance-none rounded-lg border-2 border-line-strong bg-transparent transition-colors checked:border-cyan checked:bg-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+            className="peer h-6 w-6 shrink-0 appearance-none rounded-xl border-2 border-line-strong bg-transparent transition-colors checked:border-cyan checked:bg-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           />
           <span
             aria-hidden
-            className="pointer-events-none -ml-[34px] mr-[10px] h-6 w-6 shrink-0 text-center text-[15px] leading-6 text-ground opacity-0 transition-opacity peer-checked:opacity-100"
+            className="pointer-events-none -ml-[34px] mr-[10px] h-6 w-6 shrink-0 text-center text-body leading-6 text-ground opacity-0 transition-opacity peer-checked:opacity-100"
           >
             ✓
           </span>
           <span className="flex-1">
-            <span className="block text-[17px] leading-snug text-fg">
+            <span className="block text-emphasis leading-snug text-fg">
               Share this with your crew
             </span>
-            <span className="mt-0.5 block text-[15px] leading-snug text-dim">
+            <span className="mt-0.5 block text-body leading-snug text-dim">
               {note.trim()
                 ? "The photo and this note. They can like it or reply."
                 : "The photo. They can like it or reply."}
@@ -220,7 +225,7 @@ export default function AfterWorkout({
         <button
           type="button"
           onClick={onSkip}
-          className="head tap mt-2.5 block w-full text-center text-[15px] text-dim transition-colors hover:text-fg"
+          className="head tap mt-2.5 block w-full text-center text-body text-dim transition-colors hover:text-fg"
         >
           Nothing to add
         </button>

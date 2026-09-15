@@ -5,6 +5,7 @@ import { byId } from "@/lib/exercises";
 import { parseAvailability } from "@/lib/schedule";
 import { TEMPLATES, type TemplateId } from "@/lib/templates";
 import type { Equipment, Muscle } from "@/lib/types";
+import { parseWorkoutText, clampSets, clampReps } from "@/lib/import";
 
 /**
  * Free text in, structured constraints out.
@@ -161,6 +162,55 @@ Return ONLY JSON, no prose, no markdown fence:
 Never invent form advice, sets, reps or weights. If the name is not an exercise
 you recognise, still answer with your best guess from the allowed values.`;
 
+const IMPORT_SYSTEM = `You convert a workout someone pastes into JSON.
+
+Return ONLY a JSON object, no prose, no markdown fence:
+{"days":[{"day":0,"label":"...","exercises":[{"name":"...","sets":3,"reps":8}]}]}
+
+"day" is the weekday number, 0 = Sunday. Read it from any day names present; if
+none are given, number the days 0, 1, 2 in the order they appear.
+"label" is the day's name if the text gives one (e.g. "Push", "Legs", "Upper");
+otherwise "Training".
+"name" is the exercise exactly as written. "sets" and "reps" are integers: use
+the scheme in the text (e.g. 3x8) when present, otherwise sets 3 and reps 8.
+
+Never invent an exercise that is not in the text. Never output weights.`;
+
+/**
+ * The model's parse is loose text-shaping; this makes it safe. Days clamp to
+ * 0-6, labels and names to strings, sets and reps to the same bounds the local
+ * parser uses. Anything malformed is dropped rather than trusted.
+ */
+function sanitizeImport(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  const days = (raw as Record<string, unknown>).days;
+  if (!Array.isArray(days)) return null;
+  const out = days
+    .map((d) => {
+      if (!d || typeof d !== "object") return null;
+      const o = d as Record<string, unknown>;
+      const day = typeof o.day === "number" && o.day >= 0 && o.day <= 6 ? Math.round(o.day) : 0;
+      const label = typeof o.label === "string" ? o.label.slice(0, 40) : "Training";
+      const exercises = Array.isArray(o.exercises)
+        ? o.exercises
+            .map((e) => {
+              if (!e || typeof e !== "object") return null;
+              const x = e as Record<string, unknown>;
+              if (typeof x.name !== "string" || !x.name.trim()) return null;
+              return {
+                name: x.name.trim().slice(0, 60),
+                sets: clampSets(Number(x.sets)),
+                reps: clampReps(Number(x.reps)),
+              };
+            })
+            .filter(Boolean)
+        : [];
+      return exercises.length ? { day, label, exercises } : null;
+    })
+    .filter(Boolean);
+  return out.length ? out : null;
+}
+
 export async function POST(request: Request) {
   let text = "";
   let intent = "constraints";
@@ -175,7 +225,9 @@ export async function POST(request: Request) {
       bodyCount = body?.count;
     }
     if (body?.intent === "classify") intent = "classify";
-    text = typeof body?.text === "string" ? body.text.slice(0, 500) : "";
+    if (body?.intent === "import") intent = "import";
+    const cap = body?.intent === "import" ? 2400 : 500;
+    text = typeof body?.text === "string" ? body.text.slice(0, cap) : "";
     if (body?.intent === "availability") intent = "availability";
     if (body?.intent === "pick") {
       intent = "pick";
@@ -229,6 +281,29 @@ export async function POST(request: Request) {
         compound: raw?.compound === true,
         source: "ai",
       });
+    } catch {
+      return local();
+    }
+  }
+
+  if (intent === "import") {
+    const local = () =>
+      NextResponse.json({ days: parseWorkoutText(text), source: "local" });
+    if (!text.trim()) return NextResponse.json({ days: [], source: "local" });
+    try {
+      const res = await fetch(PROXY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          input: { prompt: text, system_prompt: IMPORT_SYSTEM, max_completion_tokens: 800 },
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return local();
+      const days = sanitizeImport(extractJson(readOutput(await res.json())));
+      if (!days) return local();
+      return NextResponse.json({ days, source: "ai" });
     } catch {
       return local();
     }
