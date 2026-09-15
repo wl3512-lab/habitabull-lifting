@@ -13,6 +13,7 @@ import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import ProfileScreen from "@/components/Profile";
 import Arrival from "@/components/Arrival";
+import Booting from "@/components/Booting";
 import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
 import Progress from "@/components/Progress";
@@ -158,7 +159,7 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, completed]);
 
-  if (!ready) return <div className="flex-1" aria-busy="true" />;
+  if (!ready) return <Booting />;
 
   const { profile, routines, sessions, goal } = state;
 

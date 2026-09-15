@@ -340,9 +340,24 @@ export function buildSession(routine: Routine, sessions: Session[], level: Level
     label: routine.label,
     exercises: routine.exercises.map((p) => {
       const t = nextTarget(p.exerciseId, sessions, level);
+      /*
+        Her plan sets the shape; history sets the load.
+
+        The sets and reps she chose when she built the week were written into
+        the routine and then thrown away here, because this read everything
+        from `nextTarget`. Somebody who set bench at 3 by 12 started every
+        session at the level default instead, with no way to tell why, and the
+        editor she set it in kept showing 12 back at her.
+
+        Weight still comes from history, and that is the part she is not
+        asked to manage: the engine adds, holds or backs off on the evidence
+        of what she actually lifted. What she asked for is how many.
+      */
+      const sets = Math.max(1, Math.round(p.sets)) || t.sets;
+      const reps = Math.max(1, Math.round(p.reps)) || t.reps;
       return {
         exerciseId: p.exerciseId,
-        sets: Array.from({ length: t.sets }, () => ({ weight: t.weight, reps: t.reps, done: false })),
+        sets: Array.from({ length: sets }, () => ({ weight: t.weight, reps, done: false })),
       };
     }),
   };

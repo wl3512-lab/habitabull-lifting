@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
-import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
+import { byId, cardioLifts, makeCustomExercise, nameOf, searchLifts } from "@/lib/exercises";
 import { count } from "@/lib/plural";
 import type { Equipment, Exercise, Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
 
@@ -60,6 +60,8 @@ export default function RoutineEditor({
   const [draft, setDraft] = useState<Routine[]>(days);
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState<Muscle | null>(initialAdding);
+  /* What she typed into the picker's search. Clears whenever it opens. */
+  const [hunt, setHunt] = useState("");
   const [ask, setAsk] = useState("");
   const [asking, setAsking] = useState(false);
   const [suggested, setSuggested] = useState<{ id: string; why: string } | null>(null);
@@ -200,7 +202,7 @@ export default function RoutineEditor({
   }
 
   function closeAdd() {
-    setAdding(null);
+    (setHunt(""), setAdding(null));
     setAsk("");
     setSuggested(null);
   }
@@ -292,7 +294,7 @@ export default function RoutineEditor({
     const exercises = saved?.length ? saved : rebuilt.exercises;
     setDraft(draft.map((r, i) => (i === dayIndex ? { ...rebuilt, day: r.day, exercises } : r)));
     setOpenId(null);
-    setAdding(null);
+    (setHunt(""), setAdding(null));
   }
 
   const thorough = coversTwiceWeekly(draft.map((r) => r.template ?? "full-body"));
@@ -328,7 +330,7 @@ export default function RoutineEditor({
               onClick={() => {
                 setDayIndex(i);
                 setOpenId(null);
-                setAdding(null);
+                (setHunt(""), setAdding(null));
               }}
               aria-pressed={i === dayIndex}
               className={`head h-11 flex-1 rounded-full border text-emphasis transition-colors duration-quick ${
@@ -591,8 +593,27 @@ export default function RoutineEditor({
               Cancel
             </button>
           </div>
+          {/*
+            Search across the whole library, not just this muscle.
+
+            The list below is filed by muscle, which is right for browsing and
+            wrong for looking something up: a seated leg curl lives under
+            hamstrings, and somebody standing at the machine is thinking "leg
+            curl". It was in the library the whole time and could not be found,
+            which from her side is the same as it not being there.
+          */}
+          <input
+            value={hunt}
+            onChange={(e) => setHunt(e.target.value)}
+            placeholder="Search every lift"
+            aria-label="Search every lift by name"
+            className="mt-3 h-12 w-full rounded-full bg-raise px-[18px] text-body text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+          />
           <div className="mt-3 flex flex-wrap gap-2">
-            {alternativesFor(adding, profile.equipment, used, profile.favourites ?? []).map((a) => (
+            {(hunt.trim().length >= 2
+              ? searchLifts(hunt, profile.equipment, [...used])
+              : alternativesFor(adding, profile.equipment, used, profile.favourites ?? [])
+            ).map((a) => (
               <button
                 key={a.id}
                 type="button"
@@ -603,6 +624,12 @@ export default function RoutineEditor({
               </button>
             ))}
           </div>
+          {hunt.trim().length >= 2 &&
+            searchLifts(hunt, profile.equipment, [...used]).length === 0 && (
+              <p className="mt-2.5 text-body text-dim">
+                Nothing by that name in your kit. You can add it yourself below.
+              </p>
+            )}
 
           {/*
             For the person who does not know the names yet. It sits under the
@@ -697,7 +724,7 @@ export default function RoutineEditor({
               <button
                 key={m.id}
                 type="button"
-                onClick={() => setAdding(m.id)}
+                onClick={() => (setHunt(""), setAdding(m.id))}
                 className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
               >
                 {m.label}

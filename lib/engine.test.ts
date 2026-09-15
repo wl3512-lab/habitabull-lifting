@@ -747,3 +747,49 @@ describe("the core slot rotates", () => {
     }
   });
 });
+
+describe("the plan she built sets the shape", () => {
+  const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
+  const plan = (sets: number, reps: number): Routine => ({
+    day: 1,
+    label: "Push day",
+    exercises: [{ exerciseId: "bench-press", sets, reps, weight: 0 }],
+  });
+
+  it("uses the sets and reps she chose, not the level default", () => {
+    // She set 3 by 12 in the editor; the session used to start at the level
+    // default and the editor kept showing 12 back at her.
+    const s = buildSession(plan(3, 12), [], "experienced", "2026-09-15");
+    expect(s.exercises[0].sets).toHaveLength(3);
+    expect(s.exercises[0].sets.every((x) => x.reps === 12)).toBe(true);
+  });
+
+  it("still takes the weight from history, never from the plan", () => {
+    const history: Session[] = [
+      {
+        date: "2026-09-08",
+        label: "Push day",
+        completedAt: "2026-09-08T18:00:00.000Z",
+        exercises: [{ exerciseId: "bench-press", sets: [{ weight: 155, reps: 12, done: true }] }],
+      },
+    ];
+    const s = buildSession(plan(3, 12), history, "experienced", "2026-09-15");
+    // The plan says weight 0; the engine knows better.
+    expect(s.exercises[0].sets[0].weight).toBeGreaterThan(0);
+  });
+
+  it("falls back to the engine when a stored plan has no shape", () => {
+    // Routines written before the editor existed, or a hand-edited file.
+    const broken = { day: 1, label: "Push day", exercises: [{ exerciseId: "bench-press" }] } as unknown as Routine;
+    const s = buildSession(broken, [], "experienced", "2026-09-15");
+    expect(s.exercises[0].sets.length).toBeGreaterThan(0);
+    expect(s.exercises[0].sets[0].reps).toBeGreaterThan(0);
+  });
+
+  it("leaves a generated plan exactly as it was", () => {
+    const [day] = generateRoutine("new", [1], KIT);
+    const s = buildSession(day, [], "new", "2026-09-15");
+    expect(s.exercises[0].sets).toHaveLength(day.exercises[0].sets);
+    expect(s.exercises[0].sets[0].reps).toBe(day.exercises[0].reps);
+  });
+});

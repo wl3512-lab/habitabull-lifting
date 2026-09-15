@@ -479,13 +479,29 @@ export default function LogSession({
                 ←
               </button>
             )}
+            {/*
+              Jumping to another lift was an 11px eyebrow with a chevron after
+              it, which reads as a label that happens to be tappable rather
+              than a control. Somebody who does their accessories out of order,
+              or whose machine is taken, has to guess that the line counting
+              the exercises is also the way to change them.
+
+              It is a pill now, the same 44px-floor shape as everything else
+              pressable in the app, on `raise` so it sits above the ground the
+              way controls do. It still says which exercise this is, because
+              that was the other job it was doing.
+            */}
             <button
               type="button"
               onClick={() => setPicking(true)}
-              className="label tap flex items-center gap-1 text-cyan transition-opacity hover:opacity-70"
+              className="head tap flex h-11 items-center gap-2 rounded-full border border-line-strong bg-raise px-4 text-body text-cyan transition-colors hover:bg-line active:bg-line"
               aria-label={`Exercise ${index + 1} of ${session.exercises.length}. Tap to jump to another lift.`}
             >
-              Exercise {index + 1} of {session.exercises.length}
+              <span className="tabular">
+                {index + 1} of {session.exercises.length}
+              </span>
+              <span aria-hidden className="text-dim">·</span>
+              <span>Jump to</span>
               <span aria-hidden className="text-[10px]">▾</span>
             </button>
           </div>
