@@ -21,7 +21,7 @@
   URL and a cached one can never be stale.
 */
 
-const VERSION = "v2";
+const VERSION = "v3";
 
 /*
   Two caches, because they have opposite needs.

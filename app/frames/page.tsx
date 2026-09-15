@@ -14,6 +14,7 @@ import GoalScreen from "@/components/GoalScreen";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import Arrival from "@/components/Arrival";
+import Booting from "@/components/Booting";
 import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
 import ProfileScreen from "@/components/Profile";
@@ -28,6 +29,7 @@ import WeekSetup from "@/components/WeekSetup";
 import { challengeFor } from "@/lib/crew";
 import type { Challenge } from "@/lib/types";
 import * as f from "./fixtures";
+import { weekStrip } from "@/lib/calendar";
 
 /**
  * Every screen at once, on one page, with no flow to walk through.
@@ -49,6 +51,24 @@ import * as f from "./fixtures";
 
 /** The frame being captured and how far down, or null when the gallery shows. */
 const Shot = createContext<{ n: string; scroll: number } | null>(null);
+
+/*
+  A week with training in it, for the rest-day arrival frame.
+
+  The fixture history is generated on Mon/Wed/Fri and stops two days back, so
+  on a Sunday or a Tuesday the current calendar week is genuinely empty and the
+  beat correctly draws no dots. True of the app, unhelpful in a gallery whose
+  job is to show the screen as designed, so this frame is pinned to the last
+  completed week rather than to today.
+*/
+const bankedWeek = weekStrip(
+  f.sessions,
+  f.profile.trainingDays,
+  // Back to the most recent Saturday, whatever day the gallery is opened on.
+  new Date(Date.now() - ((new Date().getDay() + 1) % 7) * 864e5 - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10)
+);
 
 const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
   .toISOString()
@@ -181,11 +201,21 @@ function gallery(challenge: Challenge) {
           </Group>
 
           <Group title="The loop" sub="One action per screen, in the same place every time.">
-            <Frame n="01a" name="Opening, on a training day" note="The first open of a calendar day, and only the first: someone reopening the app between sets is not here for a greeting. It arrives from below and braces, and the bull nods. Every line is an existing pool in voice.ts — no copy was written for this screen.">
-              <Arrival mood="greet" seed={1} preview onDone={f.noop} />
+            <Frame n="00" name="Opening" note="The half second before the app knows anything, which used to be an empty charcoal rectangle: a page that failed rather than one arriving. It renders in the static HTML, so it is painting while the bundle it exists to cover is still being parsed, and all of its motion is CSS for the same reason. The mark rises and grows the last 8% into place, the name follows it, and at 900ms it starts to breathe. A breath rather than a spinner, because a spinner claims the wait is long enough to be worth watching and this one usually is not.">
+              <Booting />
             </Frame>
-            <Frame n="01b" name="Opening, on a rest day" note="The same beat, told apart by how it moves rather than by what colour it is: it comes down and lands instead of rising, holds 2800ms instead of 2400, and the bull stays still. Giving the rest day its own field was refused — there are two drenched screens in this product and spending that scarcity here would cost Welcome and the PR both of theirs. It names when you are next in, so a day off points at the next session rather than reading as a closed door, and it never appears at all for someone with nothing logged yet.">
-              <Arrival mood="rest" seed={0} nextDay="Friday" preview onDone={f.noop} />
+            <Frame n="01a" name="Opening, on a training day" note="The first open of a calendar day, and only the first: someone reopening the app between sets is not here for a greeting. It names the day rather than saying &ldquo;today&rdquo;, arrives from below at 60ms a step, and the bull braces. Every line is an existing pool in voice.ts; no copy was written for this screen.">
+              <Arrival mood="greet" seed={1} label="Push day" preview onDone={f.noop} />
+            </Frame>
+            <Frame n="01b" name="Opening, on a rest day" note="The same beat, told apart four ways and not one of them is colour: it comes down instead of rising, steps at 140ms instead of 60, the bull stays still, and it looks the other way. A training day points at the day ahead; a rest day draws the week already banked, one session at a time, which is this product&rsquo;s whole argument said as a picture. Giving it a field of its own was refused, because there are two drenched screens here and spending that scarcity on the most frequent moment in the app would cost Welcome and the PR both of theirs.">
+              <Arrival
+                mood="rest"
+                seed={0}
+                nextDay="Monday"
+                week={bankedWeek}
+                preview
+                onDone={f.noop}
+              />
             </Frame>
             <Frame n="01" name="Today" tab="today" note="“Full body A”, not “Monday”. A weekday is not a description of a workout.">
               <Today

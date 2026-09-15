@@ -7,6 +7,7 @@ import { nameOf } from "@/lib/exercises";
 import { goalProgress } from "@/lib/engine";
 import type { AppState, Goal, Session } from "@/lib/types";
 import { count } from "@/lib/plural";
+import { isoDate } from "@/lib/calendar";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKS = 12;
@@ -62,7 +63,10 @@ export default function Progress({
     return Array.from({ length: 7 }, (_, d) => {
       const cell = new Date(sunday);
       cell.setDate(sunday.getDate() + d);
-      const iso = cell.toISOString().slice(0, 10);
+      // Local time. `toISOString` on a Date at local midnight is a UTC
+      // conversion, so east of UTC every cell in the lattice was labelled a
+      // day early and a Wednesday session lit up Tuesday.
+      const iso = isoDate(cell);
       return { iso, future: cell > today, trained: trained.has(iso), comeback: comebacks.has(iso) };
     });
   });
@@ -136,7 +140,7 @@ export default function Progress({
                     }`}
                     // Weeks land oldest first, so twelve weeks read left to
                     // right the way they were lived.
-                    style={logged ? ({ "--week": w } as React.CSSProperties) : undefined}
+                    style={logged ? ({ "--cell": w } as React.CSSProperties) : undefined}
                   />
                 );
               })}

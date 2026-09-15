@@ -48,6 +48,7 @@ import {
 } from "@/lib/storage";
 import { arrivalMood, lastGreeting, rememberGreeting, type ArrivalMood } from "@/lib/arrival";
 import { nextTrainingDay } from "@/lib/schedule";
+import { weekStrip } from "@/lib/calendar";
 import { setBusy } from "@/lib/busy";
 import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
@@ -186,12 +187,19 @@ export default function Page() {
     on load, in `arrivalMood`, against rules that keep it quiet far more often
     than not.
   */
+  const dow = new Date(today + "T00:00:00").getDay();
+  const scheduled = routines.find((r) => r.day === dow) ?? null;
+
   if (arrival) {
     return (
       <Arrival
         mood={arrival}
         seed={today.length + profile.name.length}
         nextDay={nextTrainingDay(profile.trainingDays, today)}
+        // What today is called, so the beat says "Leg day" rather than "Today".
+        label={scheduled?.label}
+        // The week behind her, which is what a rest day is about.
+        week={weekStrip(sessions, profile.trainingDays, today)}
         onDone={() => {
           handedOff.current = true;
           setArrival(null);
@@ -200,8 +208,6 @@ export default function Page() {
     );
   }
 
-  const dow = new Date(today + "T00:00:00").getDay();
-  const scheduled = routines.find((r) => r.day === dow) ?? null;
   const draft = sessionFor(sessions, today);
   // On a rest day, "train anyway" pulls up the next routine in the rotation.
   // Sorted before the wrap-around: unsorted, "the next training day" can pick
@@ -361,7 +367,13 @@ export default function Page() {
   function placed(node: React.ReactNode, tab: Tab) {
     return (
       <>
-        <TabView tab={tab} handoff={handedOff.current}>
+        <TabView
+        tab={tab}
+        handoff={handedOff.current}
+        // Today assembles itself block by block, which is the entrance the
+        // wrapper would otherwise be providing.
+        staged={tab === "today"}
+      >
           {node}
         </TabView>
         <TabBar active={tab} onChange={(t) => setView(t)} />

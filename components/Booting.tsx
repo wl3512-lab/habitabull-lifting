@@ -9,14 +9,17 @@ import Bull, { BULL } from "./Bull";
  * app ever showed anybody was nothing: a blank charcoal rectangle, which reads
  * as a page that failed rather than one that is arriving.
  *
- * So it shows the one thing that is true before any of her data has loaded,
- * which is whose app this is.
+ * So it shows the two things that are true before any of her data has loaded:
+ * whose app this is, and that it is on its way.
  *
- * Deliberately still. This is not a spinner and must not become one: a spinner
- * measures a wait and invites you to watch it, and the honest length of this
- * wait is "gone before you read this". The mark fades up over 220ms and that is
- * the whole of it, so on a fast launch it is a flicker of brand rather than a
- * loading screen that had to finish.
+ * All of it is CSS, and that is load-bearing rather than tidy. This renders in
+ * the static HTML, so it is painting while the bundle this screen exists to
+ * cover is still being parsed. An animation that needed React to start would
+ * start at exactly the moment there was no longer anything to wait for.
+ *
+ * The motion is described in `globals.css` under `.boot-mark`: an arrival, and
+ * then a breath if the arrival was not enough. Not a spinner, and the comment
+ * there is the argument for why.
  */
 export default function Booting() {
   return (
@@ -25,9 +28,15 @@ export default function Booting() {
       aria-busy="true"
       aria-label="Opening HabitaBull"
     >
-      <div className="flood">
-        <Bull size={BULL.companion} />
+      <div className="boot-mark">
+        <Bull size={BULL.hero} />
       </div>
+      {/*
+        The camel case is the identity, not a styling accident. Same wordmark
+        as the welcome screen, a step down the ramp: on the welcome screen the
+        name is the headline, here it is standing under a picture.
+      */}
+      <p className="statement boot-name mt-5 text-title text-fg">HabitaBull</p>
     </main>
   );
 }

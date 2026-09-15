@@ -18,6 +18,19 @@ export default function Offline() {
   useEffect(() => {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
 
+    /*
+      Never in development, and this is not tidiness.
+
+      The worker treats everything under /_next/static as immutable and serves
+      it cache-first, which is safe by construction in a build because Next
+      puts a content hash in every filename. Dev chunks have no hash: the URL
+      for a module stays the same while the module changes underneath it, so
+      the worker pins the first version it ever saw and keeps serving it
+      through edits, restarts, and `rm -rf .next`. What that looks like is a
+      browser throwing errors that quote source you already deleted.
+    */
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") return;
+
     const register = () => {
       navigator.serviceWorker.register("/sw.js").catch(() => {
         // No offline, but the app is otherwise untouched. Nothing to say.

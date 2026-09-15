@@ -303,6 +303,69 @@ body {
 }
 
 /*
+  The boot screen, in two acts.
+
+  Act one is an arrival: the mark comes up and grows the last 8% into place
+  over `deliberate`, and the name follows it 160ms later. This is the only
+  moment in the app where the brand is the whole screen, and 220ms is not long
+  enough to be an entrance.
+
+  Act two is a breath, and it only ever happens if act one was not enough. It
+  starts at 900ms, which on a warm launch never arrives because the app is
+  already up and this screen is gone. It runs 2.8s a cycle and travels 2.5%,
+  which is under the threshold where the eye reads it as movement and over the
+  one where a still image starts to read as a frozen app.
+
+  A breath rather than a spinner, and the difference between them is a claim
+  about time. A spinner says "this is taking a measurable while, watch it" —
+  and the honest length of this wait is usually a flicker, so a spinner here
+  would be a progress bar for progress nobody can see. A breath says only that
+  the thing on screen is alive. It promises nothing about when it will stop,
+  which is exactly the promise a screen that cannot see the network is in no
+  position to make.
+
+  `ease-in-out` on the breath, and it is the one curve in this file that is not
+  `ease-out-quart`. An entrance decelerates into place because it is arriving
+  somewhere. A cycle is not arriving anywhere, and easing out of both halves of
+  it produces a twitch rather than a breath.
+*/
+@keyframes boot-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+/*
+  Two animations, one property, and they never overlap: `boot-in` is finished
+  at 300ms and holds nothing afterwards (`backwards`, not `both`), so the mark
+  sits at its own transform for 600ms before the breath picks it up.
+*/
+.boot-mark {
+  animation:
+    boot-in var(--duration-deliberate) var(--ease-out-quart) backwards,
+    breathe 2800ms 900ms ease-in-out infinite;
+}
+
+.boot-name {
+  animation: rise var(--duration-deliberate) 160ms var(--ease-out-quart) backwards;
+}
+
+/*
   A dialog arriving, in two parts.
 
   The covering surface fades and the column it carries rises behind it. One
@@ -399,8 +462,13 @@ body {
 }
 .cell-in {
   animation: cell-in var(--duration-standard) var(--ease-out-quart) backwards;
-  /* Staggered by week, so the record reads left to right the way it was made. */
-  animation-delay: calc(90ms + var(--week) * 26ms);
+  /*
+    Staggered by position, so a row of cells reads left to right the way it was
+    made. `--lead` and `--gap` carry the defaults the consistency grid wants;
+    the rest-day arrival redefines both, because it is drawing seven days
+    rather than twelve weeks and it has a longer moment to do it in.
+  */
+  animation-delay: calc(var(--lead, 90ms) + var(--cell, 0) * var(--gap, 26ms));
 }
 
 @keyframes stamp {
@@ -429,6 +497,32 @@ body {
 */
 .rise {
   animation: rise var(--duration-standard) var(--ease-out-quart) backwards;
+}
+
+/*
+  A screen assembling itself top down, at the day's own pace.
+
+  `--stagger` is set once on the screen and `--step` once per block, so the
+  order lives in the markup where it is legible rather than in a pile of
+  hand-typed delays. `--lead` pushes a whole group past something that has to
+  land first.
+
+  Opt-in, and that is the whole reason it is a class of its own rather than a
+  line added to `.rise`. Custom properties inherit, so a screen that sets
+  `--step` on a block sets it on everything inside that block too, and two of
+  the panels inside Today's staged blocks are `.rise` elements that open on a
+  tap. Folding the delay into `.rise` would have given those a 160ms pause
+  before they answered a finger, which is the exact failure this vocabulary
+  exists to prevent.
+
+  The pace is the point. A training day steps at 40ms and moves on `standard`,
+  which reads as brisk; a rest day steps at 70ms and moves on `deliberate`,
+  which reads as unhurried. Same curve, same distance, opposite direction,
+  different tempo: four things that all say one thing about the day, and not
+  one of them is a colour.
+*/
+.stage {
+  animation-delay: calc(var(--lead, 0ms) + var(--step, 0) * var(--stagger, 0ms));
 }
 
 .nod {

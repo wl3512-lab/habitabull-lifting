@@ -13,8 +13,8 @@ import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor }
 import type { CrewDay } from "@/lib/cloud";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
 import { count } from "@/lib/plural";
+import { weekStrip } from "@/lib/calendar";
 
-const DAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
 
 /**
  * The opening screen. It is a logging screen, not a dashboard — the single
@@ -73,25 +73,9 @@ export default function Today({
   const alreadyLogged = sessions.some((s) => s.date === today && s.completedAt);
   const weeks = streakWeeks(sessions);
 
-  // The week as it actually stands, Sunday-indexed to match getDay().
-  const now = new Date(today + "T00:00:00");
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
-  const week = DAY_INITIALS.map((initial, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    const iso = d.toISOString().slice(0, 10);
-    return {
-      initial,
-      iso,
-      trained: done.some((s) => s.date === iso),
-      isToday: iso === today,
-      planned: profile.trainingDays.includes(i),
-      // A gym day still ahead of you this week — dotted the same orange as the
-      // calendar. A planned day already past stays quiet: absence, not failure.
-      upcoming: iso > today,
-    };
-  });
+  // The week as it actually stands. Shared with the rest-day arrival, which
+  // draws the same seven days to make the opposite point.
+  const week = weekStrip(sessions, profile.trainingDays, today);
 
   async function submitNote() {
     const text = note.trim();
@@ -342,9 +326,28 @@ export default function Today({
         .join(" · ")
     : null;
 
+  /*
+    The day's own tempo, carried on from the arrival beat that hands off to
+    this screen so the two read as one gesture rather than two features. A day
+    with work ahead of it comes up briskly; a day without it settles, slower
+    and from above. Direction and pace, no colour: see `.rise, .settle` in
+    globals.css for why those are the two knobs.
+  */
+  const resting = !unchosen && !routine;
+  const enter = resting ? "settle" : "rise";
+
+  // Sequential by construction. Half of these blocks are conditional, and a
+  // hand-typed step number leaves a hole in the sequence the moment one of
+  // them is absent, which is a hitch you can see.
+  let n = 0;
+  const stage = () => ({ "--step": n++ }) as React.CSSProperties;
+
   return (
-    <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-      <header>
+    <main
+      style={{ "--stagger": resting ? "70ms" : "40ms" } as React.CSSProperties}
+      className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12"
+    >
+      <header className={`${enter} stage`} style={stage()}>
         <div className="flex items-start justify-between gap-4">
           <p className="label text-cyan">
             {new Date(today + "T00:00:00")
@@ -383,7 +386,8 @@ export default function Today({
               trainingMinute: anchorOf(drift.anchor).minute,
             })
           }
-          className="mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
+          style={stage()}
+          className={`${enter} stage mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50`}
         >
           <span className="label block text-cyan">Noticed</span>
           <span className="head mt-1.5 block text-head text-fg">
@@ -404,7 +408,8 @@ export default function Today({
         <button
           type="button"
           onClick={onSetUpWeek}
-          className="mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
+          style={stage()}
+          className={`${enter} stage mt-6 w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50`}
         >
           <span className="label block text-cyan">Now the useful bit</span>
           <span className="head mt-1.5 block text-head text-fg">Set up your week</span>
@@ -415,9 +420,13 @@ export default function Today({
       )}
 
       {/* After a gap, their reason goes above the action, not below it. */}
-      {raised && motivationCard && <div className="mt-6">{motivationCard}</div>}
+      {raised && motivationCard && (
+        <div className={`${enter} stage mt-6`} style={stage()}>
+          {motivationCard}
+        </div>
+      )}
 
-      <div className="mt-6 flex flex-col gap-2.5">
+      <div className={`${enter} stage mt-6 flex flex-col gap-2.5`} style={stage()}>
         {/*
           Once today is logged there is no orange action, and that is the point.
           The rule is one primary action per screen, not that a screen must
@@ -494,7 +503,7 @@ export default function Today({
         )}
       </div>
 
-      <section className="mt-8">
+      <section className={`${enter} stage mt-8`} style={stage()}>
         <p className="label text-dim">This week</p>
         <ul className="mt-3 flex justify-between gap-1.5">
           {week.map((d) => (
@@ -525,14 +534,24 @@ export default function Today({
         </p>
       </section>
 
-      <CrewToday date={today} onOpen={() => onOpenDay(today)} preview={crewPreview} />
+      <div className={`${enter} stage`} style={stage()}>
+        <CrewToday date={today} onOpen={() => onOpenDay(today)} preview={crewPreview} />
+      </div>
 
-      {!raised && motivationCard && <div className="mt-8">{motivationCard}</div>}
+      {!raised && motivationCard && (
+        <div className={`${enter} stage mt-8`} style={stage()}>
+          {motivationCard}
+        </div>
+      )}
 
-      {goalCard && <div className="mt-2.5">{goalCard}</div>}
+      {goalCard && (
+        <div className={`${enter} stage mt-2.5`} style={stage()}>
+          {goalCard}
+        </div>
+      )}
 
       {unchosen ? (
-        <section className="mt-8">
+        <section className={`${enter} stage mt-8`} style={stage()}>
           <p className="label text-dim">Today&apos;s lifts</p>
           <button
             type="button"
@@ -552,7 +571,7 @@ export default function Today({
           </button>
         </section>
       ) : routine ? (
-        <section className="mt-8">
+        <section className={`${enter} stage mt-8`} style={stage()}>
           {!profile.planChosen && (
             <button
               type="button"
@@ -576,11 +595,20 @@ export default function Today({
               Edit
             </button>
           </div>
-          <ul className="mt-3 flex flex-col gap-2">
-            {routine.exercises.map((e) => {
+          {/*
+            The lifts arriving in the order she will do them — the training
+            day's counterpart to the week of dots a rest day draws. `--lead`
+            puts them after the section they sit in has landed, so a row is
+            never moving inside a parent that is still moving.
+          */}
+          <ul
+            className="mt-3 flex flex-col gap-2"
+            style={{ "--lead": "380ms", "--stagger": "45ms" } as React.CSSProperties}
+          >
+            {routine.exercises.map((e, i) => {
               const t = nextTarget(e.exerciseId, sessions, profile.level);
               return (
-                <li key={e.exerciseId}>
+                <li key={e.exerciseId} className={`${enter} stage`} style={{ "--step": i } as React.CSSProperties}>
                   <button
                     type="button"
                     onClick={() => onExercise(e.exerciseId)}
@@ -608,16 +636,18 @@ export default function Today({
       ) : (
         // He turns up where there is something to react to, and "not today,
         // and that is fine" is the sentence this whole product is arguing for.
-        <Card className="mt-8 flex flex-col items-center p-[18px] text-center">
-          <Bull size={BULL.companion} />
-          <h2 className="head mt-3 text-emphasis text-fg">Nothing here.</h2>
-          <p className="mt-1 text-body text-dim">
-            Rest is part of progress. If you want to train anyway, pull up your next session.
-          </p>
-        </Card>
+        <div className={`${enter} stage`} style={stage()}>
+          <Card className="mt-8 flex flex-col items-center p-[18px] text-center">
+            <Bull size={BULL.companion} />
+            <h2 className="head mt-3 text-emphasis text-fg">Nothing here.</h2>
+            <p className="mt-1 text-body text-dim">
+              Rest is part of progress. If you want to train anyway, pull up your next session.
+            </p>
+          </Card>
+        </div>
       )}
 
-      <p className="mt-auto pt-8 text-body text-dim">
+      <p className={`${enter} stage mt-auto pt-8 text-body text-dim`} style={stage()}>
         {alreadyLogged
           ? line("done", done.length)
           : routine

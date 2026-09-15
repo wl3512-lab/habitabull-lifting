@@ -31,14 +31,26 @@ import { useEffect, useRef, type ReactNode } from "react";
 export default function TabView({
   tab,
   handoff = false,
+  staged = false,
   children,
 }: {
   tab: string;
   handoff?: boolean;
+  /**
+   * The screen inside brings its own entrance, so this one stands down.
+   *
+   * Not a preference. Today stages its blocks in sequence and each of them
+   * rises 10px; wrapping that in a wrapper that also rises 10px makes the top
+   * of the screen travel twice as far as the bottom, because the wrapper is
+   * finished before the later blocks have started. One gesture or the other,
+   * never both.
+   */
+  staged?: boolean;
   children: ReactNode;
 }) {
   const shown = useRef<string | null>(null);
-  const entering = handoff || (shown.current !== null && shown.current !== tab);
+  const entering =
+    !staged && (handoff || (shown.current !== null && shown.current !== tab));
 
   useEffect(() => {
     shown.current = tab;
