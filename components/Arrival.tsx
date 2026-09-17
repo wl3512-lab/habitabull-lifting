@@ -23,9 +23,9 @@ import type { ArrivalMood } from "@/lib/arrival";
  * 1. Direction. Training arrives from below; rest comes down and lands.
  * 2. Tempo. Training steps at 60ms on `standard`, which is brisk. Rest steps
  *    at 140ms on `deliberate`, which is not.
- * 3. The bull. He braces on a training day and is still on a rest day, because
- *    nothing is being asked of anybody and a mascot bouncing about a day off
- *    would be the app pretending it is an event.
+ * 3. The bull. He braces on a training day and lies down, eyes shut, on a
+ *    rest day, because nothing is being asked of anybody and a mascot bouncing
+ *    about a day off would be the app pretending it is an event.
  * 4. What the screen is of. A training day names the day and points at it. A
  *    rest day looks the other way and draws the week she has already banked,
  *    one session at a time, which is the argument the whole product is making
@@ -141,7 +141,7 @@ export default function Arrival({
       </p>
 
       <div className={`${enter} stage mt-6`} style={step()}>
-        <Bull size={BULL.hero} react={!resting} say={line(mood, seed)} />
+        <Bull size={BULL.hero} react={!resting} pose={resting ? "rest" : undefined} say={line(mood, seed)} />
       </div>
 
       {/*

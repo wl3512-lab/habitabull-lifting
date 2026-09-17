@@ -92,9 +92,10 @@ export default function ExerciseInfo({
 
       <h1 className="statement mt-2 text-figure text-fg">{ex.name}</h1>
 
-      {/* He says it. The bubble is his, not the screen's. */}
+      {/* He says it. The bubble is his, not the screen's. He faces it, hoof up,
+          because this is the one screen where he is showing rather than standing. */}
       <div className="mt-5 flex items-end gap-2">
-        <Bull size={BULL.speak} className="shrink-0" />
+        <Bull size={BULL.speak} pose="show" className="shrink-0" />
         <div className="relative flex-1 rounded-2xl rounded-bl-sm bg-cyan px-5 py-4">
           <p className="aside text-title text-ground">{ex.cue}</p>
         </div>

@@ -9,14 +9,15 @@ import Image from "next/image";
  */
 
 /**
- * Three poses, each with its own aspect.
+ * Five poses, each with its own aspect.
  *
  * The ratio has to travel with the pose rather than sit in one constant. The
  * poses are genuinely different shapes: standing is 0.8375, the thumbs-up is
  * wider than it is tall at 1.0791 because the arm is out, and the confused one
- * is 0.9101 because the question marks push the box sideways. One shared
- * number would squash two of the three, which is the same bug that stretched
- * him on two screens when the artwork last changed.
+ * is 0.9101 because the question marks push the box sideways, lying down he
+ * is 1.1286, the widest of the lot, and showing a lift he is 0.9416. One shared number would squash most of
+ * them, which is the same bug that stretched him on two screens when the
+ * artwork last changed.
  */
 const POSES = {
   /** Standing. The default everywhere. */
@@ -25,6 +26,10 @@ const POSES = {
   cheer:    { src: "/mascot-cheer.png",     ratio: 505 / 468 },
   /** Question marks. For when the app cannot answer, not when you got it wrong. */
   confused: { src: "/mascot-confused.png",  ratio: 425 / 467 },
+  /** Lying down, eyes shut. For a rest day: nothing is being asked of anybody. */
+  rest:     { src: "/mascot-rest.png",      ratio: 632 / 560 },
+  /** One hoof up, looking back over his shoulder at whatever is beside him. For showing a lift. */
+  show:     { src: "/mascot-show.png",      ratio: 597 / 634 },
 } as const;
 
 export type Pose = keyof typeof POSES;

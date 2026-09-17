@@ -13,6 +13,12 @@ because a source file is not an asset.
   background had to be cut with a flood fill from the canvas edges rather than
   a brightness threshold: the horns sit at lightness 0.75 and the checkerboard
   at 0.79, so any threshold that caught the background also ate the horns.
+- `mascot-source-rest-2026.jpeg` — the resting pose, as delivered, Dreamina
+  watermark and all. Same flood-fill cut; the watermark and the tail tuft sit
+  eleven pixels apart at the bottom right, so the paint-out starts at y=1870.
+- `mascot-source-show-2026.jpeg` — one hoof up, looking back, as delivered.
+  Here the watermark sits beside the front hoof rather than under the tail, so
+  the paint-out is everything right of x=1400 below y=1880.
 - `mascot-source.png` — the 2023 source it replaced.
 - `mascot-2023.png` — the previous bull as shipped, the open grin rather than
   the closed smile.

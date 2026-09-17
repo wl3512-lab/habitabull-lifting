@@ -207,7 +207,7 @@ function gallery(challenge: Challenge) {
             <Frame n="01a" name="Opening, on a training day" note="The first open of a calendar day, and only the first: someone reopening the app between sets is not here for a greeting. It names the day rather than saying &ldquo;today&rdquo;, arrives from below at 60ms a step, and the bull braces. Every line is an existing pool in voice.ts; no copy was written for this screen.">
               <Arrival mood="greet" seed={1} label="Push day" preview onDone={f.noop} />
             </Frame>
-            <Frame n="01b" name="Opening, on a rest day" note="The same beat, told apart four ways and not one of them is colour: it comes down instead of rising, steps at 140ms instead of 60, the bull stays still, and it looks the other way. A training day points at the day ahead; a rest day draws the week already banked, one session at a time, which is this product&rsquo;s whole argument said as a picture. Giving it a field of its own was refused, because there are two drenched screens here and spending that scarcity on the most frequent moment in the app would cost Welcome and the PR both of theirs.">
+            <Frame n="01b" name="Opening, on a rest day" note="The same beat, told apart four ways and not one of them is colour: it comes down instead of rising, steps at 140ms instead of 60, the bull lies down with his eyes shut, and it looks the other way. A training day points at the day ahead; a rest day draws the week already banked, one session at a time, which is this product&rsquo;s whole argument said as a picture. Giving it a field of its own was refused, because there are two drenched screens here and spending that scarcity on the most frequent moment in the app would cost Welcome and the PR both of theirs.">
               <Arrival
                 mood="rest"
                 seed={0}
@@ -284,7 +284,7 @@ function gallery(challenge: Challenge) {
                 onAddDetail={f.noop}
               />
             </Frame>
-            <Frame n="09" name="Bull coach" note="The one screen where the mascot does literal work: he speaks the cue rather than standing next to it.">
+            <Frame n="09" name="Bull coach" note="The one screen where the mascot does literal work: he speaks the cue rather than standing next to it, and he faces it with a hoof up, showing rather than standing.">
               <ExerciseInfo
                 exerciseId="back-squat"
                 profile={f.profile}
