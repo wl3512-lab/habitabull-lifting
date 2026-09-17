@@ -6,7 +6,7 @@
  * you were gone; he does not punish you for it.
  */
 
-export type Mood = "greet" | "return" | "midset" | "done" | "pr" | "rest" | "first";
+export type Mood = "greet" | "return" | "midset" | "done" | "pr" | "rest" | "first" | "stopped";
 
 const LINES: Record<Mood, string[]> = {
   first: [
@@ -43,6 +43,22 @@ const LINES: Record<Mood, string[]> = {
     "Rest day. Recovery is training too.",
     "Nothing scheduled. Come back tomorrow.",
     "Off day. The muscle grows now, not in the gym.",
+  ],
+  /*
+    Walking out mid-session, which `done` must never be used for: "That's the
+    work. Go eat something." said to somebody who stopped after two sets is the
+    app congratulating them for something they know they did not do, and that is
+    how a voice stops being trusted.
+
+    These have to read the same whether four sets went down or none did, because
+    the screen shows the count separately and the count is the part that varies.
+    Nothing here scolds. A product whose whole argument is that a gap is not a
+    failure cannot make an exit feel like one.
+  */
+  stopped: [
+    "Ended early. That's allowed.",
+    "Stopped there. Nothing is lost.",
+    "Called it. Your plan is where you left it.",
   ],
 };
 

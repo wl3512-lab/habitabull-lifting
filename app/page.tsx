@@ -14,6 +14,7 @@ import Onboarding from "@/components/Onboarding";
 import ProfileScreen from "@/components/Profile";
 import Arrival from "@/components/Arrival";
 import Booting from "@/components/Booting";
+import StoppedEarly from "@/components/StoppedEarly";
 import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
 import Progress from "@/components/Progress";
@@ -28,6 +29,7 @@ import {
   mergeDayLibrary,
   overlayDayLibrary,
   generateRoutine,
+  keepTemplates,
   mergeRebuild,
   personalRecord,
   rebuildDay,
@@ -54,7 +56,7 @@ import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
 import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "import";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "stopped" | "import";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -115,7 +117,8 @@ export default function Page() {
     through a session. Everywhere else the app rebuilds from storage and lands
     where a resumed app lands anyway.
   */
-  const mid = view === "log" || view === "done" || view === "comeback";
+  const mid =
+    view === "log" || view === "done" || view === "comeback" || view === "stopped";
   useEffect(() => {
     setBusy(mid);
     return () => setBusy(false);
@@ -453,14 +456,28 @@ export default function Page() {
       <WeekSetup
         profile={profile}
         onSave={(p: Profile) => {
-          // A changed week means changed routines; sessions already logged stay.
-          // Overlay the saved day library so a rebuilt week keeps the day types
-          // the user has already shaped, instead of reverting them to defaults.
+          /*
+            A changed week means changed routines; sessions already logged stay.
+
+            `keepTemplates` carries the day types across by day of the week.
+            Without it this call passed no templates at all, so every day fell
+            back to the default and adding a single day to an existing week
+            turned Push/Pull/Legs into four identical full-body days. The day
+            library then could not save it either: it is keyed by template, and
+            the templates it had entries for were exactly the ones that had just
+            been thrown away.
+          */
           setState((s) => ({
             ...s,
             profile: p,
             routines: overlayDayLibrary(
-              generateRoutine(p.level, p.trainingDays, p.equipment),
+              generateRoutine(
+                p.level,
+                p.trainingDays,
+                p.equipment,
+                p.favourites ?? [],
+                keepTemplates(s.routines, p.trainingDays)
+              ),
               s.dayLibrary
             ),
           }));
@@ -629,10 +646,28 @@ export default function Page() {
           setState((s) => ({ ...s, customExercises: next }));
         }}
         onFinish={finish}
-        onExit={() => setView("today")}
+        // Not straight home. Ending early is the one screen change in the app
+        // that used to happen with no transition and no answer to "did I just
+        // lose those sets?".
+        onExit={() => setView("stopped")}
         onExercise={(id) => openExercise(id, "log")}
       />
     );
+  }
+
+  if (view === "stopped") {
+    const stopped = draft ?? sessionFor(sessions, today);
+    if (stopped) {
+      return (
+        <StoppedEarly
+          session={stopped}
+          seed={today.length + profile.name.length}
+          onDone={() => setView("today")}
+        />
+      );
+    }
+    // No session to speak of: fall through to the tabs, the way `done` does.
+    // Calling setView here would be a state write during render.
   }
 
   if (view === "done") {

@@ -420,6 +420,36 @@ export function mergeDayLibrary(
  * When days are generated from templates, swap in the user's saved version of
  * any day type they have shaped before, so a rebuilt week keeps their days.
  */
+/**
+ * The day types to use when the set of training days changes.
+ *
+ * `generateRoutine` takes its templates as a list aligned to the sorted days,
+ * which means the mapping from a day of the week to what that day is lives in
+ * an array index. That is fine while the days hold still and wrong the moment
+ * they do not: inserting a Tuesday into Mon/Wed/Fri shifts every index after
+ * it, so push/pull/legs becomes push on Monday, pull on Tuesday, legs on
+ * Wednesday and push again on Friday. Nobody asked for any of that.
+ *
+ * So the mapping is rebuilt by day number here. A day that already existed
+ * keeps what it was, and only a genuinely new day takes a default.
+ *
+ * Full body is that default, and it is the honest one: it is what the picker
+ * marks recommended, and it is the one shape that says "a bit of everything"
+ * rather than guessing at a split the user never chose. The alternative is
+ * inheriting the neighbouring day's type, which is how someone ends up with
+ * two leg days in a row they did not ask for.
+ */
+export function keepTemplates(
+  routines: Routine[],
+  trainingDays: number[]
+): TemplateId[] {
+  const was = new Map<number, TemplateId>();
+  for (const r of routines) if (r.template) was.set(r.day, r.template);
+  return [...new Set(trainingDays)]
+    .sort((a, b) => a - b)
+    .map((day) => was.get(day) ?? "full-body");
+}
+
 export function overlayDayLibrary(
   routines: Routine[],
   library: Record<string, PlannedExercise[]> = {}
