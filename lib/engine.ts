@@ -127,7 +127,14 @@ export function generateRoutine(
   trainingDays: number[],
   equipment: Equipment[],
   favourites: string[] = [],
-  templates?: TemplateId[]
+  templates?: TemplateId[],
+  /**
+   * Which full-body variant a given day gets, by day number. Absent, the
+   * variant is the day's position in the week, which alternates A/B across a
+   * fresh week and is wrong the moment a day is inserted into an existing one:
+   * see `reconcileWeek`, which is the caller that sets this.
+   */
+  variants?: Record<number, number>
 ): Routine[] {
   const days = [...new Set(trainingDays)].sort((a, b) => a - b);
   if (days.length === 0) return [];
@@ -135,10 +142,11 @@ export function generateRoutine(
   const chosen = templates?.length ? templates : defaultTemplates(days.length);
   return days.map((day, i) => {
     const tpl = templateOf(chosen[i % chosen.length]);
+    const slot = variants?.[day] ?? i;
     // Full body still alternates its slots so two sessions are never identical;
     // a named day is the same shape every time, which is the point of naming it.
     const muscles =
-      tpl.id === "full-body" ? FULL_BODY[i % FULL_BODY.length] : tpl.muscles;
+      tpl.id === "full-body" ? FULL_BODY[slot % FULL_BODY.length] : tpl.muscles;
     const circuit = tpl.style === "circuit";
     const used = new Set<string>();
     const exercises: PlannedExercise[] = [];
@@ -175,7 +183,7 @@ export function generateRoutine(
     for (const m of muscles) {
       // A circuit wants things you can start immediately, so bodyweight first.
       // Core rotates by day so the week is not the same plank five times over.
-      const v = m === "core" ? i : 0;
+      const v = m === "core" ? slot : 0;
       const ex = circuit
         ? pickExercise(m, ["bodyweight"], used, favourites, v) ??
           pickExercise(m, eq, used, favourites, v)
@@ -194,7 +202,7 @@ export function generateRoutine(
       });
     }
     const label =
-      tpl.id === "full-body" ? SESSION_LABELS[i % SESSION_LABELS.length] : tpl.label;
+      tpl.id === "full-body" ? SESSION_LABELS[slot % SESSION_LABELS.length] : tpl.label;
     return { day, label, template: tpl.id, exercises };
   });
 }
@@ -420,34 +428,66 @@ export function mergeDayLibrary(
  * When days are generated from templates, swap in the user's saved version of
  * any day type they have shaped before, so a rebuilt week keeps their days.
  */
+/** Which full-body variant a stored day is, read back off its label. */
+function fullBodyVariant(r: Routine): number | null {
+  if (r.template !== "full-body") return null;
+  const i = SESSION_LABELS.indexOf(r.label);
+  return i === -1 ? null : i;
+}
+
 /**
- * The day types to use when the set of training days changes.
+ * The week after the set of training days changes.
  *
- * `generateRoutine` takes its templates as a list aligned to the sorted days,
- * which means the mapping from a day of the week to what that day is lives in
- * an array index. That is fine while the days hold still and wrong the moment
- * they do not: inserting a Tuesday into Mon/Wed/Fri shifts every index after
- * it, so push/pull/legs becomes push on Monday, pull on Tuesday, legs on
- * Wednesday and push again on Friday. Nobody asked for any of that.
+ * Editing which days you train must not touch the days you kept. This used to
+ * rebuild the whole week from scratch, which is how adding a Tuesday turned
+ * Push/Pull/Legs into four full-body days. Carrying the day types across by
+ * day number fixed that and left a quieter version of the same bug: the
+ * full-body variant was still assigned by position, so the same Tuesday turned
+ * a "Full body B" Wednesday into "Full body A" with different lifts. Nobody
+ * touched Wednesday.
  *
- * So the mapping is rebuilt by day number here. A day that already existed
- * keeps what it was, and only a genuinely new day takes a default.
- *
- * Full body is that default, and it is the honest one: it is what the picker
- * marks recommended, and it is the one shape that says "a bit of everything"
- * rather than guessing at a split the user never chose. The alternative is
- * inheriting the neighbouring day's type, which is how someone ends up with
- * two leg days in a row they did not ask for.
+ * So a day that is still trained is kept exactly as it was: label, lifts,
+ * sets, weights. Only a new day is generated, as full body, which is what the
+ * picker recommends, and it takes the variant its nearest kept full-body
+ * neighbour does not have, so the week still alternates. A saved shape for
+ * that day type (the library) is applied to new days only, since the kept
+ * days already carry theirs.
  */
-export function keepTemplates(
-  routines: Routine[],
-  trainingDays: number[]
-): TemplateId[] {
-  const was = new Map<number, TemplateId>();
-  for (const r of routines) if (r.template) was.set(r.day, r.template);
-  return [...new Set(trainingDays)]
-    .sort((a, b) => a - b)
-    .map((day) => was.get(day) ?? "full-body");
+export function reconcileWeek(
+  existing: Routine[],
+  trainingDays: number[],
+  level: Level,
+  equipment: Equipment[],
+  favourites: string[] = [],
+  library: Record<string, PlannedExercise[]> = {}
+): Routine[] {
+  const days = [...new Set(trainingDays)].sort((a, b) => a - b);
+  const kept = existing.filter((r) => days.includes(r.day));
+  const fresh = days.filter((d) => !kept.some((r) => r.day === d));
+
+  const variants: Record<number, number> = {};
+  for (const day of fresh) {
+    // Nearest kept full-body day, earlier one on a tie.
+    let near: Routine | null = null;
+    for (const r of kept) {
+      if (fullBodyVariant(r) === null) continue;
+      if (!near || Math.abs(r.day - day) < Math.abs(near.day - day)) near = r;
+    }
+    if (near) variants[day] = 1 - (fullBodyVariant(near) as number);
+  }
+
+  const made = overlayDayLibrary(
+    generateRoutine(
+      level,
+      fresh,
+      equipment,
+      favourites,
+      fresh.map(() => "full-body" as TemplateId),
+      variants
+    ),
+    library
+  );
+  return [...kept, ...made].sort((a, b) => a.day - b.day);
 }
 
 export function overlayDayLibrary(

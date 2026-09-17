@@ -19,7 +19,7 @@ import {
   repsFor,
   suggestFrom,
   LEVEL_SETS,
-  keepTemplates,
+  reconcileWeek,
 } from "./engine";
 import { byId } from "./exercises";
 import type { Equipment, Routine, Session } from "./types";
@@ -795,86 +795,106 @@ describe("the plan she built sets the shape", () => {
   });
 });
 
-describe("keepTemplates", () => {
-  const week = (pairs: [number, string][]) =>
-    pairs.map(([day, template]) => ({
-      day,
-      label: template,
-      template: template as never,
-      exercises: [],
-    }));
-
-  it("carries each day's type across by day of the week", () => {
-    const was = week([[1, "push"], [3, "pull"], [5, "legs"]]);
-    expect(keepTemplates(was, [1, 3, 5])).toEqual(["push", "pull", "legs"]);
-  });
-
-  /*
-    The bug this function exists for. `generateRoutine` takes its templates as a
-    list aligned to the sorted days, so inserting a Tuesday into Mon/Wed/Fri
-    used to shift every index after it: passing ["push","pull","legs"] through
-    unchanged gave Tuesday pull, Wednesday legs and Friday push again. Keyed by
-    day instead, the three existing days keep what they were and only the new
-    one takes a default.
-  */
-  it("holds the existing days when a day is inserted in the middle", () => {
-    const was = week([[1, "push"], [3, "pull"], [5, "legs"]]);
-    expect(keepTemplates(was, [1, 2, 3, 5])).toEqual([
-      "push",
-      "full-body",
-      "pull",
-      "legs",
-    ]);
-  });
-
-  it("holds them when a day is added at either end", () => {
-    const was = week([[1, "push"], [3, "pull"], [5, "legs"]]);
-    expect(keepTemplates(was, [0, 1, 3, 5])).toEqual(["full-body", "push", "pull", "legs"]);
-    expect(keepTemplates(was, [1, 3, 5, 6])).toEqual(["push", "pull", "legs", "full-body"]);
-  });
-
-  it("drops a day that is no longer trained without shifting the rest", () => {
-    const was = week([[1, "push"], [3, "pull"], [5, "legs"]]);
-    expect(keepTemplates(was, [1, 5])).toEqual(["push", "legs"]);
-  });
-
-  it("sorts and de-duplicates the days it is given", () => {
-    const was = week([[5, "legs"], [1, "push"]]);
-    expect(keepTemplates(was, [5, 1, 1])).toEqual(["push", "legs"]);
-  });
-
-  it("defaults every day when there is no week yet", () => {
-    expect(keepTemplates([], [1, 3, 5])).toEqual(["full-body", "full-body", "full-body"]);
-  });
-
-  it("survives a stored routine with no template on it", () => {
-    const was = [{ day: 1, label: "Whatever", exercises: [] }];
-    expect(keepTemplates(was, [1, 3])).toEqual(["full-body", "full-body"]);
-  });
-});
-
-describe("adding a day to a built week", () => {
+describe("reconcileWeek", () => {
   const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
+  const named = () => generateRoutine("new", [1, 3, 5], KIT, [], ["push", "pull", "legs"]);
+  const types = (rs: Routine[]) => rs.map((r) => [r.day, r.template]);
+
+  it("keeps every day still trained exactly as it was", () => {
+    const week = named();
+    const out = reconcileWeek(week, [1, 3, 5], "new", KIT);
+    expect(out).toEqual(week);
+  });
 
   /*
-    End to end through the engine, the way page.tsx runs it: a named week, one
-    day added in the middle, and the week that comes back out. Before
-    `keepTemplates` this call passed no templates at all, so all four days came
-    back "full-body" and three days of Push/Pull/Legs were gone.
+    The reported bug. Adding a Tuesday to Push/Pull/Legs used to rebuild the
+    week with no day types at all, so all four days came back full-body and the
+    three named days were gone.
   */
-  it("keeps the named days and gives only the new day a default", () => {
-    const first = generateRoutine("new", [1, 3, 5], KIT, [], ["push", "pull", "legs"]);
-    expect(first.map((r) => r.template)).toEqual(["push", "pull", "legs"]);
-
-    const days = [1, 2, 3, 5];
-    const next = generateRoutine("new", days, KIT, [], keepTemplates(first, days));
-    expect(next.map((r) => [r.day, r.template])).toEqual([
+  it("gives only the inserted day a default and leaves the rest alone", () => {
+    const week = named();
+    const out = reconcileWeek(week, [1, 2, 3, 5], "new", KIT);
+    expect(types(out)).toEqual([
       [1, "push"],
       [2, "full-body"],
       [3, "pull"],
       [5, "legs"],
     ]);
+    // Not just the types: the kept days are the same objects, lifts and all.
+    expect(out.filter((r) => r.day !== 2)).toEqual(week);
   });
+
+  it("holds when a day is added at either end", () => {
+    const week = named();
+    expect(types(reconcileWeek(week, [0, 1, 3, 5], "new", KIT))).toEqual([
+      [0, "full-body"], [1, "push"], [3, "pull"], [5, "legs"],
+    ]);
+    expect(types(reconcileWeek(week, [1, 3, 5, 6], "new", KIT))).toEqual([
+      [1, "push"], [3, "pull"], [5, "legs"], [6, "full-body"],
+    ]);
+  });
+
+  it("drops a day no longer trained without touching the rest", () => {
+    const week = named();
+    const out = reconcileWeek(week, [1, 5], "new", KIT);
+    expect(out).toEqual(week.filter((r) => r.day !== 3));
+  });
+
+  it("sorts and de-duplicates the days it is given", () => {
+    const week = named();
+    expect(types(reconcileWeek(week, [5, 1, 1], "new", KIT))).toEqual([[1, "push"], [5, "legs"]]);
+  });
+
+  it("builds a whole week from nothing", () => {
+    expect(types(reconcileWeek([], [1, 3, 5], "new", KIT))).toEqual([
+      [1, "full-body"], [3, "full-body"], [5, "full-body"],
+    ]);
+  });
+
+  /*
+    The quieter half of the same bug. With the day types carried across, a
+    full-body week still had its A/B variant assigned by position, so inserting
+    a Tuesday turned a "Full body B" Wednesday into "Full body A" with different
+    lifts. Wednesday is untouched now, and the new Tuesday takes the variant its
+    nearest neighbour does not have, so the week still alternates.
+  */
+  it("does not change a full-body day's variant or lifts when a day is inserted", () => {
+    const week = generateRoutine("new", [1, 3, 5], KIT, [], ["full-body", "full-body", "full-body"]);
+    expect(week.map((r) => r.label)).toEqual(["Full body A", "Full body B", "Full body A"]);
+    const out = reconcileWeek(week, [1, 2, 3, 5], "new", KIT);
+    const wed = out.find((r) => r.day === 3)!;
+    expect(wed).toEqual(week[1]);
+    expect(out.map((r) => r.label)).toEqual([
+      "Full body A",
+      "Full body B", // opposite of Monday, its nearest kept neighbour
+      "Full body B",
+      "Full body A",
+    ]);
+  });
+
+  it("alternates a new day against its nearest kept full-body neighbour", () => {
+    const week = generateRoutine("new", [1, 5], KIT, [], ["full-body", "full-body"]);
+    // Mon A, Fri B. A new Thursday sits next to Friday and takes A.
+    expect(reconcileWeek(week, [1, 4, 5], "new", KIT).map((r) => r.label)).toEqual([
+      "Full body A", "Full body A", "Full body B",
+    ]);
+  });
+
+  it("applies a saved shape to a new day of that type, and only to it", () => {
+    const week = named();
+    const library = { push: [{ exerciseId: "bench-press", sets: 5, reps: 5, weight: 135 }] };
+    // Nothing new is a push day, so the library changes nothing.
+    expect(reconcileWeek(week, [1, 2, 3, 5], "new", KIT, [], library).find((r) => r.day === 1)).toEqual(week[0]);
+  });
+
+  it("survives a stored routine with no template on it", () => {
+    const week: Routine[] = [{ day: 1, label: "Whatever", exercises: [] }];
+    expect(types(reconcileWeek(week, [1, 3], "new", KIT))).toEqual([[1, undefined], [3, "full-body"]]);
+  });
+});
+
+describe("adding a day to a built week", () => {
+  const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
 
   it("lets the new day be set to cardio without disturbing the others", () => {
     const days = [1, 2, 3, 5];
@@ -884,13 +904,11 @@ describe("adding a day to a built week", () => {
       r.day === 2 ? generateRoutine("new", [2], KIT, [], ["cardio"])[0] : r
     );
     expect(picked.map((r) => [r.day, r.template])).toEqual([
-      [1, "push"],
-      [2, "cardio"],
-      [3, "pull"],
-      [5, "legs"],
+      [1, "push"], [2, "cardio"], [3, "pull"], [5, "legs"],
     ]);
     // And it survives the next schedule edit, which is where it used to die.
-    const after = generateRoutine("new", days, KIT, [], keepTemplates(picked, days));
-    expect(after.map((r) => r.template)).toEqual(["push", "cardio", "pull", "legs"]);
+    const after = reconcileWeek(picked, [1, 2, 3, 5, 6], "new", KIT);
+    expect(after.map((r) => r.template)).toEqual(["push", "cardio", "pull", "legs", "full-body"]);
+    expect(after.find((r) => r.day === 2)).toEqual(picked[1]);
   });
 });

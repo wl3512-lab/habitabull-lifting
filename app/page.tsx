@@ -27,9 +27,8 @@ import {
   buildSession,
   rememberLineup,
   mergeDayLibrary,
-  overlayDayLibrary,
   generateRoutine,
-  keepTemplates,
+  reconcileWeek,
   mergeRebuild,
   personalRecord,
   rebuildDay,
@@ -459,25 +458,22 @@ export default function Page() {
           /*
             A changed week means changed routines; sessions already logged stay.
 
-            `keepTemplates` carries the day types across by day of the week.
-            Without it this call passed no templates at all, so every day fell
-            back to the default and adding a single day to an existing week
-            turned Push/Pull/Legs into four identical full-body days. The day
-            library then could not save it either: it is keyed by template, and
-            the templates it had entries for were exactly the ones that had just
-            been thrown away.
+            `reconcileWeek` keeps every day she still trains exactly as it was
+            and generates only the new ones. This call used to rebuild the
+            whole week with no day types at all, so adding a single day turned
+            Push/Pull/Legs into four identical full-body days, and even with
+            the types carried across, the full-body variant was positional, so
+            the same edit still changed which lifts Wednesday had.
           */
           setState((s) => ({
             ...s,
             profile: p,
-            routines: overlayDayLibrary(
-              generateRoutine(
-                p.level,
-                p.trainingDays,
-                p.equipment,
-                p.favourites ?? [],
-                keepTemplates(s.routines, p.trainingDays)
-              ),
+            routines: reconcileWeek(
+              s.routines,
+              p.trainingDays,
+              p.level,
+              p.equipment,
+              p.favourites ?? [],
               s.dayLibrary
             ),
           }));
