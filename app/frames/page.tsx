@@ -493,6 +493,15 @@ function gallery(challenge: Challenge) {
                 onChallenge={f.noop}
               />
             </Frame>
+            <Frame n="10h" name="Crew · no signal" tab="crew" note="He was hidden at exactly this moment, which is the one where somebody most needs telling that the app failed and not them. A failed fetch and a quiet day used to arrive as the same nothing.">
+              <Crew
+                profile={f.profile}
+                sessions={f.sessions}
+                challenge={{ month: new Date().toISOString().slice(0, 7), target: 12 }}
+                unreachablePreview
+                onChallenge={f.noop}
+              />
+            </Frame>
             <Frame n="10d" name="Crew · what they posted" tab="crew" note="A photo used to be reachable only by opening the exact calendar day it was taken on — you had to guess when somebody trained in order to find out that they did. Photo, name, and their own words: a caption here is the note written after the session, not a line composed for an audience.">
               <Crew
                 profile={f.profile}

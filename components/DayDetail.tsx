@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Bull, { BULL } from "./Bull";
 import CrewPost from "./CrewPost";
 import { Pill } from "./ui";
-import { enabled, fetchDay, sharePhoto, type CrewDay, type CrewPhoto } from "@/lib/cloud";
+import { crewCode, enabled, fetchDay, sharePhoto, type CrewDay, type CrewPhoto } from "@/lib/cloud";
 import { nameOf } from "@/lib/exercises";
 import { listPhotos, photoData, photoUrl, type PhotoMeta } from "@/lib/photos";
 import type { Session } from "@/lib/types";
@@ -73,6 +73,7 @@ export default function DayDetail({
   const [photos, setPhotos] = useState<PhotoMeta[]>([]);
   const [hero, setHero] = useState(0);
   const [crew, setCrew] = useState<CrewDay | null>(crewPreview ?? null);
+  const [crewFailed, setCrewFailed] = useState(false);
   const [open, setOpen] = useState<CrewPhoto | null>(null);
   const [sharing, setSharing] = useState(false);
 
@@ -82,7 +83,13 @@ export default function DayDetail({
 
   const loadCrew = useCallback(() => {
     if (crewPreview || !enabled()) return;
-    fetchDay(date).then(setCrew);
+    // A failed fetch and a quiet day both arrived as "nothing to show", so a
+    // day nobody could load looked exactly like a day nobody trained. Those
+    // are different sentences and only one of them is true.
+    fetchDay(date).then((res) => {
+      setCrew(res);
+      setCrewFailed(res === null);
+    });
   }, [date, crewPreview]);
 
   useEffect(loadCrew, [loadCrew]);
@@ -239,6 +246,22 @@ export default function DayDetail({
         weight, never a rank. This is the whole of what a crew is allowed to
         know about your training, and the schema has no column for more.
       */}
+      {/*
+        The crew could not be asked. Said plainly, because the alternative is
+        this day quietly claiming she trained alone.
+      */}
+      {crewFailed && enabled() && crewCode() && (
+        <section className="mt-2.5 flex flex-col items-center rounded-2xl bg-card p-[18px] text-center">
+          <Bull size={BULL.companion} pose="confused" />
+          <p className="mt-3 text-emphasis leading-snug text-fg">
+            Can&apos;t reach your crew.
+          </p>
+          <p className="mt-1 text-body leading-snug text-dim">
+            Whatever they did on this day is still there. This is the signal, not them.
+          </p>
+        </section>
+      )}
+
       {(alsoTrained.length > 0 || theirs.length > 0) && (
         <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
           <p className="label text-dim">Also trained</p>

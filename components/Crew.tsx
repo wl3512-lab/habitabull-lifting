@@ -57,6 +57,7 @@ export default function Crew({
   onProfile,
   crewPreview,
   feedPreview,
+  unreachablePreview,
   onCopyWorkout,
 }: {
   profile: Profile;
@@ -68,6 +69,8 @@ export default function Crew({
   crewPreview?: { code: string | null; members: CrewMember[] };
   /** Supplied instead of fetched, so /frames can show posts statically. */
   feedPreview?: CrewPhoto[];
+  /** Forces the no-signal state, which otherwise needs a failed fetch to see. */
+  unreachablePreview?: boolean;
   /** Take one of their days into her own week. */
   onCopyWorkout?: (day: SharedDay, from: string) => void;
 }) {
@@ -93,10 +96,12 @@ export default function Crew({
     cleared when she leaves, so a code with no reachable crew behind it means
     the network failed, not that everyone left.
   */
-  const [unreachable, setUnreachable] = useState(false);
+  const [unreachable, setUnreachable] = useState(Boolean(unreachablePreview));
 
   const load = useCallback(() => {
-    if (crewPreview || !enabled()) return;
+    // The no-signal preview has to stop the fetch too, not just seed the flag:
+    // a build with the crew enabled would resolve the request and reset it.
+    if (crewPreview || unreachablePreview || !enabled()) return;
     fetchCrew().then((res) => {
       setUnreachable(res === null && Boolean(crewCode()));
       if (!res) return;
@@ -104,7 +109,7 @@ export default function Crew({
       setRoster(res.members);
     });
     fetchFeed().then((res) => setFeed(res?.photos ?? []));
-  }, [crewPreview]);
+  }, [crewPreview, unreachablePreview]);
 
   useEffect(load, [load]);
 
@@ -227,15 +232,25 @@ export default function Crew({
           see it when you are back up.
         </p>
       )}
-      {/* Somebody is here either way. */}
-      {!unreachable && roster.length <= 1 && (
+      {/*
+        Somebody is here either way, and he is the one who does not know.
+
+        He used to be hidden exactly when the crew could not be reached, which
+        is the moment a person most needs telling that the app is the thing
+        that failed and not them.
+      */}
+      {(unreachable || roster.length <= 1) && (
         <div className="mt-4 flex justify-center">
-          <Bull size={BULL.companion} />
+          <Bull size={BULL.companion} pose={unreachable ? "confused" : undefined} />
         </div>
       )}
-      <p className="mt-1.5 text-emphasis text-dim">
-        No rankings. No weights. Just who turned up.
-      </p>
+      {/* The promise about how the crew works, which is not the thing to say
+          to somebody who cannot reach it. */}
+      {!unreachable && (
+        <p className="mt-1.5 text-emphasis text-dim">
+          No rankings. No weights. Just who turned up.
+        </p>
+      )}
 
       <section className="mt-6 rounded-2xl bg-card p-[18px]">
         <p className="label text-dim">This month</p>

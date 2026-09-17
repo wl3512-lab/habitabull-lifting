@@ -70,6 +70,7 @@ const SHOTS = [
   ["10", "10-crew"],
   ["10b", "10b-crew-joined"],
   ["10c", "10c-crew-join"],
+  ["10h", "10h-crew-no-signal"],
   ["10d", "10d-crew-feed", 620],
   ["10e", "10e-post-opened"],
   ["10f", "10f-friend-opened"],
