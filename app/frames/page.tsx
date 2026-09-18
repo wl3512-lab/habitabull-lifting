@@ -201,7 +201,7 @@ function gallery(challenge: Challenge) {
           </Group>
 
           <Group title="The loop" sub="One action per screen, in the same place every time.">
-            <Frame n="00" name="Opening" note="The half second before the app knows anything, which used to be an empty charcoal rectangle: a page that failed rather than one arriving. It renders in the static HTML, so it is painting while the bundle it exists to cover is still being parsed, and all of its motion is CSS for the same reason. The mark rises and grows the last 8% into place, the name follows it, and at 900ms it starts to breathe. A breath rather than a spinner, because a spinner claims the wait is long enough to be worth watching and this one usually is not.">
+            <Frame n="00b" name="Opening" note="The half second before the app knows anything, which used to be an empty charcoal rectangle: a page that failed rather than one arriving. It renders in the static HTML, so it is painting while the bundle it exists to cover is still being parsed, and all of its motion is CSS for the same reason. The mark rises and grows the last 8% into place, the name follows it, and at 900ms it starts to breathe. A breath rather than a spinner, because a spinner claims the wait is long enough to be worth watching and this one usually is not.">
               <Booting />
             </Frame>
             <Frame n="01a" name="Opening, on a training day" note="The first open of a calendar day, and only the first: someone reopening the app between sets is not here for a greeting. It names the day rather than saying &ldquo;today&rdquo;, arrives from below at 60ms a step, and the bull braces. Every line is an existing pool in voice.ts; no copy was written for this screen.">

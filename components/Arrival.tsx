@@ -118,7 +118,17 @@ export default function Arrival({
   let n = 0;
   const step = () => ({ "--step": n++ }) as React.CSSProperties;
 
-  const enter = resting ? "settle" : "rise";
+  /*
+    The gallery shows screens at rest, not mid-entrance.
+
+    Every block here is staggered, and the classes fill `backwards`, so an
+    element holds `opacity: 0` right up until its delay elapses. A still taken
+    before ~1.4s catches the banked week, the next-training-day line and the
+    skip hint all at zero, which is a picture of a rest day with nothing banked:
+    the opposite of what this screen is for. `preview` already means "no hold,
+    no exit, nothing to miss"; this is the same promise applied to the entrance.
+  */
+  const enter = preview ? "" : resting ? "settle" : "rise";
 
   return (
     <main
@@ -136,11 +146,11 @@ export default function Arrival({
         that is true of every screen ever built. Falls back when the day has no
         name yet, or when the beat is a comeback on an unscheduled day.
       */}
-      <p className={`${enter} stage label text-cyan`} style={step()}>
+      <p className={`${enter} ${preview ? "" : "stage"} label text-cyan`} style={step()}>
         {resting ? "Rest day" : label || "Today"}
       </p>
 
-      <div className={`${enter} stage mt-6`} style={step()}>
+      <div className={`${enter} ${preview ? "" : "stage"} mt-6`} style={step()}>
         <Bull size={BULL.hero} react={!resting} pose={resting ? "rest" : undefined} say={line(mood, seed)} />
       </div>
 
@@ -153,7 +163,7 @@ export default function Arrival({
         failure cannot then spend a second drawing attention to every gap.
       */}
       {resting && banked > 0 && (
-        <div className={`${enter} stage mt-8`} style={step()}>
+        <div className={`${enter} ${preview ? "" : "stage"} mt-8`} style={step()}>
           <ul
             className="flex justify-center gap-2.5"
             style={{ "--lead": "620ms", "--gap": "100ms" } as React.CSSProperties}
@@ -164,7 +174,7 @@ export default function Arrival({
                   aria-hidden
                   style={d.trained ? ({ "--cell": d.index } as React.CSSProperties) : undefined}
                   className={`grid h-7 w-7 place-items-center rounded-full border-2 ${
-                    d.trained ? "cell-in border-done bg-done" : "border-raise"
+                    d.trained ? `${preview ? "" : "cell-in"} border-done bg-done` : "border-raise"
                   }`}
                 />
                 <span className={`text-caption ${d.trained ? "text-fg" : "text-dim"}`}>
@@ -183,12 +193,12 @@ export default function Arrival({
         cannot name one — a shrug is worse than silence.
       */}
       {resting && nextDay && (
-        <p className={`${enter} stage mt-6 text-emphasis text-dim`} style={step()}>
+        <p className={`${enter} ${preview ? "" : "stage"} mt-6 text-emphasis text-dim`} style={step()}>
           Next one&apos;s {nextDay}.
         </p>
       )}
 
-      <p className={`${enter} stage mt-10 text-caption text-dim`} style={step()}>
+      <p className={`${enter} ${preview ? "" : "stage"} mt-10 text-caption text-dim`} style={step()}>
         Tap to skip
       </p>
     </main>

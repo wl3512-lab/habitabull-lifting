@@ -38,6 +38,7 @@ const SHOTS = [
   // [frame id, filename, scroll px]. A screen taller than 844 gets a second
   // still rather than going undocumented below the fold.
   ["00", "00-welcome"],
+  ["00b", "00b-opening"],
   ["02", "02-onboarding-why"],
   ["03", "03-week-setup"],
   ["03b", "03b-import-workout"],
