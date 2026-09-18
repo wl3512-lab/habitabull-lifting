@@ -93,11 +93,14 @@ export default function ExerciseInfo({
       <h1 className="statement mt-2 text-figure text-fg">{ex.name}</h1>
 
       {/* He says it. The bubble is his, not the screen's. He faces it, hoof up,
-          because this is the one screen where he is showing rather than standing. */}
+          because this is the one screen where he is showing rather than standing.
+          He gets the companion size rather than speak: he is doing the work here,
+          so he is bigger than the bubble is loud. The cue steps down to head so
+          the two do not compete. */}
       <div className="mt-5 flex items-end gap-2">
-        <Bull size={BULL.speak} pose="show" className="shrink-0" />
-        <div className="relative flex-1 rounded-2xl rounded-bl-sm bg-cyan px-5 py-4">
-          <p className="aside text-title text-ground">{ex.cue}</p>
+        <Bull size={BULL.companion} pose="show" className="shrink-0" />
+        <div className="relative flex-1 rounded-2xl rounded-bl-sm bg-cyan px-4 py-3">
+          <p className="aside text-head text-ground">{ex.cue}</p>
         </div>
       </div>
 
