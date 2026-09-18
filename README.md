@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <img src="public/og.png" alt="HabitaBull Lifting" width="640">
+</p>
 
-## Getting Started
+# HabitaBull Lifting
 
-First, run the development server:
+A gym habit app for people who keep stopping. It builds you a week you can
+actually keep, tells you what to lift today, and takes one tap per set. The
+argument it makes, everywhere, is that turning up is the job and a gap is not a
+failure.
+
+It is a web app you add to your home screen. There is no account and no sign-up:
+your plan, your history and your photos live in the browser on your phone and
+never leave it, except for the two opt-in features below.
+
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm test` | 517 unit tests (vitest, node environment, no DOM) |
+| `npm run smoke` | End-to-end check against a live crew backend |
+| `npm run shoot` | Re-shoot the screen gallery from `/frames` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Built on Node 24. No database and no services are required to run it: with an
+empty environment the app is fully working, solo and offline.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+Every variable is optional. Copy `.env.example` to `.env.local` and fill in only
+what you want on.
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | What it turns on |
+| --- | --- |
+| `SUPABASE_URL` | The crew backend. Unset, there is no crew UI at all. |
+| `SUPABASE_SERVICE_KEY` | Same. Server-only, read once in `lib/server/db.ts`. It bypasses row-level security, so it must never be prefixed `NEXT_PUBLIC_`. |
+| `NEXT_PUBLIC_CREW_ENABLED` | The one flag the browser sees: whether to show crew UI. |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To turn the crew on, make a Supabase project and run `supabase/schema.sql` in
+its SQL editor.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Stack
 
-## Deploy on Vercel
+Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind v4, vitest.
+Three runtime dependencies: `next`, `react`, `react-dom`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+State is `localStorage` under `habitabull.v1`, with progress photos in
+IndexedDB. A service worker (`public/sw.js`) caches the shell so the app opens
+without a signal, which is the normal case in a basement gym. The document is
+fetched network-first, so an installed app can never get stuck on an old build.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Where things are
+
+| Path | What's in it |
+| --- | --- |
+| `app/` | Routes. `page.tsx` is the whole app: one client component that switches views. |
+| `app/frames/` | Every screen at once, on one page, with no flow to walk through. |
+| `app/api/` | Three routes: the crew backend, the plan parser, and a build-version check. |
+| `components/` | Screens and UI. |
+| `lib/` | All the logic, kept pure and tested without a DOM. `engine.ts` is the plan generator. |
+| `supabase/schema.sql` | The crew tables, if you want them. |
+
+## What leaves the device
+
+Two things, both off by default and both opt-in:
+
+**The crew.** If configured, it publishes which days you trained and photos you
+choose to share. It never carries a weight, a rep or a set. Identity is a
+128-bit random id in `localStorage`, and a device can only ever read its own
+crew, because the crew id comes from a server-side lookup and never from the
+request body.
+
+**The plan parser.** `app/api/generate` relays text you type ("only dumbbells
+today, and my shoulder is tweaked") to a third-party model proxy to turn it into
+a plan. This is the one path where text you typed leaves the phone. It is
+unauthenticated and unthrottled, the model's answer is validated against a fixed
+list before anything is used, and if the proxy is slow or down a local parser
+handles it instead, so the feature degrades rather than breaking.
+
+## Tests
+
+```bash
+npm test
+```
+
+517 tests, all in `lib/` next to what they cover. They run in node with no DOM,
+which is the reason the logic lives in `lib/` and the components stay thin.
