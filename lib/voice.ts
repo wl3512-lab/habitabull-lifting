@@ -24,10 +24,20 @@ const LINES: Record<Mood, string[]> = {
     "Welcome back. We start where we left off.",
     "You came back. That's the whole trick.",
   ],
+  /*
+    Nothing in here may count. "One more set." and "Halfway. Stay with it."
+    were in this pool and picked at random, so both got said with four sets
+    left — the bull stating a fact about her session that was not true, which
+    is the same way `done` said to somebody who stopped after two sets stops a
+    voice being trusted.
+
+    The accurate versions of those lines still exist. They live in `midsetLine`
+    below, which is allowed to count because it is given the number.
+  */
   midset: [
-    "One more set.",
     "Breathe. Then go.",
-    "Halfway. Stay with it.",
+    "Stay with it.",
+    "Next one.",
   ],
   done: [
     "Logged. That's another one on the board.",
@@ -67,6 +77,24 @@ export function line(mood: Mood, seed: number | string = 0): string {
   const pool = LINES[mood];
   const n = typeof seed === "number" ? seed : [...seed].reduce((a, c) => a + c.charCodeAt(0), 0);
   return pool[Math.abs(n) % pool.length];
+}
+
+/**
+ * The line between lifts, which may only claim what it can check.
+ *
+ * It is said on the screen a lift has just been finished on, with more of the
+ * session to go — so what is left to count is lifts, not sets. "One more set."
+ * was in the random pool and landed here, where it was wrong twice over: wrong
+ * number, and wrong unit.
+ *
+ * Counts only while the number is small enough to be encouraging. Past three
+ * it falls back to the pool, because "Four lifts to go" is a workload, not a
+ * word of support.
+ */
+export function midsetLine(liftsLeft: number, seed: number): string {
+  if (liftsLeft === 1) return "One lift left.";
+  if (liftsLeft === 2) return "Two lifts to go.";
+  return line("midset", seed);
 }
 
 /** Which greeting fits, given how long it's been. */

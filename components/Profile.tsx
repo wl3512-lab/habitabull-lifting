@@ -6,7 +6,8 @@ import PlaylistRow from "./PlaylistRow";
 import YourData from "./YourData";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
-import { SHORT_DAYS } from "@/lib/engine";
+import { REST_MAX, REST_MIN, REST_STEP, restSeconds, SHORT_DAYS } from "@/lib/engine";
+import Stepper from "./Stepper";
 import type { AppState, Profile as ProfileT } from "@/lib/types";
 
 /**
@@ -240,6 +241,30 @@ export default function Profile({
           </div>
         </section>
       )}
+
+      {/*
+        Rest was set once at signup and then unreachable forever, which is half
+        of why the old pace setting felt broken: somebody who disagreed with it
+        had nowhere to go. It belongs here rather than on the timer — it is a
+        setting, not a per-set decision — and the timer already lets you skip.
+      */}
+      <section className="mt-8">
+        <p className="label text-dim">Rest between sets</p>
+        <Card className="mt-3 p-[18px]">
+          <Stepper
+            label="Rest"
+            value={restSeconds(profile)}
+            step={REST_STEP}
+            min={REST_MIN}
+            max={REST_MAX}
+            suffix="sec"
+            onChange={(sec) => onProfile({ ...profile, restSec: sec })}
+          />
+          <p className="mt-3 text-body text-dim">
+            The same on every lift. Take longer when you need it — nothing here counts it against you.
+          </p>
+        </Card>
+      </section>
 
       {/* Music on the way in, and the data underneath all of it. */}
       <section className="mt-8">

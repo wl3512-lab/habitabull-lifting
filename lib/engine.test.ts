@@ -320,16 +320,30 @@ describe("streakWeeks", () => {
 });
 
 describe("restSeconds", () => {
-  it("gives compounds the longest rest", () => {
-    expect(restSeconds("back-squat")).toBe(120);
+  it("is the number she set, whatever the lift", () => {
+    // The bug this replaced: one setting, three different rests, because the
+    // number was multiplied by whether the lift was a compound.
+    expect(restSeconds({ restSec: 60 })).toBe(60);
   });
 
-  it("gives timed holds the shortest", () => {
-    expect(restSeconds("plank")).toBe(60);
+  it("reads the old pace setting when there is no number", () => {
+    // Every device that installed before this stores a pref and nothing else.
+    expect(restSeconds({ restPref: "short" })).toBe(60);
+    expect(restSeconds({ restPref: "standard" })).toBe(90);
+    expect(restSeconds({ restPref: "long" })).toBe(150);
   });
 
-  it("falls back for an unknown exercise rather than throwing", () => {
-    expect(restSeconds("not-a-real-lift")).toBe(90);
+  it("defaults rather than returning undefined for an empty profile", () => {
+    expect(restSeconds({})).toBe(90);
+  });
+
+  it("clamps a stored number that is out of range", () => {
+    expect(restSeconds({ restSec: 5 })).toBe(15);
+    expect(restSeconds({ restSec: 9999 })).toBe(300);
+  });
+
+  it("prefers the number over a stale pace", () => {
+    expect(restSeconds({ restSec: 45, restPref: "long" })).toBe(45);
   });
 });
 

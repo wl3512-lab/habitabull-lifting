@@ -4,7 +4,8 @@ import { useState } from "react";
 import Bull, { BULL } from "./Bull";
 import { Pill } from "./ui";
 import { placeDays } from "@/lib/schedule";
-import type { Equipment, Profile, RestPref } from "@/lib/types";
+import { REST_DEFAULT } from "@/lib/engine";
+import type { Equipment, Profile } from "@/lib/types";
 
 /**
  * Every one of these is intrinsic — a reason that is its own payoff. That is
@@ -38,10 +39,18 @@ const REASONS = [
  * and three non-consecutive days. All three correct themselves from what
  * actually gets logged.
  */
-const REST_OPTIONS: { id: RestPref; label: string; hint: string }[] = [
-  { id: "short", label: "Short", hint: "About a minute. Keeps the pace up." },
-  { id: "standard", label: "Standard", hint: "A minute and a half. Right for most lifts." },
-  { id: "long", label: "Long", hint: "Two to three minutes. For heavy strength work." },
+/**
+ * Seconds, and the words are a description of the number rather than a promise
+ * the app then breaks.
+ *
+ * These used to be paces — short, standard, long — that multiplied a per-lift
+ * base, so "About a minute" delivered 1:20 on a squat. Whatever is chosen here
+ * is now exactly what the timer counts, on every lift.
+ */
+const REST_OPTIONS: { sec: number; label: string; hint: string }[] = [
+  { sec: 60, label: "1 minute", hint: "Keeps the pace up. Good for lighter work." },
+  { sec: 90, label: "1 minute 30", hint: "Right for most lifts." },
+  { sec: 150, label: "2 minutes 30", hint: "For heavy strength work." },
 ];
 
 export default function Onboarding({
@@ -55,7 +64,7 @@ export default function Onboarding({
   const [step, setStep] = useState(initialStep);
   const [name, setName] = useState("");
   const [motivation, setMotivation] = useState("");
-  const [restPref, setRestPref] = useState<RestPref>("standard");
+  const [restSec, setRestSec] = useState<number>(REST_DEFAULT);
   const [showRestInfo, setShowRestInfo] = useState(false);
 
   const finish = () =>
@@ -66,7 +75,7 @@ export default function Onboarding({
       trainingDays: placeDays(3, new Date().getDay()),
       equipment: ["barbell", "dumbbell", "machine", "bodyweight"] as Equipment[],
       motivation: motivation.trim() || undefined,
-      restPref,
+      restSec,
       createdAt: new Date().toISOString(),
     });
 
@@ -147,11 +156,11 @@ export default function Onboarding({
         <div className="mt-7 flex flex-col gap-2.5">
           {REST_OPTIONS.map((o) => (
             <button
-              key={o.id}
+              key={o.sec}
               type="button"
-              onClick={() => setRestPref(o.id)}
+              onClick={() => setRestSec(o.sec)}
               className={`rounded-2xl border p-[18px] text-left transition-colors duration-quick ${
-                restPref === o.id ? "border-cyan bg-cyan/10" : "border-line-strong hover:border-fg"
+                restSec === o.sec ? "border-cyan bg-cyan/10" : "border-line-strong hover:border-fg"
               }`}
             >
               <span className="head block text-emphasis text-fg">{o.label}</span>

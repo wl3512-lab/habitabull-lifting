@@ -246,6 +246,19 @@ function gallery(challenge: Challenge) {
                 onExercise={f.noop}
               />
             </Frame>
+            <Frame n="04e" name="Jump to" note="The session, in any order — and the two things you actually want when you open it. Swapping belongs here because here is where you find out the rack is taken; it disappears once a set is logged against a lift, since that set is a fact and swapping would either bin it or file it under a lift she did not do. Adding was reachable only after the last set of the last lift, so deciding mid-session to do one more thing meant finishing everything else first.">
+              <LogSession
+                session={f.draft}
+                history={f.sessions}
+                profile={f.profile}
+                onChange={f.noop}
+                onAddCustom={f.noop}
+                onFinish={f.noop}
+                onExit={f.noop}
+                onExercise={f.noop}
+                initialPicking
+              />
+            </Frame>
             <Frame n="04b" name="Set logged" note="The beat between tapping Log set and the rest timer. Not a loading page — the set is already written; this is the acknowledgement for a moment about to be spent resting anyway. ~650ms, tap to skip, and nothing at all under reduced motion.">
               <SetLogged summary="145 lb × 6" best={false} resting onSkip={f.noop} />
             </Frame>

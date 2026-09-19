@@ -563,24 +563,45 @@ export const dayLabel = (d: number) => DAY_LABELS[d];
 export const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /**
+ * What the three old pace words are worth in seconds.
+ *
+ * Only ever read for a profile saved before rest was a number. The values are
+ * the middle of what each pace used to produce, so nobody's rest changes
+ * noticeably on the update: short ran 40-80, standard 60-120, long 90-180.
+ */
+const PREF_SECONDS: Record<RestPref, number> = { short: 60, standard: 90, long: 150 };
+
+/** The presets offered at signup and in the profile. Any number is allowed. */
+export const REST_CHOICES = [45, 60, 90, 120, 180] as const;
+
+/** The default before anyone has chosen, and the middle of the ramp. */
+export const REST_DEFAULT = 90;
+
+/** The shortest and longest the stepper will go, and its step. */
+export const REST_MIN = 15;
+export const REST_MAX = 300;
+export const REST_STEP = 15;
+
+/**
  * How long to rest after a set.
  *
  * p22's fifth finding is that beginners struggle "without enough instruction on
- * pacing, rest periods, or modifications" — so the app should have an opinion
- * rather than leave someone guessing between sets. Compounds move more weight
- * and need longer; timed holds need least.
+ * pacing, rest periods, or modifications", so the app still has an opinion —
+ * it is the default, and it is 90 seconds.
+ *
+ * It no longer has an opinion per lift. Scaling the number by whether the lift
+ * was a compound was defensible and invisible: the setting says a duration, so
+ * the duration is what it has to be. Somebody who wants longer on squats than
+ * on curls can change it, which is now possible from the profile rather than
+ * only at signup.
  *
  * It is guidance, not a deadline. Nothing in the app penalises overrunning it.
  */
-export function restSeconds(exerciseId: string, pref: RestPref = "standard"): number {
-  const ex = byId(exerciseId);
-  // Base rest by the kind of lift: a heavy compound needs more than an
-  // isolation, a timed hold least of all.
-  const base = !ex ? 90 : ex.increment === 0 ? 60 : ex.compound ? 120 : 90;
-  // The signup preference shifts all of it up or down together. It is a pace,
-  // not a precise number — someone picks what fits and changes it any time.
-  const mult = pref === "short" ? 0.66 : pref === "long" ? 1.5 : 1;
-  return Math.round((base * mult) / 5) * 5;
+export function restSeconds(profile: { restSec?: number; restPref?: RestPref }): number {
+  if (typeof profile.restSec === "number" && Number.isFinite(profile.restSec)) {
+    return Math.min(REST_MAX, Math.max(REST_MIN, Math.round(profile.restSec)));
+  }
+  return PREF_SECONDS[profile.restPref ?? "standard"];
 }
 
 /**

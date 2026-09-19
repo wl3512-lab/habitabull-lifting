@@ -173,7 +173,23 @@ export interface Profile {
   playlistId?: string;
   /** What to call it on screen. Free text — we cannot read their library. */
   playlistName?: string;
-  /** How long to rest between sets, chosen at signup. Scales restSeconds. */
+  /**
+   * How long to rest between sets, in seconds. One number, every lift.
+   *
+   * It used to be a pace — short/standard/long — that multiplied a per-lift
+   * base, so "Short: about a minute" meant 40s on a plank, 60s on a curl and
+   * 80s on a squat. The reasoning was sound and the screen did not carry it:
+   * the setting reads as choosing a duration, so a tester who chose one minute
+   * and got 1:20 was right to call it a bug. The app has an opinion about the
+   * default and no opinion at all once she has set it.
+   */
+  restSec?: number;
+  /**
+   * The old pace setting. Kept, never written, and read only when `restSec` is
+   * absent: every device that installed before this stores one of these and
+   * localStorage is the only copy there is. Deleting it would silently reset
+   * those people to the default.
+   */
   restPref?: RestPref;
   createdAt: string;
 }

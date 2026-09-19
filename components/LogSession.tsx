@@ -11,7 +11,7 @@ import { EQUIPMENT, MUSCLES } from "@/lib/constraints";
 import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight } from "@/lib/engine";
 import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
-import { line } from "@/lib/voice";
+import { line, midsetLine } from "@/lib/voice";
 import type { Equipment, Exercise, LoggedSet, Muscle, Profile, Session } from "@/lib/types";
 import { count } from "@/lib/plural";
 
@@ -22,17 +22,35 @@ import { count } from "@/lib/plural";
  * orange button in the same place it is on every other screen.
  */
 
-/** The most recent completed attempt at this lift, phrased for the cue line. */
-function lastAttempt(history: Session[], exerciseId: string, increment: number) {
+/**
+ * The top set of the most recent session that logged this lift.
+ *
+ * Ranked by weight first and reps only to break a tie, which is how a lifter
+ * reads their own history: 135 x 5 is the better set than 95 x 10 and the old
+ * ranking said otherwise, because it compared weight x reps and 950 beats 675.
+ *
+ * The same multiply made this useless for every lift with no weight on it.
+ * Push-ups, planks and cardio all store weight 0, so every product was 0, the
+ * comparison was never true, and `reduce` returned whichever set happened to
+ * be first — not the best one, not the last one. "Last time: 20 sec" under a
+ * plank somebody held for a minute is the bug that got reported.
+ */
+export function lastAttempt(history: Session[], exerciseId: string, increment: number) {
   const prior = history
     .filter((s) => s.completedAt)
     .sort((a, b) => b.date.localeCompare(a.date));
+  const meta = byId(exerciseId);
   for (const s of prior) {
     const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
     const sets = ex?.sets.filter((x) => x.done) ?? [];
     if (sets.length === 0) continue;
-    const best = sets.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
-    return byId(exerciseId)?.cardio ? `${best.reps} min` : byId(exerciseId)?.hold ? `${best.reps} sec` : increment === 0 ? count(best.reps, "rep") : `${best.weight} lb × ${best.reps}`;
+    const best = sets.reduce((a, b) =>
+      b.weight !== a.weight ? (b.weight > a.weight ? b : a) : b.reps > a.reps ? b : a
+    );
+    if (meta?.cardio) return `${best.reps} min`;
+    if (meta?.hold) return `${best.reps} sec`;
+    if (increment === 0) return count(best.reps, "rep");
+    return `${best.weight} lb × ${best.reps}`;
   }
   return undefined;
 }
@@ -46,6 +64,7 @@ export default function LogSession({
   onFinish,
   onExit,
   onExercise,
+  initialPicking = false,
 }: {
   session: Session;
   history: Session[];
@@ -56,17 +75,33 @@ export default function LogSession({
   onFinish: () => void;
   onExit: () => void;
   onExercise: (id: string) => void;
+  /**
+   * The frame gallery opens straight onto the jump list, the same way it opens
+   * Onboarding onto its second screen. It is a real screen with real decisions
+   * on it and it was the only one in the session flow going undocumented.
+   */
+  initialPicking?: boolean;
 }) {
   // The lift picker for adding to a session mid-way. Null unless open; the
   // chosen muscle narrows the list the same way the routine editor does.
   const [addingMuscle, setAddingMuscle] = useState<Muscle | "cardio" | null>(null);
   const [adding, setAdding] = useState(false);
+  /*
+    How many sets the lift being added gets. Seeded from the level the same way
+    the planned day is, so the default is unchanged — the difference is only
+    that it is now a default rather than the whole decision. It defaulted to
+    three and there was no control anywhere in the app to make it anything
+    else, including after the fact.
+  */
+  const [addSets, setAddSets] = useState(LEVEL_SETS[profile.level]);
   // The "not seeing it?" fallback: name a lift the library is missing.
   const [ownOpen, setOwnOpen] = useState(false);
   const [ownName, setOwnName] = useState("");
   const [ownEquip, setOwnEquip] = useState<Equipment>("machine");
   // The exercise jump list — pick which lift to do next, any time.
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState(initialPicking);
+  /** Which row in the jump list has its swap options open. */
+  const [swapping, setSwapping] = useState<string | null>(null);
   const [rest, setRest] = useState<{
     seconds: number;
     exerciseId: string;
@@ -187,7 +222,7 @@ export default function LogSession({
       advance = () => {
         if (lastOfExercise) setIndex(index + 1);
         setRest({
-          seconds: restSeconds(exercise.exerciseId, profile.restPref),
+          seconds: restSeconds(profile),
           exerciseId: upcoming.exerciseId,
           weight: lastOfExercise ? nextSet.weight : sets[i].weight,
           reps: nextSet.reps,
@@ -228,9 +263,11 @@ export default function LogSession({
   // today's session": you already trained, and you are doing a little more.
   function addLift(exerciseId: string) {
     const m = byId(exerciseId);
+    // Cardio is one block of time rather than sets, so the count does not
+    // apply to it and the chooser is hidden for it.
     const sets: LoggedSet[] = m?.cardio
       ? [{ weight: 0, reps: 20, done: false }]
-      : Array.from({ length: LEVEL_SETS[profile.level] }, () => ({
+      : Array.from({ length: Math.max(1, addSets) }, () => ({
           weight: m ? startingWeight(m, profile.level) : 0,
           reps: m ? repsFor(m, profile.level) : 8,
           done: false,
@@ -240,6 +277,55 @@ export default function LogSession({
     setIndex(exercises.length - 1);
     setAdding(false);
     setAddingMuscle(null);
+    setAddSets(LEVEL_SETS[profile.level]);
+  }
+
+  /*
+    Swap a lift for one that trains the same thing, from the jump list.
+
+    The same rules the week builder uses: cardio swaps for cardio, everything
+    else is filed by muscle, and the weight resets rather than carrying a
+    barbell load onto a dumbbell movement. A lift with a logged set in it is
+    not offered — that set is a fact, and swapping the lift out from under it
+    would either delete it or misattribute it.
+  */
+  function swapLift(from: string, to: string) {
+    const meta = byId(to);
+    const exercises = session.exercises.map((e) =>
+      e.exerciseId === from
+        ? {
+            ...e,
+            exerciseId: to,
+            sets: e.sets.map((s) => ({
+              ...s,
+              weight: meta ? startingWeight(meta, profile.level) : 0,
+            })),
+          }
+        : e
+    );
+    onChange({ ...session, exercises });
+    setSwapping(null);
+  }
+
+  /*
+    Add or drop a set on the lift in front of her.
+    
+    There was no way to do either, so a lift was however many sets it was
+    created with, forever. Dropping only ever removes from the end and never
+    removes a set that has been logged: the count is a plan, and a set that
+    happened is a fact.
+  */
+  function addSet() {
+    if (!exercise) return;
+    const last = exercise.sets[exercise.sets.length - 1];
+    writeSets([...exercise.sets, { weight: last?.weight ?? 0, reps: last?.reps ?? 8, done: false }]);
+  }
+
+  function dropSet() {
+    if (!exercise) return;
+    const sets = exercise.sets;
+    if (sets.length <= 1 || sets[sets.length - 1].done) return;
+    writeSets(sets.slice(0, -1));
   }
 
   // The fallback for a machine or lift the library does not have: name it, file
@@ -304,6 +390,32 @@ export default function LogSession({
             Cancel
           </button>
         </div>
+        {/*
+          Sets first, because it applies to whatever gets picked below and
+          reading it after the tap that already added the lift would be too
+          late. Hidden for cardio, which is one block of time.
+        */}
+        {addingMuscle !== "cardio" && (
+          <>
+            <p className="label mt-6 text-dim">Sets</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setAddSets(n)}
+                  aria-pressed={addSets === n}
+                  className={`tabular min-w-11 rounded-full px-4 py-2 text-caption transition-colors ${
+                    addSets === n ? "bg-cyan text-ground" : "bg-raise text-fg"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
         <p className="label mt-6 text-dim">Muscle</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {MUSCLES.map((mu) => (
@@ -415,26 +527,112 @@ export default function LogSession({
             const doneN = e.sets.filter((x) => x.done).length;
             const total = e.sets.length;
             const complete = doneN === total;
+            const started = doneN > 0;
+            const meta = byId(e.exerciseId);
+            const used = session.exercises.map((x) => x.exerciseId);
+            const alts = !meta
+              ? []
+              : meta.cardio
+                ? cardioLifts(used)
+                : alternativesFor(meta.primary, profile.equipment, used);
+            const open = swapping === e.exerciseId;
             return (
-              <button
+              <div
                 key={i}
-                type="button"
-                onClick={() => {
-                  setIndex(i);
-                  setPicking(false);
-                }}
-                className={`flex items-center justify-between gap-3 rounded-2xl p-[18px] text-left transition-colors ${
-                  i === index ? "bg-raise" : "bg-card hover:bg-raise"
+                className={`rounded-2xl transition-colors ${
+                  i === index ? "bg-raise" : "bg-card"
                 }`}
               >
-                <span className="head text-emphasis text-fg">{nameOf(e.exerciseId)}</span>
-                <span className={`tabular text-body ${complete ? "text-done" : "text-dim"}`}>
-                  {complete ? "done" : `${doneN} of ${total}`}
-                </span>
-              </button>
+                <div className="flex items-stretch">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIndex(i);
+                      setPicking(false);
+                    }}
+                    className="flex flex-1 items-center justify-between gap-3 p-[18px] text-left"
+                  >
+                    <span className="flex items-center gap-2">
+                      {/*
+                        Where she is, said with a mark rather than only a
+                        slightly lighter card — the old list distinguished the
+                        current lift by a background step most people would not
+                        notice standing up in a gym.
+                      */}
+                      {i === index && (
+                        <span aria-hidden className="text-body text-cyan">
+                          ▸
+                        </span>
+                      )}
+                      <span className="head text-emphasis text-fg">{nameOf(e.exerciseId)}</span>
+                    </span>
+                    <span className={`tabular text-body ${complete ? "text-done" : "text-dim"}`}>
+                      {complete ? "done" : `${doneN} of ${total}`}
+                    </span>
+                  </button>
+                  {/*
+                    Swapping belongs here because here is where you find out
+                    the rack is taken. Hidden once a set is logged against the
+                    lift: that set happened, and swapping would either bin it
+                    or file it under a lift she did not do.
+                  */}
+                  {!started && alts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSwapping(open ? null : e.exerciseId)}
+                      aria-expanded={open}
+                      aria-label={`Swap ${nameOf(e.exerciseId)} for another lift`}
+                      className="head grid w-16 shrink-0 place-items-center text-body text-cyan transition-opacity hover:opacity-70"
+                    >
+                      Swap
+                    </button>
+                  )}
+                </div>
+                {open && (
+                  <div className="flex flex-col gap-1.5 px-[18px] pb-[18px]">
+                    {/*
+                      Every muscle name in the set is plural or a mass noun —
+                      quads, hamstrings, chest, core — so "Other {muscle} lifts"
+                      is ungrammatical for most of them. This phrasing reads
+                      correctly for all nine and says the thing that matters:
+                      why this substitution is a fair one.
+                    */}
+                    <p className="label text-dim">
+                      {meta?.cardio ? "Other cardio" : `Also trains ${meta?.primary}`}
+                    </p>
+                    {alts.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => swapLift(e.exerciseId, a.id)}
+                        className="rounded-xl bg-ground p-3 text-left text-body text-fg transition-opacity hover:opacity-80"
+                      >
+                        {a.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
+
+        {/*
+          Adding was reachable only from the screen you get to after the last
+          set of the last lift, so deciding mid-session to do one more thing
+          meant finishing everything else first. The jump list is already the
+          place you go to change what you are doing.
+        */}
+        <button
+          type="button"
+          onClick={() => {
+            setPicking(false);
+            setAdding(true);
+          }}
+          className="head mt-2.5 w-full rounded-2xl border border-dashed border-line-strong p-[18px] text-center text-emphasis text-cyan transition-colors hover:border-cyan"
+        >
+          + Add a lift
+        </button>
       </main>
     );
   }
@@ -480,28 +678,26 @@ export default function LogSession({
               </button>
             )}
             {/*
-              Jumping to another lift was an 11px eyebrow with a chevron after
-              it, which reads as a label that happens to be tappable rather
-              than a control. Somebody who does their accessories out of order,
-              or whose machine is taken, has to guess that the line counting
-              the exercises is also the way to change them.
+              Jumping to another lift was an 11px eyebrow, which read as a
+              label that happened to be tappable. Making it a pill fixed that
+              and overcorrected: "3 of 5 · Jump to ▾" is four elements and most
+              of the header width for a control used a few times a session,
+              sitting level with the lift's own name.
 
-              It is a pill now, the same 44px-floor shape as everything else
-              pressable in the app, on `raise` so it sits above the ground the
-              way controls do. It still says which exercise this is, because
-              that was the other job it was doing.
+              The count is the label, which is what it was in the first place,
+              and the word is dropped — the chevron already says it opens
+              something and the sheet says its own name when it does. Still a
+              44px target, still on `raise`, a third of the width.
             */}
             <button
               type="button"
               onClick={() => setPicking(true)}
-              className="head tap flex h-11 items-center gap-2 rounded-full border border-line-strong bg-raise px-4 text-body text-cyan transition-colors hover:bg-line active:bg-line"
-              aria-label={`Exercise ${index + 1} of ${session.exercises.length}. Tap to jump to another lift.`}
+              className="head tap flex h-11 items-center gap-1.5 rounded-full border border-line-strong bg-raise px-3 text-caption text-cyan transition-colors hover:bg-line active:bg-line"
+              aria-label={`Exercise ${index + 1} of ${session.exercises.length}. Tap to jump to another lift, add one, or swap this one.`}
             >
               <span className="tabular">
-                {index + 1} of {session.exercises.length}
+                {index + 1}/{session.exercises.length}
               </span>
-              <span aria-hidden className="text-dim">·</span>
-              <span>Jump to</span>
               <span aria-hidden className="text-[10px]">▾</span>
             </button>
           </div>
@@ -578,7 +774,22 @@ export default function LogSession({
           />
         ) : (
           <div className="rise flex flex-col items-center pt-4">
-            <Bull size={BULL.speak} react say={line(allDone ? "done" : "midset", doneSets)} />
+            {/*
+              The lift is finished and the session is not, so what is left to
+              say something true about is the lifts after this one.
+            */}
+            <Bull
+              size={BULL.speak}
+              react
+              say={
+                allDone
+                  ? line("done", doneSets)
+                  : midsetLine(
+                      session.exercises.filter((e) => e.sets.some((s) => !s.done)).length,
+                      doneSets
+                    )
+              }
+            />
           </div>
         )}
       </div>
@@ -615,6 +826,36 @@ export default function LogSession({
                 ? "Last set of the session."
                 : "Rest as long as you need. Nothing is counting."}
             </p>
+            {/*
+              Changing your mind about the count, mid-lift. Deliberately quiet
+              and deliberately not a stepper: it sits under the primary action
+              in the thumb's path, and two 56px steppers there would compete
+              with the one orange button this screen is built around.
+            */}
+            {!isCardio && (
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={dropSet}
+                  disabled={exercise.sets.length <= 1 || exercise.sets[exercise.sets.length - 1].done}
+                  aria-label="Remove the last set from this lift"
+                  className="head tap text-body text-dim transition-colors hover:text-fg disabled:opacity-40"
+                >
+                  − Set
+                </button>
+                <span aria-hidden className="text-body text-dim">
+                  ·
+                </span>
+                <button
+                  type="button"
+                  onClick={addSet}
+                  aria-label="Add a set to this lift"
+                  className="head tap text-body text-cyan transition-opacity hover:opacity-70"
+                >
+                  + Set
+                </button>
+              </div>
+            )}
           </>
         ) : isLastExercise ? (
           <>
