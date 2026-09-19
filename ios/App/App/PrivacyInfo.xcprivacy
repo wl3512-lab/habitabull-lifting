@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Required since spring 2024; a missing or incomplete manifest is the
+    ITMS-91053 rejection. Declared for the shell as it stands: a WKWebView and
+    nothing else. Every entry below has to be revisited when a plugin is added,
+    because the plugin's own API use lands in this file, not its own.
+  -->
+  <key>NSPrivacyTracking</key>
+  <false/>
+  <key>NSPrivacyTrackingDomains</key>
+  <array/>
+
+  <!--
+    Nothing leaves the device to us. The workout history, the photos, the
+    reason she wrote down: all localStorage, which in a WKWebView is app
+    storage. The crew endpoints exchange a device id and a day count and the
+    schema has no column for a weight, so there is no linked-to-identity data
+    to declare here.
+  -->
+  <key>NSPrivacyCollectedDataTypes</key>
+  <array/>
+
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <dict>
+      <!-- Capacitor's bridge reads and writes UserDefaults for its own config. -->
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>
