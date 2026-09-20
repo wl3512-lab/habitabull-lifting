@@ -94,8 +94,18 @@ function rememberCrew(code: string | null) {
   } catch {
     // Blocked storage costs a button, not the feature.
   }
-  if (code) flushPlan();
-  else pendingPlan = undefined;
+  if (code) {
+    // A crew has just appeared. Everything that was held back because there
+    // was nobody to tell goes now — the week and the days trained both.
+    // Only the plan used to flush here, so a crew created after a workout
+    // showed the creator as "trained 0 times this week" to everybody who
+    // joined, until the creator happened to reload.
+    flushPlan();
+    flushCheckins();
+  } else {
+    pendingPlan = undefined;
+    pendingCheckins = undefined;
+  }
 }
 
 /**
@@ -197,6 +207,25 @@ function flushPlan() {
   void call<{ ok: true; shared: boolean }>("publish", { plan });
 }
 
+/**
+ * Days trained that had nowhere to go yet.
+ *
+ * The mirror of `pendingPlan`. `pushCheckins` used to return early outside a
+ * crew and drop the days on the floor, and its effect in `app/page.tsx` only
+ * re-runs when the completed-session count changes — so days already trained
+ * before the crew existed were not sent when it appeared. They were sent on
+ * the next launch, which is why reloading appeared to fix it.
+ */
+let pendingCheckins: string[] | undefined;
+
+/** A crew has appeared. Tell it about the days that were waiting. */
+function flushCheckins() {
+  if (pendingCheckins === undefined) return;
+  const days = pendingCheckins;
+  pendingCheckins = undefined;
+  void pushCheckins(days);
+}
+
 const SENT_KEY = "habitabull.checkins";
 
 function acknowledged(): Set<string> {
@@ -218,9 +247,15 @@ function acknowledged(): Set<string> {
  * beside the crew code and is cleared when she leaves.
  */
 export async function pushCheckins(days: string[]) {
-  // Same as publishing: presence is only meaningful inside a crew, and a
-  // refused write is never acknowledged, so a solo user would re-send forever.
-  if (!enabled() || !crewCode()) return null;
+  // Presence is only meaningful inside a crew, and a refused write is never
+  // acknowledged, so a solo user would re-send forever.
+  if (!enabled()) return null;
+  // Outside a crew there is nobody to tell, but these days are still true.
+  // Held rather than dropped, and flushed the moment a crew exists.
+  if (!crewCode()) {
+    pendingCheckins = days;
+    return null;
+  }
   const sent = acknowledged();
   const fresh = days.filter((d) => !sent.has(d));
   if (fresh.length === 0) return { ok: true } as const;

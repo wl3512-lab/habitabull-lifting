@@ -198,9 +198,25 @@ export default function Arrival({
         </p>
       )}
 
-      <p className={`${enter} ${preview ? "" : "stage"} mt-10 text-caption text-dim`} style={step()}>
+      {/*
+        The surface stays tappable, because a timed beat you can dismiss with a
+        thumb anywhere is the right pointer behaviour. But `role="status"` is an
+        announcement, not a control: a keyboard or switch user had no way to
+        reach the skip at all. The line that already names the affordance is the
+        affordance now. `stopPropagation` because the surface handler below it
+        would otherwise fire the same skip twice.
+      */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!preview) done.current();
+        }}
+        className={`${enter} ${preview ? "" : "stage"} mt-10 text-caption text-dim`}
+        style={step()}
+      >
         Tap to skip
-      </p>
+      </button>
     </main>
   );
 }

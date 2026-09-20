@@ -52,7 +52,16 @@ export default function SetLogged({
         </svg>
         <p className="rise statement mt-6 text-display">New best</p>
         <p className="rise tabular mt-1 text-head">{summary}</p>
-        <p className="mt-10 text-caption text-ground/90">{footer}</p>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSkip?.();
+          }}
+          className="mt-10 text-caption text-ground/90"
+        >
+          {footer}
+        </button>
       </main>
     );
   }
@@ -84,7 +93,21 @@ export default function SetLogged({
       </div>
       <p className="rise statement mt-5 text-title text-fg">Logged</p>
       <p className="rise tabular mt-1 text-emphasis text-dim">{summary}</p>
-      <p className="mt-10 text-caption text-dim">{footer}</p>
+      {/*
+        See Arrival: the surface handler is for thumbs, this is the same action
+        reachable by keyboard and switch. `role="status"` announces; it does not
+        operate.
+      */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSkip?.();
+        }}
+        className="mt-10 text-caption text-dim"
+      >
+        {footer}
+      </button>
     </main>
   );
 }
