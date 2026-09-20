@@ -397,8 +397,16 @@ export default function Crew({
                         />
                       ))}
                     </ul>
+                    {/*
+                      The dots are the sighted version of this; the sentence is
+                      the whole thing for anybody using a screen reader, so it
+                      is the one place the count is read as words. It said
+                      "trained 1 times this week" — `count` exists for exactly
+                      this and was already imported here.
+                    */}
                     <p className="sr-only">
-                      {m.name} trained {m.days.filter((d) => d >= weekStart).length} times this week.
+                      {m.name} trained {count(m.days.filter((d) => d >= weekStart).length, "time")} this
+                      week.
                     </p>
                   </li>
                 );

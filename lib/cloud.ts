@@ -94,18 +94,31 @@ function rememberCrew(code: string | null) {
   } catch {
     // Blocked storage costs a button, not the feature.
   }
+  // A crew has just appeared. Everything held back because there was nobody
+  // to tell goes now — the week and the days trained both.
   if (code) {
-    // A crew has just appeared. Everything that was held back because there
-    // was nobody to tell goes now — the week and the days trained both.
-    // Only the plan used to flush here, so a crew created after a workout
-    // showed the creator as "trained 0 times this week" to everybody who
-    // joined, until the creator happened to reload.
     flushPlan();
     flushCheckins();
-  } else {
-    pendingPlan = undefined;
-    pendingCheckins = undefined;
   }
+}
+
+/**
+ * She left a crew. Anything still waiting to be sent is discarded, because it
+ * was meant for those people and must not follow her into the next crew.
+ *
+ * This is deliberately *not* what a null code from `fetchCrew` does. That call
+ * returns `code: null` for anybody who is simply not in a crew yet — which is
+ * everybody looking at the screen with the button that creates one. Clearing
+ * the buffers there threw away the week and the days trained a moment before
+ * they were needed, so creating a crew published nothing and the creator
+ * showed as "trained 0 times this week" to everyone who joined. It came right
+ * on the next launch, which is what made it look like a sync delay rather than
+ * a discard.
+ */
+function forgetCrew() {
+  rememberCrew(null);
+  pendingPlan = undefined;
+  pendingCheckins = undefined;
 }
 
 /**
@@ -159,7 +172,7 @@ export const joinCrew = async (code: string, name: string) => {
 
 export const leaveCrew = async () => {
   const res = await call<{ ok: true }>("leave", {});
-  rememberCrew(null);
+  forgetCrew();
   return res;
 };
 

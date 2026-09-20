@@ -106,6 +106,38 @@ describe("days trained, when the crew arrives afterwards", () => {
     expect(sent.filter((s) => s.path === "publish")).toHaveLength(1);
   });
 
+  /*
+    The sequence the first fix missed, and the reason F-1 survived it.
+
+    To create a crew you must open the crew screen, and that screen calls
+    `fetchCrew` on mount. For somebody not in a crew the server answers
+    `code: null`, which used to be treated as "she left" and discarded both
+    pending buffers — a moment before the button that needed them. So the flush
+    had nothing to send, and the data appeared only on the next launch.
+  */
+  it("keeps what is waiting when the crew screen polls and finds no crew", async () => {
+    const sent: Sent[] = [];
+    stubFetch(sent, (p) => {
+      if (p === "members") return { code: null, members: [] };
+      if (p === "create") return { code: "ABC123" };
+      return { ok: true };
+    });
+    const cloud = await import("./cloud");
+
+    await cloud.pushCheckins(["2026-09-20"]);
+    await cloud.publishPlan([{ day: 1, label: "Full body A", exercises: ["back-squat"] }]);
+
+    // Opening the crew screen, which is the only way to reach "create".
+    await cloud.fetchCrew();
+
+    await cloud.createCrew("Iso A");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(sent.filter((s) => s.path === "checkin")).toHaveLength(1);
+    expect(sent.filter((s) => s.path === "publish")).toHaveLength(1);
+  });
+
   it("does not hold anything when there is no backend at all", async () => {
     delete process.env.NEXT_PUBLIC_CREW_ENABLED;
     const sent: Sent[] = [];
