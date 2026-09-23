@@ -448,10 +448,23 @@ function fullBodyVariant(r: Routine): number | null {
  *
  * So a day that is still trained is kept exactly as it was: label, lifts,
  * sets, weights. Only a new day is generated, as full body, which is what the
- * picker recommends, and it takes the variant its nearest kept full-body
+ * picker recommends, and it takes the variant its nearest anchored full-body
  * neighbour does not have, so the week still alternates. A saved shape for
  * that day type (the library) is applied to new days only, since the kept
  * days already carry theirs.
+ *
+ * The remaining case was a day that *moves*. Training Mon/Tue/Fri as
+ * push/pull/legs and shifting Tuesday to Wednesday read as one deletion and
+ * one unrelated insertion, so the pull day was thrown away and Wednesday came
+ * back as a generic full-body day — silently, having been asked only to change
+ * a date. Somebody moving a session around their week is not asking for a
+ * different session.
+ *
+ * A day that leaves and a day that arrives in the same edit are paired in
+ * order and treated as one day moving, carrying label, lifts, sets and weights
+ * to the new date. Uneven edits fall back to the old meaning: with more
+ * departures than arrivals the extras are genuinely dropped, and with more
+ * arrivals than departures the extras are genuinely new.
  */
 export function reconcileWeek(
   existing: Routine[],
@@ -463,13 +476,25 @@ export function reconcileWeek(
 ): Routine[] {
   const days = [...new Set(trainingDays)].sort((a, b) => a - b);
   const kept = existing.filter((r) => days.includes(r.day));
-  const fresh = days.filter((d) => !kept.some((r) => r.day === d));
+  const arrived = days.filter((d) => !kept.some((r) => r.day === d));
+  const departed = existing
+    .filter((r) => !days.includes(r.day))
+    .sort((a, b) => a.day - b.day);
+
+  // One out and one in is a move. Paired in order, so shifting a whole week
+  // forward a day moves each session rather than rebuilding all of them.
+  const moves = Math.min(departed.length, arrived.length);
+  const moved = departed.slice(0, moves).map((r, i) => ({ ...r, day: arrived[i] }));
+  const fresh = arrived.slice(moves);
+
+  // A moved day is as settled as a kept one, so it anchors the alternation too.
+  const anchored = [...kept, ...moved];
 
   const variants: Record<number, number> = {};
   for (const day of fresh) {
-    // Nearest kept full-body day, earlier one on a tie.
+    // Nearest anchored full-body day, earlier one on a tie.
     let near: Routine | null = null;
-    for (const r of kept) {
+    for (const r of anchored) {
       if (fullBodyVariant(r) === null) continue;
       if (!near || Math.abs(r.day - day) < Math.abs(near.day - day)) near = r;
     }
@@ -487,7 +512,7 @@ export function reconcileWeek(
     ),
     library
   );
-  return [...kept, ...made].sort((a, b) => a.day - b.day);
+  return [...anchored, ...made].sort((a, b) => a.day - b.day);
 }
 
 export function overlayDayLibrary(

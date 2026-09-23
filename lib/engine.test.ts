@@ -854,6 +854,57 @@ describe("reconcileWeek", () => {
     expect(out).toEqual(week.filter((r) => r.day !== 3));
   });
 
+  /*
+    A day that moves. Training push/pull/legs on Mon/Tue/Fri and shifting
+    Tuesday to Wednesday read as one deletion and one unrelated insertion, so
+    the pull day was discarded and Wednesday came back as a generic full-body
+    day. Changing a date is not a request for a different workout.
+  */
+  it("carries a day's whole workout when it moves to another date", () => {
+    const week = generateRoutine("new", [1, 2, 5], KIT, [], ["push", "pull", "legs"]);
+    const out = reconcileWeek(week, [1, 3, 5], "new", KIT);
+    expect(types(out)).toEqual([[1, "push"], [3, "pull"], [5, "legs"]]);
+    const tue = week.find((r) => r.day === 2)!;
+    const wed = out.find((r) => r.day === 3)!;
+    expect(wed).toEqual({ ...tue, day: 3 });
+  });
+
+  it("leaves the days either side of a move untouched", () => {
+    const week = generateRoutine("new", [1, 2, 5], KIT, [], ["push", "pull", "legs"]);
+    const out = reconcileWeek(week, [1, 3, 5], "new", KIT);
+    expect(out.find((r) => r.day === 1)).toEqual(week.find((r) => r.day === 1));
+    expect(out.find((r) => r.day === 5)).toEqual(week.find((r) => r.day === 5));
+  });
+
+  it("shifts a whole week forward a day without rebuilding any of it", () => {
+    const week = generateRoutine("new", [1, 3, 5], KIT, [], ["push", "pull", "legs"]);
+    const out = reconcileWeek(week, [2, 4, 6], "new", KIT);
+    expect(types(out)).toEqual([[2, "push"], [4, "pull"], [6, "legs"]]);
+    expect(out.map((r) => r.exercises)).toEqual(week.map((r) => r.exercises));
+  });
+
+  it("still treats an unmatched departure as a genuine drop", () => {
+    const week = generateRoutine("new", [1, 3, 5], KIT, [], ["push", "pull", "legs"]);
+    // Two days leave, one arrives: one move, one real drop.
+    const out = reconcileWeek(week, [1, 4], "new", KIT);
+    expect(types(out)).toEqual([[1, "push"], [4, "pull"]]);
+  });
+
+  it("still treats an unmatched arrival as a genuinely new day", () => {
+    const week = generateRoutine("new", [1, 3, 5], KIT, [], ["push", "pull", "legs"]);
+    // Nothing leaves, one arrives: the new day defaults, as it always did.
+    const out = reconcileWeek(week, [1, 2, 3, 5], "new", KIT);
+    expect(types(out)).toEqual([
+      [1, "push"], [2, "full-body"], [3, "pull"], [5, "legs"],
+    ]);
+  });
+
+  it("does not relabel a full-body week when one of its days moves", () => {
+    const week = generateRoutine("new", [1, 2, 5], KIT, [], ["full-body", "full-body", "full-body"]);
+    const out = reconcileWeek(week, [1, 3, 5], "new", KIT);
+    expect(out.map((r) => r.label)).toEqual(week.map((r) => r.label));
+  });
+
   it("sorts and de-duplicates the days it is given", () => {
     const week = named();
     expect(types(reconcileWeek(week, [5, 1, 1], "new", KIT))).toEqual([[1, "push"], [5, "legs"]]);
