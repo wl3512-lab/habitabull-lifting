@@ -25,7 +25,7 @@ npm run dev          # http://localhost:3000
 | `npm run dev` | Dev server |
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
-| `npm test` | 517 unit tests (vitest, node environment, no DOM) |
+| `npm test` | 541 unit tests (vitest, node environment, no DOM) |
 | `npm run smoke` | End-to-end check against a live crew backend |
 | `npm run shoot` | Re-shoot the screen gallery from `/frames` |
 
@@ -65,6 +65,7 @@ fetched network-first, so an installed app can never get stuck on an old build.
 | `app/api/` | Three routes: the crew backend, the plan parser, and a build-version check. |
 | `components/` | Screens and UI. |
 | `lib/` | All the logic, kept pure and tested without a DOM. `engine.ts` is the plan generator. |
+| `docs/superpowers/` | Designs and implementation plans, written before the code they describe. |
 | `supabase/schema.sql` | The crew tables, if you want them. |
 
 ## What leaves the device
@@ -90,5 +91,7 @@ handles it instead, so the feature degrades rather than breaking.
 npm test
 ```
 
-517 tests, all in `lib/` next to what they cover. They run in node with no DOM,
-which is the reason the logic lives in `lib/` and the components stay thin.
+541 tests across 25 files, each beside what it covers: 23 in `lib/` and two in
+`components/`, for the pure helpers that happen to live next to a screen. They
+run in node with no DOM, which is the reason the logic lives in `lib/` and the
+components stay thin.
