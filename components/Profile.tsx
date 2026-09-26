@@ -46,7 +46,7 @@ export default function Profile({
   onProfile: (p: ProfileT) => void;
   onWeighIn: (lb: number) => void;
   onImport: (s: AppState) => void;
-  onEditPlan: () => void;
+  onEditPlan: (day?: number) => void;
   onEditWeek: () => void;
 }) {
   const [editingName, setEditingName] = useState(false);
@@ -68,6 +68,12 @@ export default function Profile({
   const routines = [...state.routines].sort((a, b) => a.day - b.day);
   const kit = [...new Set(profile.equipment)];
   const days = [...profile.trainingDays].sort((a, b) => a - b);
+  /*
+    What a given weekday is called in the plan. A trained day with no routine
+    yet is possible — the schedule is saved before the plan is built on first
+    run — so this returns undefined rather than assuming one exists.
+  */
+  const labelFor = (d: number) => routines.find((r) => r.day === d)?.label;
   const when = profile.anchors?.length
     ? profile.anchors.map((a) => ANCHOR[a] ?? a).join(", ")
     : profile.anchors === undefined
@@ -158,7 +164,7 @@ export default function Profile({
           <p className="label text-dim">Your workouts</p>
           <button
             type="button"
-            onClick={onEditPlan}
+            onClick={() => onEditPlan()}
             className="head tap text-caption text-cyan transition-opacity hover:opacity-70"
           >
             Edit
@@ -212,19 +218,53 @@ export default function Profile({
             Edit
           </button>
         </div>
+        {/*
+          The trained days are the way into what each one is. They were flat
+          labels, so changing Wednesday from a pull day to a leg day meant
+          knowing to go up to "Your workouts" and hunt for Wednesday there —
+          the screen that says which days you train could not say what they
+          were. A day you do not train is still a label: there is nothing to
+          open, and offering one would imply tapping it adds the day, which is
+          what Edit is for.
+        */}
         <Card className="mt-3 p-[18px]">
           <div className="flex flex-wrap gap-1.5">
-            {[0, 1, 2, 3, 4, 5, 6].map((d) => (
-              <span
-                key={d}
-                className={`rounded-tick px-2.5 py-1.5 text-caption ${
-                  days.includes(d) ? "bg-cyan text-ground" : "bg-raise text-dim"
-                }`}
-              >
-                {SHORT_DAYS[d]}
-              </span>
-            ))}
+            {[0, 1, 2, 3, 4, 5, 6].map((d) =>
+              days.includes(d) ? (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => onEditPlan(d)}
+                  aria-label={`${SHORT_DAYS[d]}: ${labelFor(d) ?? "training day"}. Edit this day.`}
+                  className="rounded-tick bg-cyan px-2.5 py-1.5 text-caption text-ground transition-opacity hover:opacity-80"
+                >
+                  {SHORT_DAYS[d]}
+                </button>
+              ) : (
+                <span
+                  key={d}
+                  className="rounded-tick bg-raise px-2.5 py-1.5 text-caption text-dim"
+                >
+                  {SHORT_DAYS[d]}
+                </span>
+              )
+            )}
           </div>
+          {/* What each trained day is, which the row of letters cannot say. */}
+          <ul className="mt-3 flex flex-col gap-1">
+            {days.map((d) => (
+              <li key={d} className="flex items-baseline justify-between gap-3 text-body">
+                <span className="text-dim">{SHORT_DAYS[d]}</span>
+                <button
+                  type="button"
+                  onClick={() => onEditPlan(d)}
+                  className="head text-body text-cyan transition-opacity hover:opacity-70"
+                >
+                  {labelFor(d) ?? "Not set"}
+                </button>
+              </li>
+            ))}
+          </ul>
           {when && <p className="mt-3 text-body text-dim">{when}</p>}
         </Card>
       </section>

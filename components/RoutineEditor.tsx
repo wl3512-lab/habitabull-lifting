@@ -38,6 +38,7 @@ const MUSCLES: { id: Muscle; label: string }[] = [
 export default function RoutineEditor({
   profile,
   routines,
+  focusDay,
   library,
   onSave,
   onAddCustom,
@@ -46,6 +47,8 @@ export default function RoutineEditor({
 }: {
   profile: Profile;
   routines: Routine[];
+  /** Weekday to open on, 0-6. Anything not in the plan opens the first day. */
+  focusDay?: number;
   /** The user's saved version of each named day type, keyed by template id. */
   library?: Record<string, PlannedExercise[]>;
   onSave: (r: Routine[]) => void;
@@ -56,7 +59,19 @@ export default function RoutineEditor({
   onBack: () => void;
 }) {
   const days = [...routines].sort((a, b) => a.day - b.day);
-  const [dayIndex, setDayIndex] = useState(0);
+  /*
+    Which day the editor opens on.
+    
+    It always opened on the first day of the week, which is right when the
+    whole plan is being set up and wrong every other time: arriving here to
+    answer "what is my new Wednesday" and landing on Monday means finding the
+    day yourself before you can change it. `focusDay` is a weekday number, and
+    an unknown one falls back to the first day rather than an empty editor.
+  */
+  const [dayIndex, setDayIndex] = useState(() => {
+    const i = days.findIndex((r) => r.day === focusDay);
+    return i === -1 ? 0 : i;
+  });
   const [draft, setDraft] = useState<Routine[]>(days);
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState<Muscle | null>(initialAdding);

@@ -61,6 +61,12 @@ export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("today");
+  /*
+    Which weekday the routine editor opens on, when it was reached by pointing
+    at one. Null means the plan as a whole, which is what the "Your workouts"
+    edit link and the first run both mean.
+  */
+  const [planDay, setPlanDay] = useState<number | null>(null);
   const [records, setRecords] = useState<string[]>([]);
   const [today, setToday] = useState(() => todayISO());
   // Where an exercise detail screen returns to, so it can open from anywhere.
@@ -420,6 +426,7 @@ export default function Page() {
       <RoutineEditor
         profile={profile}
         routines={routines}
+        focusDay={planDay ?? undefined}
         library={state.dayLibrary}
         onAddCustom={(e) => {
           /*
@@ -477,10 +484,35 @@ export default function Page() {
               s.dayLibrary
             ),
           }));
-          // First time through, days are only half the answer — go straight on
-          // to what each day is, rather than dropping her back on a home screen
-          // that still says nothing is planned.
-          setView(profile.planChosen ? "today" : "routine");
+          /*
+            Where to go next.
+
+            First time through, days are only half the answer — go straight on
+            to what each day is, rather than dropping her back on a home screen
+            that still says nothing is planned.
+
+            After that it depended on nothing: every schedule edit returned to
+            Today, so arriving at a brand-new Wednesday meant going back into
+            the profile and finding it. A day that was not trained before is
+            the one thing this edit created and the one thing it cannot answer,
+            so that is where it lands. An edit that only moves days is already
+            answered — the workout moved with it — and an edit that changes
+            nothing has nothing to show.
+          */
+          const before = new Set(profile.trainingDays);
+          const added = p.trainingDays.filter((d) => !before.has(d)).sort((a, b) => a - b);
+          const removed = profile.trainingDays.filter((d) => !p.trainingDays.includes(d));
+          const isMove = added.length > 0 && added.length <= removed.length;
+          if (!profile.planChosen) {
+            setPlanDay(null);
+            setView("routine");
+          } else if (added.length > 0 && !isMove) {
+            setPlanDay(added[0]);
+            setView("routine");
+          } else {
+            setPlanDay(null);
+            setView("today");
+          }
         }}
         onSkip={() => setView(profile.planChosen ? "today" : "routine")}
         onImport={() => setView("import")}
@@ -617,7 +649,10 @@ export default function Page() {
           setState(next);
           setView("today");
         }}
-        onEditPlan={() => setView("routine")}
+        onEditPlan={(day) => {
+          setPlanDay(day ?? null);
+          setView("routine");
+        }}
         onEditWeek={() => setView("week")}
       />,
       "profile"
