@@ -4,6 +4,7 @@ import {
   generateRoutine,
   rebuildDay,
   nextTarget,
+  plannedShape,
   personalRecord,
   pickExercise,
   roundToIncrement,
@@ -806,6 +807,53 @@ describe("the plan she built sets the shape", () => {
     const s = buildSession(day, [], "new", "2026-09-15");
     expect(s.exercises[0].sets).toHaveLength(day.exercises[0].sets);
     expect(s.exercises[0].sets[0].reps).toBe(day.exercises[0].reps);
+  });
+});
+
+describe("plannedShape", () => {
+  const target = { sets: 3, reps: 8 };
+
+  /*
+    The screen that says what today is used to disagree with the session it
+    started: Today read sets and reps off `nextTarget`, which answers with the
+    level default, while `buildSession` read them off the plan. A bench day set
+    to 3 by 12 previewed as 3 by 8 and then ran as 3 by 12.
+  */
+  it("uses the plan's own shape, not the engine's default", () => {
+    expect(plannedShape({ sets: 3, reps: 12 }, target)).toEqual({ sets: 3, reps: 12 });
+    expect(plannedShape({ sets: 5, reps: 5 }, target)).toEqual({ sets: 5, reps: 5 });
+  });
+
+  it("falls back rather than building a lift with no sets in it", () => {
+    expect(plannedShape({ sets: 0, reps: 0 }, target)).toEqual(target);
+  });
+
+  it("rounds a fraction rather than carrying it into a set count", () => {
+    expect(plannedShape({ sets: 3.4, reps: 8.6 }, target)).toEqual({ sets: 3, reps: 9 });
+  });
+
+  it("never returns fewer than one set", () => {
+    expect(plannedShape({ sets: -2, reps: 8 }, target).sets).toBe(3);
+  });
+});
+
+describe("Today's preview and the session it starts", () => {
+  const KIT2: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
+
+  it("agree on sets and reps for a day she edited", () => {
+    const [routine] = generateRoutine("new", [1], KIT2, [], ["full-body"]);
+    // She set the first lift to 5 by 5 in the editor.
+    const edited = {
+      ...routine,
+      exercises: routine.exercises.map((e, i) => (i === 0 ? { ...e, sets: 5, reps: 5 } : e)),
+    };
+    const session = buildSession(edited, [], "new", "2026-09-26");
+    const planned = edited.exercises[0];
+    const t = nextTarget(planned.exerciseId, [], "new");
+    // What Today draws, and what the session actually holds.
+    expect(plannedShape(planned, t)).toEqual({ sets: 5, reps: 5 });
+    expect(session.exercises[0].sets).toHaveLength(5);
+    expect(session.exercises[0].sets[0].reps).toBe(5);
   });
 });
 

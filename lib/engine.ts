@@ -342,6 +342,38 @@ export function streakWeeks(sessions: Session[], today = new Date()): number {
  * Turn a planned day into an empty session pre-filled with today's targets.
  * Targets come from nextTarget, so the plan already reflects your history.
  */
+/**
+ * How many sets and reps a planned lift is actually done for.
+ *
+ * Her plan sets the shape; history sets the load. The rule is small and it has
+ * now been got wrong twice in two different files, so it lives in one place:
+ * `buildSession` builds the real session from it and Today previews the same
+ * numbers, which is the only way the screen that says what today is can agree
+ * with the session it starts.
+ *
+ * A zero, a fraction or a missing value falls back to the engine's own answer
+ * rather than producing a lift with no sets in it.
+ *
+ * The fallback was written as `Math.max(1, Math.round(n)) || target`, which
+ * reads right and cannot happen: `Math.max(1, …)` is never 0, so `||` never
+ * fires and a malformed lift became one set rather than a sensible default.
+ * Nothing the app writes has a zero in it, but an imported plan can, and one
+ * set of bench because a file said `"sets": 0` is a silent wrong answer.
+ */
+export function plannedShape(
+  planned: { sets: number; reps: number },
+  target: { sets: number; reps: number }
+): { sets: number; reps: number } {
+  const use = (n: number, fallback: number) => {
+    const r = Math.round(n);
+    return Number.isFinite(r) && r >= 1 ? r : fallback;
+  };
+  return {
+    sets: use(planned.sets, target.sets),
+    reps: use(planned.reps, target.reps),
+  };
+}
+
 export function buildSession(routine: Routine, sessions: Session[], level: Level, date: string): Session {
   return {
     date,
@@ -361,8 +393,7 @@ export function buildSession(routine: Routine, sessions: Session[], level: Level
         asked to manage: the engine adds, holds or backs off on the evidence
         of what she actually lifted. What she asked for is how many.
       */
-      const sets = Math.max(1, Math.round(p.sets)) || t.sets;
-      const reps = Math.max(1, Math.round(p.reps)) || t.reps;
+      const { sets, reps } = plannedShape(p, t);
       return {
         exerciseId: p.exerciseId,
         sets: Array.from({ length: sets }, () => ({ weight: t.weight, reps, done: false })),

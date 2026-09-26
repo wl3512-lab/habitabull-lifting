@@ -29,6 +29,7 @@ export default function RestTimer({
   mode = "rest",
   workLabel,
   nextExerciseId,
+  onPickNext,
   nextWeight,
   nextReps,
   onDone,
@@ -45,6 +46,13 @@ export default function RestTimer({
   workLabel?: string;
   /** The set you are resting before, if there is one. */
   nextExerciseId?: string;
+  /**
+   * Change what comes next, from here. Between sets is when you find out the
+   * rack is taken or that you are done with this lift, and until this existed
+   * the only way to act on it was to finish the rest, get back to the working
+   * screen and open the list from there.
+   */
+  onPickNext?: () => void;
   nextWeight?: number;
   nextReps?: number;
   /**
@@ -151,26 +159,46 @@ export default function RestTimer({
         <p className="text-body text-dim">of {clock(seconds)}</p>
       </div>
 
-      {!working && nextExerciseId && (
-        <div className="mt-[104px] rounded-2xl bg-card p-[18px]">
-          <p className="label text-dim">Next up</p>
-          <div className="mt-1.5 flex items-baseline justify-between gap-3">
-            <span className="head text-head text-fg">{nameOf(nextExerciseId)}</span>
-            {/*
-              The reps are optional on the way in, and the old line printed
-              them straight into the string — so a next set that arrived
-              without them read "undefined reps" at somebody standing between
-              sets. The name alone is still a useful thing to say; a number
-              nobody has is not.
-            */}
-            {nextReps !== undefined && (
-              <span className="tabular statement shrink-0 text-head text-cyan">
-                {nextWeight ? `${nextWeight} lb × ${nextReps}` : count(nextReps, "rep")}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+      {/*
+        Pressable when there is somewhere to go, a plain card when there is
+        not, so the box never looks tappable on a screen where tapping does
+        nothing. Cancelling out of the list comes back here.
+
+        The reps are optional on the way in, and an older version printed them
+        straight into the string — so a next set that arrived without them read
+        "undefined reps" at somebody standing between sets. The name alone is
+        still a useful thing to say; a number nobody has is not.
+      */}
+      {!working && nextExerciseId && (() => {
+        const inner = (
+          <>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="label text-dim">Next up</p>
+              {onPickNext && <span className="head text-caption text-cyan">Change</span>}
+            </div>
+            <div className="mt-1.5 flex items-baseline justify-between gap-3">
+              <span className="head text-head text-fg">{nameOf(nextExerciseId)}</span>
+              {nextReps !== undefined && (
+                <span className="tabular statement shrink-0 text-head text-cyan">
+                  {nextWeight ? `${nextWeight} lb × ${nextReps}` : count(nextReps, "rep")}
+                </span>
+              )}
+            </div>
+          </>
+        );
+        return onPickNext ? (
+          <button
+            type="button"
+            onClick={onPickNext}
+            aria-label={`Next up: ${nameOf(nextExerciseId)}. Change what comes next.`}
+            className="mt-[104px] w-full rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
+          >
+            {inner}
+          </button>
+        ) : (
+          <div className="mt-[104px] rounded-2xl bg-card p-[18px]">{inner}</div>
+        );
+      })()}
 
       <div className="mt-auto pt-8">
         <Pill onClick={() => onDone(working ? (done ? undefined : spent()) : undefined)}>

@@ -549,6 +549,7 @@ export default function LogSession({
                     onClick={() => {
                       setIndex(i);
                       setPicking(false);
+                      setRest(null);
                     }}
                     className="flex flex-1 items-center justify-between gap-3 p-[18px] text-left"
                   >
@@ -646,6 +647,13 @@ export default function LogSession({
         nextExerciseId={rest.exerciseId}
         nextWeight={rest.weight}
         nextReps={rest.reps}
+        /*
+          Between sets is when you find out the rack is taken. The rest is
+          left standing rather than cancelled, so backing out of the list
+          comes back to it; choosing a lift clears it, because the rest was
+          for the set she is no longer about to do.
+        */
+        onPickNext={() => setPicking(true)}
         onDone={(minutesDone) => {
           const wasWork = rest.mode === "work";
           setRest(null);

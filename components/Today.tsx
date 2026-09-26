@@ -6,7 +6,7 @@ import CrewToday from "./CrewToday";
 import PlaylistRow from "./PlaylistRow";
 import { Card, GoalBar, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
-import { goalProgress, nextTarget, personalRecord, streakWeeks } from "@/lib/engine";
+import { goalProgress, nextTarget, personalRecord, plannedShape, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
 import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor } from "@/lib/schedule";
@@ -606,7 +606,20 @@ export default function Today({
             style={{ "--lead": "380ms", "--stagger": "45ms" } as React.CSSProperties}
           >
             {routine.exercises.map((e, i) => {
+              /*
+                The same split `buildSession` makes, and for the same reason:
+                her plan sets the shape, history sets the load.
+
+                This read sets and reps off `nextTarget` too, which answers
+                with the level default and knows nothing about the week she
+                built. So a bench day she set to 3 by 12 was previewed here as
+                3 by 8, while the session it started was 3 by 12 — the screen
+                that says what today is disagreed with today. Profile was right
+                and this was wrong, which is the wrong way round for the screen
+                you actually read before training.
+              */
               const t = nextTarget(e.exerciseId, sessions, profile.level);
+              const { sets, reps } = plannedShape(e, t);
               return (
                 <li key={e.exerciseId} className={`${enter} stage`} style={{ "--step": i } as React.CSSProperties}>
                   <button
@@ -625,7 +638,7 @@ export default function Today({
                       )}
                     </span>
                     <span className="tabular statement shrink-0 text-head text-cyan">
-                      {t.sets} × {t.reps}
+                      {sets} × {reps}
                     </span>
                   </button>
                 </li>
