@@ -4,7 +4,7 @@ import Chart from "./Chart";
 import { Card, GoalBar, Pill, Stat } from "./ui";
 import YourData from "./YourData";
 import { nameOf } from "@/lib/exercises";
-import { goalProgress } from "@/lib/engine";
+import { goalProgress, topSet } from "@/lib/engine";
 import type { AppState, Goal, Session } from "@/lib/types";
 import { count } from "@/lib/plural";
 import { isoDate } from "@/lib/calendar";
@@ -83,7 +83,7 @@ export default function Progress({
     for (const e of s.exercises) {
       const sets = e.sets.filter((x) => x.done);
       if (sets.length === 0) continue;
-      const top = sets.reduce((a, b) => (b.weight * b.reps > a.weight * a.reps ? b : a));
+      const top = topSet(sets)!;
       const list = tracks.get(e.exerciseId) ?? [];
       list.push({ date: s.date, weight: top.weight, reps: top.reps });
       tracks.set(e.exerciseId, list);

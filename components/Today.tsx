@@ -71,6 +71,24 @@ export default function Today({
   const last = done.map((s) => s.date).sort().at(-1);
   const mood = greetingMood(last, today);
   const alreadyLogged = sessions.some((s) => s.date === today && s.completedAt);
+  /*
+    Ending a workout early marks the session complete, because it is over — but
+    it is not *finished*, and the screen treated those as the same thing. Do one
+    lift of five, tap End, and Today said "Logged", "That is the whole job" and
+    "Logged. That's another one on the board." about four lifts that had not
+    been touched, over a button offering to *add* to a session with most of
+    itself still in it.
+
+    A session with sets still unlogged is partway. The way back in is to carry
+    on, not to add.
+  */
+  const setsLeftToday = alreadyLogged
+    ? (sessions.find((s) => s.date === today)?.exercises ?? []).reduce(
+        (n, e) => n + e.sets.filter((x) => !x.done).length,
+        0
+      )
+    : 0;
+  const partway = alreadyLogged && setsLeftToday > 0;
   const weeks = streakWeeks(sessions);
 
   // The week as it actually stands. Shared with the rest-day arrival, which
@@ -442,10 +460,14 @@ export default function Today({
                 {loggedSets} {loggedSets === 1 ? "set" : "sets"} done
                 {loggedVolume > 0 && `, ${loggedVolume.toLocaleString()} lb moved`}
               </p>
-              <p className="mt-1.5 text-body text-dim">That is the whole job. See you {nextDayLabel}.</p>
+              <p className="mt-1.5 text-body text-dim">
+                {partway
+                  ? `${count(setsLeftToday, "set")} still on the card, whenever you want them.`
+                  : `That is the whole job. See you ${nextDayLabel}.`}
+              </p>
             </div>
-            <Pill variant="ghost" onClick={onStart}>
-              Add to today&apos;s session
+            <Pill variant={partway ? "primary" : "ghost"} onClick={onStart}>
+              {partway ? "Continue workout" : "Add to today's session"}
             </Pill>
           </>
         ) : (
@@ -661,8 +683,15 @@ export default function Today({
       )}
 
       <p className={`${enter} stage mt-auto pt-8 text-body text-dim`} style={stage()}>
-        {alreadyLogged
-          ? line("done", done.length)
+        {/*
+          `done` congratulates. Said to somebody who stopped after two sets it
+          is the app celebrating something they know they did not do, which is
+          the exact thing `stopped` exists for and was written about.
+        */}
+        {partway
+          ? line("stopped", done.length)
+          : alreadyLogged
+            ? line("done", done.length)
           : routine
             ? line(mood, done.length)
             : line("rest", done.length)}

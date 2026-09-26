@@ -8,7 +8,7 @@ import SetRow from "./SetRow";
 import { Pill } from "./ui";
 import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
 import { EQUIPMENT, MUSCLES } from "@/lib/constraints";
-import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight } from "@/lib/engine";
+import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight, topSet } from "@/lib/engine";
 import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
 import { line, midsetLine } from "@/lib/voice";
@@ -44,9 +44,7 @@ export function lastAttempt(history: Session[], exerciseId: string, increment: n
     const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
     const sets = ex?.sets.filter((x) => x.done) ?? [];
     if (sets.length === 0) continue;
-    const best = sets.reduce((a, b) =>
-      b.weight !== a.weight ? (b.weight > a.weight ? b : a) : b.reps > a.reps ? b : a
-    );
+    const best = topSet(sets)!;
     if (meta?.cardio) return `${best.reps} min`;
     if (meta?.hold) return `${best.reps} sec`;
     if (increment === 0) return count(best.reps, "rep");

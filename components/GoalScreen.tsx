@@ -157,13 +157,21 @@ export default function GoalScreen({
               <label htmlFor="by" className="label block text-dim">
                 By
               </label>
+              {/*
+                `w-full` does not hold a date field on iOS. Safari gives
+                `type="date"` an intrinsic width from its own picker chrome and
+                will not shrink below it, so the box ran off the right edge of
+                the screen and took the card's padding with it. `min-w-0` lets
+                it shrink and `appearance-none` drops the native chrome that
+                was setting the floor.
+              */}
               <input
                 id="by"
                 type="date"
                 value={date}
                 min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDate(e.target.value)}
-                className="tabular head mt-2 h-12 w-full rounded-xl bg-raise px-4 text-head text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
+                className="tabular head mt-2 h-12 w-full min-w-0 appearance-none rounded-xl bg-raise px-4 text-head text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
               />
             </div>
           </div>

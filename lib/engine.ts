@@ -343,6 +343,27 @@ export function streakWeeks(sessions: Session[], today = new Date()): number {
  * Targets come from nextTarget, so the plan already reflects your history.
  */
 /**
+ * The best of a lift's completed sets.
+ *
+ * Heaviest first, most reps only to break a tie, which is how a lifter reads
+ * their own history: 135 x 5 is the better set than 95 x 10.
+ *
+ * Ranking by weight x reps says otherwise — 950 beats 675 — and worse, it is
+ * blind to every lift with no weight on it. Push-ups, planks and cardio all
+ * store weight 0, so every product is 0, the comparison is never true and the
+ * reduce returns whichever set happened to be first. That was the "last time"
+ * bug, and the same line had been written again in Progress, where it picked
+ * the points the graph plots. One definition now, so the screens agree and
+ * there is one place to be right.
+ */
+export function topSet<T extends { weight: number; reps: number }>(sets: T[]): T | undefined {
+  if (sets.length === 0) return undefined;
+  return sets.reduce((a, b) =>
+    b.weight !== a.weight ? (b.weight > a.weight ? b : a) : b.reps > a.reps ? b : a
+  );
+}
+
+/**
  * How many sets and reps a planned lift is actually done for.
  *
  * Her plan sets the shape; history sets the load. The rule is small and it has
