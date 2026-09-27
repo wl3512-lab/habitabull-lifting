@@ -695,6 +695,24 @@ export function mergeRebuild(draft: Session | undefined, rebuilt: Session): Sess
   const kept = new Set(logged.map((e) => e.exerciseId));
   return {
     ...rebuilt,
+    /*
+      What already happened to this day survives being rebuilt.
+
+      `rebuilt` is a fresh `buildSession`, so it carries no timestamps and no
+      note — and spreading it last meant swapping the plan after finishing a
+      workout silently dropped `completedAt`. The sets were all still there, so
+      nothing looked lost in storage, but the day stopped counting as trained:
+      gone from the calendar, out of the streak, out of the progress graph,
+      while the crew had already been told she trained. That is what "my
+      sessions did not save" looked like from the outside.
+
+      Reopening a finished day is a real thing she can do — adding a lift to it
+      does exactly that, deliberately and in one place. Changing the equipment
+      for a day she has already done is not that.
+    */
+    startedAt: draft.startedAt ?? rebuilt.startedAt,
+    completedAt: draft.completedAt ?? rebuilt.completedAt,
+    note: draft.note ?? rebuilt.note,
     exercises: [...logged, ...rebuilt.exercises.filter((e) => !kept.has(e.exerciseId))],
   };
 }
