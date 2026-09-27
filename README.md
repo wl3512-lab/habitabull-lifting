@@ -18,10 +18,11 @@ never leave it, except for the two opt-in features below.
 | Area | What's there |
 | --- | --- |
 | Plan | A week generated from how many days you have and what you own, editable by hand in the routine editor, or described in plain text ("only dumbbells today, and my shoulder is tweaked"). Workouts can also be imported by pasting a written routine. |
+| Your own workouts | A workout you shaped, saved under a name and put on any day of the week — including one you improvised, which the end-of-session screen offers to keep because nothing else in the app would remember it (`lib/workouts.ts`). |
 | Logging | One tap per set, a plate-math view of the bar, a rest timer with a chime, and a comeback path for a day you started and walked away from. |
 | Progress | Trained days, consistency, best sets, a body-weight line, and progress photos in a calendar you can open a day of. |
 | The bull | A mascot with a fixed voice: he notices you were gone and never punishes you for it (`lib/voice.ts` lists what he is banned from saying). |
-| Keeping it | A whole-history backup file you can import anywhere, and an `.ics` reminder for your own calendar, because a web app cannot honestly schedule a notification. |
+| Keeping it | A whole-history backup file you can import anywhere, holding everything the store holds (sessions, notes, photos, weigh-ins, lifts you added, saved workouts), and an `.ics` reminder for your own calendar, because a web app cannot honestly schedule a notification. |
 | Music | One pasted Spotify playlist link, opened when a workout starts. No OAuth, no SDK. |
 | Crew | Optional and off by default: which days the people you train with turned up, plus photos they chose to share. |
 
@@ -40,7 +41,7 @@ npm run dev          # http://localhost:3000
 | `npm run dev` | Dev server |
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
-| `npm test` | 567 unit tests (vitest, node environment, no DOM) |
+| `npm test` | 628 unit tests (vitest, node environment, no DOM) |
 | `npm run smoke` | End-to-end check against a live crew backend. Needs a dev server already running and a real Supabase project; it makes a throwaway crew and deletes it. |
 | `npm run shoot` | Re-shoot the screen gallery from `/frames`. Needs a production build served on port 3111 and `agent-browser` installed globally. Writes to the `redesign-screens/` folder in the separate portfolio docs directory, not into this repo. |
 
@@ -127,7 +128,7 @@ web player the phone already has.
 npm test
 ```
 
-567 tests across 27 files, each beside what it covers: 25 under `lib/` (two of
-them in `lib/server/`) and two in `components/`, for the pure helpers that
+628 tests across 31 files, each beside what it covers: 28 under `lib/` (two of
+them in `lib/server/`) and three in `components/`, for the pure helpers that
 happen to live next to a screen. They run in node with no DOM, which is the
 reason the logic lives in `lib/` and the components stay thin.
