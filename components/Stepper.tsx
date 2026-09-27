@@ -44,7 +44,30 @@ export default function Stepper({
     if (typing) field.current?.select();
   }, [typing]);
 
-  const bump = (dir: 1 | -1) => onChange(Math.max(min, value + dir * step));
+  /*
+    The number this control last handed out, which between a tap and the render
+    that tap causes is not the same thing as `value`.
+
+    Taps land faster than React re-renders, and every tap in one burst was
+    reading the same stale `value` prop and computing the same result: eight
+    quick presses of + moved the weight by one step, not eight. On the screen
+    that is exactly indistinguishable from a control that does not work, and on
+    the way out of it people conclude their change was not saved. Which is the
+    other half of the same bug: what they eventually did save was a number they
+    had not asked for.
+
+    Holding the last handed-out value lets a burst accumulate. Every render
+    puts the prop back, so the parent stays the source of truth the moment it
+    has had a chance to speak.
+  */
+  const handed = useRef(value);
+  handed.current = value;
+
+  const bump = (dir: 1 | -1) => {
+    const next = Math.min(max, Math.max(min, handed.current + dir * step));
+    handed.current = next;
+    onChange(next);
+  };
 
   function open() {
     setDraft(String(value));
@@ -75,7 +98,7 @@ export default function Stepper({
           onClick={() => bump(-1)}
           aria-label={`Decrease ${label}`}
           disabled={value <= min || typing}
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-[26px] leading-none text-cyan transition-colors duration-150 hover:bg-line active:bg-line disabled:opacity-30"
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-title leading-none text-cyan transition-colors duration-quick hover:bg-line active:bg-line disabled:opacity-30"
         >
           −
         </button>
@@ -95,26 +118,26 @@ export default function Stepper({
               inputMode="decimal"
               autoFocus
               aria-label={`${label} in ${suffix ?? "units"}`}
-              className="tabular statement w-full rounded-xl bg-raise text-center text-[56px] text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
+              className="tabular statement w-full rounded-xl bg-raise text-center text-hero text-fg focus:outline-none focus:ring-2 focus:ring-cyan"
             />
           ) : (
             <button
               type="button"
               onClick={open}
               aria-label={`Type ${label} instead`}
-              className="tabular statement w-full rounded-xl text-center text-[56px] text-fg transition-colors hover:bg-raise/60"
+              className="tabular statement w-full rounded-xl text-center text-hero text-fg transition-colors hover:bg-raise/60"
             >
               {value}
             </button>
           )}
-          {suffix && <span className="-mt-0.5 text-[14px] text-dim">{suffix}</span>}
+          {suffix && <span className="-mt-0.5 text-caption text-dim">{suffix}</span>}
         </div>
         <button
           type="button"
           onClick={() => bump(1)}
           aria-label={`Increase ${label}`}
-          disabled={typing}
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-[26px] leading-none text-cyan transition-colors duration-150 hover:bg-line active:bg-line disabled:opacity-30"
+          disabled={value >= max || typing}
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-raise text-title leading-none text-cyan transition-colors duration-quick hover:bg-line active:bg-line disabled:opacity-30"
         >
           +
         </button>

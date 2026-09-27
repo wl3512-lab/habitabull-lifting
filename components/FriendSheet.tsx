@@ -78,21 +78,22 @@ export default function FriendSheet({
       aria-label={member.name}
       ref={sheet}
       tabIndex={-1}
-      className={`z-50 flex justify-center bg-ground/95 outline-none ${
+      // The scrim fades and the column rises on it — see CrewPost, same sheet.
+      className={`veil z-50 flex justify-center bg-ground/95 outline-none ${
         framed ? "absolute inset-0" : "fixed inset-0 desk:absolute"
       }`}
     >
-      <div className="no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
+      <div className="rise no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="label text-cyan">In your crew</p>
-            <h1 className="statement mt-1.5 text-[40px] leading-none text-fg">{member.name}</h1>
+            <h1 className="statement mt-1.5 text-figure leading-none text-fg">{member.name}</h1>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="head -mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-[17px] text-dim transition-colors hover:bg-raise hover:text-fg"
+            className="head -mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-emphasis text-dim transition-colors hover:bg-raise hover:text-fg"
           >
             ✕
           </button>
@@ -109,7 +110,7 @@ export default function FriendSheet({
             <button
               type="button"
               onClick={() => setRange(range === "month" ? "all" : "month")}
-              className="head tap shrink-0 text-[15px] text-cyan transition-opacity hover:opacity-70"
+              className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
               {range === "month" ? "12 weeks" : "6 weeks"}
             </button>
@@ -120,15 +121,15 @@ export default function FriendSheet({
                 {week.map((c) => (
                   <span
                     key={c.iso}
-                    className={`h-3 flex-1 rounded-[4px] ${
-                      trained.has(c.iso) ? "bg-green" : c.future ? "bg-transparent" : "bg-raise"
+                    className={`h-3 flex-1 rounded-tick ${
+                      trained.has(c.iso) ? "bg-done" : c.future ? "bg-transparent" : "bg-raise"
                     }`}
                   />
                 ))}
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[15px] text-dim">
+          <p className="mt-3 text-body text-dim">
             {total === 0
               ? "Nothing logged yet."
               : `${total} ${total === 1 ? "session" : "sessions"} since they joined.`}
@@ -142,25 +143,25 @@ export default function FriendSheet({
               {member.plan.map((d) => (
                 <li key={`${d.day}-${d.label}`}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="head text-[17px] text-fg">
+                    <span className="head text-emphasis text-fg">
                       {d.label}
                       <span className="text-dim"> · {FULL[d.day]}</span>
                     </span>
                   </div>
-                  <p className="mt-1 text-[15px] leading-snug text-dim">
+                  <p className="mt-1 text-body leading-snug text-dim">
                     {d.exercises.map((e) => nameOf(e)).join(", ")}
                   </p>
                   <button
                     type="button"
                     onClick={() => onCopy(d, member.name)}
-                    className="head tap mt-2 text-[15px] text-cyan transition-opacity hover:opacity-70"
+                    className="head tap mt-2 text-body text-cyan transition-opacity hover:opacity-70"
                   >
                     Copy this workout →
                   </button>
                 </li>
               ))}
             </ul>
-            <p className="mt-4 border-t border-line pt-3.5 text-[15px] leading-snug text-dim">
+            <p className="mt-4 border-t border-line pt-3.5 text-body leading-snug text-dim">
               Their lifts, your weights. What you can lift is yours and is not part of
               this.
             </p>
@@ -168,12 +169,12 @@ export default function FriendSheet({
         ) : (
           <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
             <p className="label text-dim">What they do</p>
-            <p className="mt-2 text-[17px] leading-snug text-fg">
+            <p className="mt-2 text-emphasis leading-snug text-fg">
               {member.mine
                 ? "You have not shared your week yet."
                 : `${member.name} has not shared their week.`}
             </p>
-            <p className="mt-1 text-[15px] leading-snug text-dim">
+            <p className="mt-1 text-body leading-snug text-dim">
               Sharing a week shows which lifts are in it. Never any weights.
             </p>
           </section>

@@ -83,7 +83,7 @@ export default function YourData({
   return (
     <section className="rounded-2xl bg-card p-[18px]">
       <p className="label text-dim">Your data</p>
-      <p className="mt-2 text-[15px] text-dim">
+      <p className="mt-2 text-body text-dim">
         All of this lives in this browser and nowhere else. One file holds every session,
         note and photo.
       </p>
@@ -105,7 +105,7 @@ export default function YourData({
 
         {confirming ? (
           <div className="rounded-xl border border-line-strong p-3.5">
-            <p className="text-[15px] text-fg">
+            <p className="text-body text-fg">
               Restoring replaces everything here with the file&apos;s contents. Your
               current {sessions} {sessions === 1 ? "session" : "sessions"} would be gone.
             </p>
@@ -121,7 +121,7 @@ export default function YourData({
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
-                className="head h-12 shrink-0 px-4 text-[15px] text-dim transition-colors hover:text-fg"
+                className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
               >
                 Cancel
               </button>
@@ -134,7 +134,7 @@ export default function YourData({
         )}
       </div>
 
-      {said && <p className="mt-2.5 text-[15px] text-dim">{said}</p>}
+      {said && <p className="mt-2.5 text-body text-dim">{said}</p>}
     </section>
   );
 }

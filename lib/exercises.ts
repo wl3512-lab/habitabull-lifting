@@ -459,6 +459,347 @@ export const EXERCISES: Exercise[] = [
     ],
     mistakes: ["Lifting the elbows off the pad to get more range.", "Stopping short at the bottom, which is where it is hardest."],
   },
+  {
+    id: "hip-abductor", name: "Hip Abductor", equipment: "machine", primary: "glutes", increment: 2.5, compound: false,
+    cue: "Drive the pads apart with your outer hips, not by leaning back.",
+    steps: [
+      "Sit tall, pads against the outside of your knees",
+      "Push your knees apart to the machine's full range",
+      "Return slow, keeping the tension in your glutes",
+    ],
+    mistakes: [
+      "Leaning back to force the weight open",
+      "Snapping the legs apart",
+      "Cutting the range short",
+    ],
+  },
+  {
+    id: "hip-adductor", name: "Hip Adductor", equipment: "machine", primary: "glutes", increment: 2.5, compound: false,
+    cue: "Squeeze from the inner thigh, and control the way back out.",
+    steps: [
+      "Sit tall, pads against the inside of your knees",
+      "Squeeze your knees together to the full range",
+      "Open slow, never letting the stack pull you back",
+    ],
+    mistakes: [
+      "Letting the pads fling your legs open",
+      "Loading more than you can control",
+      "Rushing the return",
+    ],
+  },
+  {
+    id: "seated-leg-curl", name: "Seated Leg Curl", equipment: "machine", primary: "hamstrings", increment: 2.5, compound: false,
+    cue: "Curl your heels under the seat with your hips pinned to the pad.",
+    steps: [
+      "Pad low on your shins, thighs strapped down",
+      "Curl your heels down and under as far as they go",
+      "Return slow, stopping just short of straight",
+    ],
+    mistakes: [
+      "Lifting your hips off the pad",
+      "Half-repping the curl",
+      "Letting the weight drop back",
+    ],
+  },
+  {
+    id: "calf-raise", name: "Calf Raise", equipment: "machine", primary: "calves", increment: 2.5, compound: false,
+    cue: "Full stretch at the bottom, tall on your toes at the top.",
+    steps: [
+      "Balls of your feet on the platform, heels hanging",
+      "Drop the heels for a deep stretch",
+      "Press all the way onto your toes and pause",
+    ],
+    mistakes: [
+      "Bouncing out of the bottom",
+      "Cutting the height short",
+      "Rushing the reps",
+    ],
+  },
+  {
+    id: "hack-squat", name: "Hack Squat", equipment: "machine", primary: "quads", increment: 2.5, compound: true,
+    cue: "Sit down between your heels, knees tracking over your toes.",
+    steps: [
+      "Shoulders under the pads, feet mid-platform",
+      "Break at the knees and hips, sink to depth",
+      "Drive through your whole foot back up",
+    ],
+    mistakes: [
+      "Coming up onto your toes",
+      "Cutting the depth short",
+      "Letting the knees cave inward",
+    ],
+  },
+  {
+    id: "rear-delt-fly-machine", name: "Rear Delt Fly", equipment: "machine", primary: "shoulders", increment: 2.5, compound: false,
+    cue: "Lead with your elbows, not your hands.",
+    steps: [
+      "Chest on the pad, handles out in front",
+      "Sweep your arms back in a wide arc",
+      "Squeeze the rear delts, then return slow",
+    ],
+    mistakes: [
+      "Shrugging the traps up",
+      "Bending the arms to cheat the weight",
+      "Rushing the return",
+    ],
+  },
+  {
+    id: "assisted-pull-up", name: "Assisted Pull-up", equipment: "machine", primary: "back", increment: 2.5, compound: true,
+    cue: "More weight on the pad means more help, so chase less over time.",
+    steps: [
+      "Kneel or stand on the pad, hands wide",
+      "Pull your chest toward the bar, elbows down",
+      "Lower under control to a full hang",
+    ],
+    mistakes: [
+      "Bouncing out of the bottom",
+      "Stopping short of a full hang",
+      "Shrugging instead of pulling",
+    ],
+  },
+  {
+    id: "assisted-dip", name: "Assisted Dip", equipment: "machine", primary: "chest", increment: 2.5, compound: true,
+    cue: "Lean forward to feel it in your chest; stay upright for triceps.",
+    steps: [
+      "Kneel on the pad, arms locked out",
+      "Lower until your shoulders reach your elbows",
+      "Press back up to a strong lockout",
+    ],
+    mistakes: [
+      "Dropping too fast",
+      "Cutting the depth short",
+      "Letting the shoulders roll forward",
+    ],
+  },
+  {
+    id: "treadmill", name: "Treadmill", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true, incline: true,
+    cue: "Run or walk tall. Land under your hips, not out in front.",
+    steps: ["Set a pace you can hold a short conversation at.", "Relax the shoulders, quick light steps.", "Ease the pace down for the last minute rather than stopping dead."],
+    mistakes: ["Gripping the rails, which takes the work out of it.", "Starting far too fast to hold."],
+  },
+  {
+    id: "stairmaster", name: "Stairmaster", equipment: "machine", primary: "glutes", increment: 0, compound: false, cardio: true, incline: true,
+    cue: "Stand tall, full steps, no leaning on the rails.",
+    steps: ["Set a steady speed you can keep for the whole time.", "Drive through the whole foot on each step.", "Ease the speed down to finish."],
+    mistakes: ["Hanging on the rails and leaning back.", "Tiny half-steps instead of full ones."],
+  },
+  {
+    id: "elliptical", name: "Elliptical", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true, incline: true,
+    cue: "Push and pull evenly. Let the legs lead, not the arms.",
+    steps: ["Set a resistance you can hold a smooth rhythm against.", "Drive through the legs, arms following.", "Spin easy for the last minute."],
+    mistakes: ["Bouncing on the toes.", "Letting the arms do the work."],
+  },
+  {
+    id: "bike", name: "Bike", equipment: "machine", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Smooth circles, not stomping. Keep the cadence up.",
+    steps: ["Set a resistance you can spin steadily against.", "Aim for a quick, even cadence.", "Spin easy for the last minute."],
+    mistakes: ["Resistance so high the cadence crawls.", "Rocking in the saddle to force the pedals."],
+  },
+  {
+    id: "rowing", name: "Rowing", equipment: "machine", primary: "back", increment: 0, compound: false, cardio: true,
+    cue: "Legs, then back, then arms. Reverse it coming back.",
+    steps: ["Drive with the legs first.", "Swing the back, finish with the arms to the ribs.", "Arms out, body over, knees bend, in that order."],
+    mistakes: ["Pulling with the arms first.", "Rounding the back at the catch."],
+  },
+  {
+    id: "outdoor-run", name: "Run", equipment: "bodyweight", primary: "quads", increment: 0, compound: false, cardio: true,
+    cue: "Conversational pace. If you can't speak, ease off.",
+    steps: ["Start easy for the first few minutes.", "Settle into a rhythm you could hold a chat at.", "Walk the last stretch to bring the heart rate down."],
+    mistakes: ["Going out too hard and fading.", "Overstriding, reaching the foot too far ahead."],
+  },
+  /*
+    The machines a commercial gym actually has, and the two bodyweight lifts
+    everybody works towards.
+
+    The library had assisted pull-ups and assisted dips but not the unassisted
+    versions, so the thing people train the assisted machine *for* could not be
+    logged. Calves had exactly one entry. Arms had four. Every cue below is
+    written the same way as the rest: what the machine is for, in the order you
+    do it, and what goes wrong on it.
+  */
+  {
+    id: "seated-calf-raise", name: "Seated Calf Raise", equipment: "machine", primary: "calves", increment: 2.5, compound: false,
+    cue: "Knees bent puts the work in the soleus. Go slow at the bottom.",
+    steps: [
+      "Balls of your feet on the plate, pad snug over your knees",
+      "Drop your heels until you feel the stretch, then pause",
+      "Press up onto your toes and hold the top for a beat",
+    ],
+    mistakes: [
+      "Bouncing out of the bottom on the tendon",
+      "Cutting the range short at both ends",
+    ],
+  },
+  {
+    id: "standing-calf-raise", name: "Standing Calf Raise", equipment: "bodyweight", primary: "calves", increment: 0, compound: false,
+    cue: "Straight knees, full range, one foot if two gets easy.",
+    steps: [
+      "Balls of your feet on a step, heels hanging off",
+      "Lower your heels below the step until it stretches",
+      "Press all the way up and pause at the top",
+    ],
+    mistakes: [
+      "Bending the knees, which hands the work to the soleus",
+      "Short fast reps instead of a full stretch",
+    ],
+  },
+  {
+    id: "pull-up", name: "Pull-up", equipment: "bodyweight", primary: "back", increment: 0, compound: true,
+    cue: "Start from a dead hang. Pull your elbows to your ribs.",
+    steps: [
+      "Hands just outside your shoulders, hang with your shoulders set",
+      "Pull until your chin clears the bar, elbows driving down",
+      "Lower all the way to straight arms under control",
+    ],
+    mistakes: [
+      "Kipping the bottom half with your legs",
+      "Stopping before your arms are straight",
+      "Shrugging instead of pulling the elbows down",
+    ],
+  },
+  {
+    id: "dip", name: "Dip", equipment: "bodyweight", primary: "chest", increment: 0, compound: true,
+    cue: "Lean forward for chest, upright for triceps. Pick one.",
+    steps: [
+      "Support yourself on the bars with your arms straight",
+      "Lean your chest forward and lower until your shoulders reach your elbows",
+      "Press back up without locking out hard",
+    ],
+    mistakes: [
+      "Dropping below what your shoulders are ready for",
+      "Letting your shoulders roll forward at the bottom",
+    ],
+  },
+  {
+    id: "cable-crossover", name: "Cable Crossover", equipment: "machine", primary: "chest", increment: 2.5, compound: false,
+    cue: "Squeeze at the middle. The arms stay almost straight.",
+    steps: [
+      "Pulleys set high, one handle in each hand, one foot forward",
+      "Bring your hands together in front of your hips in an arc",
+      "Let them travel back until you feel the stretch across the chest",
+    ],
+    mistakes: [
+      "Bending and pressing, which turns it into a press",
+      "Shrugging the shoulders up to finish the rep",
+    ],
+  },
+  {
+    id: "incline-db-press", name: "Incline Dumbbell Press", equipment: "dumbbell", primary: "chest", increment: 2.5, compound: true,
+    cue: "Bench at about 30 degrees. Higher is a shoulder press.",
+    steps: [
+      "Set the bench low, dumbbells at your shoulders",
+      "Press up and slightly together without clashing them",
+      "Lower until your elbows are level with your chest",
+    ],
+    mistakes: [
+      "Setting the bench too upright and pressing with the shoulders",
+      "Flaring the elbows straight out to the sides",
+    ],
+  },
+  {
+    id: "t-bar-row", name: "T-Bar Row", equipment: "machine", primary: "back", increment: 2.5, compound: true,
+    cue: "Hinge, then row to your stomach. The back stays flat.",
+    steps: [
+      "Chest on the pad or hips hinged, handles in both hands",
+      "Row the weight to your stomach with your elbows close",
+      "Lower until your arms are straight and your back has not rounded",
+    ],
+    mistakes: [
+      "Standing up as you pull to swing the weight",
+      "Rowing to the chest, which turns it into a shrug",
+    ],
+  },
+  {
+    id: "face-pull", name: "Face Pull", equipment: "machine", primary: "shoulders", increment: 2.5, compound: false,
+    cue: "Pull the rope to your forehead, not your chin.",
+    steps: [
+      "Rope at eye height, one end in each hand, thumbs back",
+      "Pull towards your forehead and let your hands split apart",
+      "Return slow without letting your shoulders roll forward",
+    ],
+    mistakes: [
+      "Loading it heavy enough to need your whole body",
+      "Pulling low, which makes it a row",
+    ],
+  },
+  {
+    id: "cable-lateral-raise", name: "Cable Lateral Raise", equipment: "machine", primary: "shoulders", increment: 2.5, compound: false,
+    cue: "Lead with the elbow. Stop at shoulder height.",
+    steps: [
+      "Pulley at the bottom, handle in the hand furthest from it",
+      "Raise out to the side with a soft elbow",
+      "Stop level with your shoulder and lower slowly",
+    ],
+    mistakes: [
+      "Swinging the torso to start the rep",
+      "Going above shoulder height and shrugging",
+    ],
+  },
+  {
+    id: "cable-curl", name: "Cable Curl", equipment: "machine", primary: "arms", increment: 2.5, compound: false,
+    cue: "Elbows pinned at your sides the whole way.",
+    steps: [
+      "Pulley low, bar or rope in both hands, elbows at your ribs",
+      "Curl up without letting your elbows travel forward",
+      "Lower all the way to straight under control",
+    ],
+    mistakes: [
+      "Swinging the elbows forward at the top",
+      "Leaning back to help the last few reps",
+    ],
+  },
+  {
+    id: "overhead-tricep-extension", name: "Overhead Tricep Extension", equipment: "dumbbell", primary: "arms", increment: 2.5, compound: false,
+    cue: "Elbows point forward and stay there. Only the forearms move.",
+    steps: [
+      "One dumbbell in both hands, held above your head",
+      "Lower it behind your head until your forearms pass parallel",
+      "Press back up without letting the elbows flare",
+    ],
+    mistakes: [
+      "Letting the elbows drift out to the sides",
+      "Going heavy enough that your lower back arches",
+    ],
+  },
+  {
+    id: "smith-squat", name: "Smith Machine Squat", equipment: "machine", primary: "quads", increment: 2.5, compound: true,
+    cue: "Feet slightly forward of the bar. The rails take the balance.",
+    steps: [
+      "Bar across your upper back, feet a little ahead of it",
+      "Sit down to at least parallel, knees tracking over your toes",
+      "Drive the floor away and stand tall",
+    ],
+    mistakes: [
+      "Feet directly under the bar, which pitches you forward",
+      "Treating the rails as a reason to go heavier than your legs are ready for",
+    ],
+  },
+  {
+    id: "bulgarian-split-squat", name: "Bulgarian Split Squat", equipment: "dumbbell", primary: "quads", increment: 2.5, compound: true,
+    cue: "Back foot on the bench, front shin close to vertical.",
+    steps: [
+      "Back foot up on a bench, front foot a stride ahead",
+      "Lower straight down until your back knee is near the floor",
+      "Drive through the front heel to stand",
+    ],
+    mistakes: [
+      "Standing too close, which crushes the front knee forward",
+      "Pushing off the back foot instead of the front",
+    ],
+  },
+  {
+    id: "walking-lunge", name: "Walking Lunge", equipment: "dumbbell", primary: "quads", increment: 2.5, compound: true,
+    cue: "Long steps. Drop straight down, do not lean into it.",
+    steps: [
+      "A dumbbell in each hand, standing tall",
+      "Step forward and lower until the back knee nearly touches",
+      "Drive off the front heel into the next step",
+    ],
+    mistakes: [
+      "Short steps, which turn it into a knee grinder",
+      "Leaning the torso forward over the front leg",
+    ],
+  },
 ];
 
 /**
@@ -523,4 +864,58 @@ export function makeCustomExercise(
       "Chasing the number when the form has already gone.",
     ],
   };
+}
+
+/** Cardio machines for the add-a-lift picker's own Cardio category. */
+/**
+ * The cardio machines, as a set of their own.
+ *
+ * Cardio does not sort by muscle the way everything else does. A treadmill is
+ * filed under quads and a rower under back, so asking for "another quads lift"
+ * to swap a treadmill offers back squats, and the rower cannot be reached from
+ * the treadmill at all. They are alternatives to each other and to nothing
+ * else, which is what this returns.
+ *
+ * `equipment` is optional because the two callers want different things. The
+ * week builder passes it: she is planning against the kit she said she has.
+ * Adding a lift mid-session does not, because she is standing in the gym
+ * looking at what is actually in front of her.
+ */
+/**
+ * Find a lift by name, across the whole library.
+ *
+ * The picker is organised by muscle, which is right for browsing and wrong for
+ * looking something up: a seated leg curl is filed under hamstrings, and
+ * somebody standing in front of the machine is thinking "leg curl", not
+ * "hamstrings". The lift was there the whole time and could not be found,
+ * which from her side is the same as it not existing.
+ *
+ * Filtered to her kit, because a picker that offers a machine she has told us
+ * she does not have is a worse answer than none.
+ */
+export function searchLifts(
+  query: string,
+  equipment: Equipment[],
+  exclude: string[] = []
+): Exercise[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+  const kit = new Set<Equipment>([...equipment, "bodyweight"]);
+  const skip = new Set(exclude);
+  return allExercises()
+    .filter((e) => !skip.has(e.id) && kit.has(e.equipment) && e.name.toLowerCase().includes(q))
+    .sort((a, b) => {
+      // "curl" should lead with Cable Curl before Seated Leg Curl.
+      const an = Number(!a.name.toLowerCase().startsWith(q));
+      const bn = Number(!b.name.toLowerCase().startsWith(q));
+      return an - bn || a.name.localeCompare(b.name);
+    })
+    .slice(0, 12);
+}
+
+export function cardioLifts(exclude: string[] = [], equipment?: Equipment[]): Exercise[] {
+  const kit = equipment ? new Set<Equipment>([...equipment, "bodyweight"]) : null;
+  return EXERCISES.filter(
+    (e) => e.cardio && !exclude.includes(e.id) && (!kit || kit.has(e.equipment))
+  );
 }

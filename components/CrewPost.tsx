@@ -135,14 +135,18 @@ export default function CrewPost({
       tabIndex={-1}
       // Fixed on a phone, absolute inside the device on a desktop. No blur:
       // under a 95% scrim it costs a compositing pass to be 5% visible.
-      className={`z-50 flex justify-center bg-ground/95 outline-none ${
+      //
+      // `veil` on the surface, `rise` on the column: the sheet establishes
+      // itself and the content lands on it, so covering the whole screen reads
+      // as arriving on top of the app rather than replacing it.
+      className={`veil z-50 flex justify-center bg-ground/95 outline-none ${
         framed ? "absolute inset-0" : "fixed inset-0 desk:absolute"
       }`}
     >
-      <div className="no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
+      <div className="rise no-scrollbar flex w-full max-w-[430px] flex-col overflow-y-auto px-6 pb-8 pt-12">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="head truncate text-[17px] text-fg">
+            <p className="head truncate text-emphasis text-fg">
               {photo.mine ? "You" : photo.memberName}
             </p>
             <p className="label text-dim">Shared with your crew</p>
@@ -151,7 +155,7 @@ export default function CrewPost({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="head -mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-[17px] text-dim transition-colors hover:bg-raise hover:text-fg"
+            className="head -mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-emphasis text-dim transition-colors hover:bg-raise hover:text-fg"
           >
             ✕
           </button>
@@ -173,19 +177,19 @@ export default function CrewPost({
             onClick={toggleLike}
             aria-pressed={liked}
             aria-label={liked ? "Undo your like" : "Like this"}
-            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-[20px] transition-colors ${
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-head transition-colors ${
               liked ? "bg-cyan text-ground" : "bg-raise text-dim hover:text-fg"
             }`}
           >
             {liked ? "♥" : "♡"}
           </button>
-          <p className="tabular flex-1 text-right text-[15px] text-dim">
+          <p className="tabular flex-1 text-right text-body text-dim">
             {likes === 0 ? "No likes yet" : `${likes} ${likes === 1 ? "like" : "likes"}`}
           </p>
         </div>
 
         {photo.caption && (
-          <p className="mt-3 text-[17px] leading-snug text-fg">
+          <p className="mt-3 text-emphasis leading-snug text-fg">
             <span className="head text-dim">{photo.mine ? "You" : photo.memberName} </span>
             {photo.caption}
           </p>
@@ -194,7 +198,7 @@ export default function CrewPost({
         {replies.length > 0 && (
           <ul className="mt-4 flex flex-col gap-3 border-t border-line pt-4">
             {replies.map((r) => (
-              <li key={r.id} className="text-[17px] leading-snug text-fg">
+              <li key={r.id} className="text-emphasis leading-snug text-fg">
                 <span className="head text-dim">{r.mine ? "You" : r.memberName} </span>
                 {r.body}
               </li>
@@ -215,12 +219,12 @@ export default function CrewPost({
             maxLength={200}
             placeholder={photo.mine ? "Add a note" : `Say something to ${photo.memberName}`}
             aria-label="Your reply"
-            className="min-w-0 flex-1 rounded-full bg-card px-[18px] py-3 text-[17px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+            className="min-w-0 flex-1 rounded-full bg-card px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
           />
           <button
             type="submit"
             disabled={!draft.trim() || sending}
-            className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-[15px] text-ground transition-opacity disabled:opacity-30"
+            className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
           >
             Send
           </button>
@@ -230,7 +234,7 @@ export default function CrewPost({
           <button
             type="button"
             onClick={remove}
-            className="tap mt-6 self-start text-[15px] text-dim underline underline-offset-4 transition-colors hover:text-fg"
+            className="tap mt-6 self-start text-body text-dim underline underline-offset-4 transition-colors hover:text-fg"
           >
             {removing ? "Removing…" : "Stop sharing this photo"}
           </button>

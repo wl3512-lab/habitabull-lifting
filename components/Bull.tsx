@@ -1,21 +1,38 @@
 import Image from "next/image";
 
 /**
- * The mascot always comes from /public/mascot.png. The Figma copy has
- * transparent eyes and smile — never source him from there.
+ * The mascot. Never source him from Figma: that copy has transparent eyes and
+ * smile.
  *
  * His line inherits colour from whatever it is standing on, because he appears
  * on the charcoal ground and on the orange one and the text has to flip.
  */
+
 /**
- * The trimmed artwork's aspect, which is also the Figma's: 206 × 250 on the
- * welcome screen, 180 × 218 on the PR. `size` is his width.
+ * Five poses, each with its own aspect.
+ *
+ * The ratio has to travel with the pose rather than sit in one constant. The
+ * poses are genuinely different shapes: standing is 0.8375, the thumbs-up is
+ * wider than it is tall at 1.0791 because the arm is out, and the confused one
+ * is 0.9101 because the question marks push the box sideways, lying down he
+ * is 1.1286, the widest of the lot, and showing a lift he is 0.9416. One shared number would squash most of
+ * them, which is the same bug that stretched him on two screens when the
+ * artwork last changed.
  */
-// The artwork's own aspect. Get this wrong and every bull stretches. The 2026
-// drawing is 531 x 634 after its background was cut and the canvas trimmed;
-// the 2023 one it replaced was 824 x 1000, which is why this is a constant
-// and not a guess.
-const RATIO = 531 / 634;
+const POSES = {
+  /** Standing. The default everywhere. */
+  stand:    { src: "/mascot.png",           ratio: 531 / 634 },
+  /** Thumbs up, winking. For the moment something went well. */
+  cheer:    { src: "/mascot-cheer.png",     ratio: 505 / 468 },
+  /** Question marks. For when the app cannot answer, not when you got it wrong. */
+  confused: { src: "/mascot-confused.png",  ratio: 425 / 467 },
+  /** Lying down, eyes shut. For a rest day: nothing is being asked of anybody. */
+  rest:     { src: "/mascot-rest.png",      ratio: 632 / 560 },
+  /** One hoof up, looking back over his shoulder at whatever is beside him. For showing a lift. */
+  show:     { src: "/mascot-show.png",      ratio: 597 / 634 },
+} as const;
+
+export type Pose = keyof typeof POSES;
 
 /**
  * How big he gets, named for the job rather than the number.
@@ -44,26 +61,34 @@ export default function Bull({
   size = 132,
   say,
   react = false,
+  pose,
   className = "",
 }: {
   size?: number;
   say?: string;
+  /** He reacts to something that just happened, and stands taller for it. */
   react?: boolean;
+  /** Overrides the pose `react` would pick. */
+  pose?: Pose;
   className?: string;
 }) {
+  // `react` has always meant "something happened worth a reaction", and until
+  // now that only changed how he moved. It changes who he is as well.
+  const { src, ratio } = POSES[pose ?? (react ? "cheer" : "stand")];
+
   return (
     <div className={`flex flex-col items-center ${className}`}>
       <Image
-        src="/mascot.png"
+        src={src}
         alt=""
         width={size}
-        height={Math.round(size / RATIO)}
+        height={Math.round(size / ratio)}
         priority
         className={react ? "nod" : undefined}
         style={{ width: size, height: "auto" }}
       />
       {say && (
-        <p className="head mt-3 max-w-[28ch] text-center text-[17px] leading-snug">{say}</p>
+        <p className="head mt-3 max-w-[28ch] text-center text-emphasis leading-snug">{say}</p>
       )}
     </div>
   );

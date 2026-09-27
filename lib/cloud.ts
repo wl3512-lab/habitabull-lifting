@@ -94,6 +94,31 @@ function rememberCrew(code: string | null) {
   } catch {
     // Blocked storage costs a button, not the feature.
   }
+  // A crew has just appeared. Everything held back because there was nobody
+  // to tell goes now — the week and the days trained both.
+  if (code) {
+    flushPlan();
+    flushCheckins();
+  }
+}
+
+/**
+ * She left a crew. Anything still waiting to be sent is discarded, because it
+ * was meant for those people and must not follow her into the next crew.
+ *
+ * This is deliberately *not* what a null code from `fetchCrew` does. That call
+ * returns `code: null` for anybody who is simply not in a crew yet — which is
+ * everybody looking at the screen with the button that creates one. Clearing
+ * the buffers there threw away the week and the days trained a moment before
+ * they were needed, so creating a crew published nothing and the creator
+ * showed as "trained 0 times this week" to everyone who joined. It came right
+ * on the next launch, which is what made it look like a sync delay rather than
+ * a discard.
+ */
+function forgetCrew() {
+  rememberCrew(null);
+  pendingPlan = undefined;
+  pendingCheckins = undefined;
 }
 
 /**
@@ -147,7 +172,7 @@ export const joinCrew = async (code: string, name: string) => {
 
 export const leaveCrew = async () => {
   const res = await call<{ ok: true }>("leave", {});
-  rememberCrew(null);
+  forgetCrew();
   return res;
 };
 
@@ -160,23 +185,59 @@ export const fetchCrew = async () => {
 };
 
 /**
- * Push the days she has trained, so the crew sees presence and nothing else.
+ * The week she has, waiting for somebody to show it to.
  *
- * Only what the server has not already been told. Sending the whole history on
- * every launch is correct — the upsert is idempotent — but it costs bandwidth
- * proportional to how long someone has been using the app, forever, which is
- * exactly backwards: the loyal user pays the most. The acknowledged set lives
- * beside the crew code and is cleared when she leaves.
+ * `undefined` means there is nothing to send; `null` is a withdrawal, which is
+ * a thing worth sending. Held rather than dropped so that joining a crew
+ * shares the plan she already had, instead of waiting for her next edit.
  */
+let pendingPlan: SharedDay[] | null | undefined;
+
 /**
  * Share the week for the crew to copy, or pass null to withdraw it.
  *
  * Day labels and exercise ids only. No weight, no set, no rep — what crosses
  * is which lifts somebody does, never how much they lift, and anyone copying
  * it gets their own engine's numbers.
+ *
+ * Outside a crew there is nobody to publish to and the server would refuse, so
+ * asking anyway is a request on every single launch that can only ever be a
+ * 403. It waits for a crew instead.
  */
-export const publishPlan = (plan: SharedDay[] | null) =>
-  call<{ ok: true; shared: boolean }>("publish", { plan });
+export const publishPlan = (plan: SharedDay[] | null) => {
+  if (!crewCode()) {
+    pendingPlan = plan;
+    return Promise.resolve(null);
+  }
+  return call<{ ok: true; shared: boolean }>("publish", { plan });
+};
+
+/** A crew has appeared. Tell it about the week that was waiting. */
+function flushPlan() {
+  if (pendingPlan === undefined) return;
+  const plan = pendingPlan;
+  pendingPlan = undefined;
+  void call<{ ok: true; shared: boolean }>("publish", { plan });
+}
+
+/**
+ * Days trained that had nowhere to go yet.
+ *
+ * The mirror of `pendingPlan`. `pushCheckins` used to return early outside a
+ * crew and drop the days on the floor, and its effect in `app/page.tsx` only
+ * re-runs when the completed-session count changes — so days already trained
+ * before the crew existed were not sent when it appeared. They were sent on
+ * the next launch, which is why reloading appeared to fix it.
+ */
+let pendingCheckins: string[] | undefined;
+
+/** A crew has appeared. Tell it about the days that were waiting. */
+function flushCheckins() {
+  if (pendingCheckins === undefined) return;
+  const days = pendingCheckins;
+  pendingCheckins = undefined;
+  void pushCheckins(days);
+}
 
 const SENT_KEY = "habitabull.checkins";
 
@@ -189,8 +250,25 @@ function acknowledged(): Set<string> {
   }
 }
 
+/**
+ * Push the days she has trained, so the crew sees presence and nothing else.
+ *
+ * Only what the server has not already been told. Sending the whole history on
+ * every launch is correct — the upsert is idempotent — but it costs bandwidth
+ * proportional to how long someone has been using the app, forever, which is
+ * exactly backwards: the loyal user pays the most. The acknowledged set lives
+ * beside the crew code and is cleared when she leaves.
+ */
 export async function pushCheckins(days: string[]) {
+  // Presence is only meaningful inside a crew, and a refused write is never
+  // acknowledged, so a solo user would re-send forever.
   if (!enabled()) return null;
+  // Outside a crew there is nobody to tell, but these days are still true.
+  // Held rather than dropped, and flushed the moment a crew exists.
+  if (!crewCode()) {
+    pendingCheckins = days;
+    return null;
+  }
   const sent = acknowledged();
   const fresh = days.filter((d) => !sent.has(d));
   if (fresh.length === 0) return { ok: true } as const;

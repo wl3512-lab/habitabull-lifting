@@ -72,17 +72,17 @@ export default function CrewToday({
     >
       <span
         aria-hidden
-        className={`h-2.5 w-2.5 shrink-0 rounded-full ${others.length > 0 ? "bg-green" : "bg-cyan"}`}
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${others.length > 0 ? "bg-done" : "bg-cyan"}`}
       />
       <span className="flex-1">
-        {who && <span className="block text-[17px] leading-snug text-fg">{who}</span>}
+        {who && <span className="block text-emphasis leading-snug text-fg">{who}</span>}
         {answered && (
-          <span className={`block text-[15px] leading-snug ${who ? "mt-0.5 text-dim" : "text-fg"}`}>
+          <span className={`block text-body leading-snug ${who ? "mt-0.5 text-dim" : "text-fg"}`}>
             {answered} on your photo.
           </span>
         )}
       </span>
-      <span className="head shrink-0 text-[15px] text-cyan">Open</span>
+      <span className="head shrink-0 text-body text-cyan">Open</span>
     </button>
   );
 }

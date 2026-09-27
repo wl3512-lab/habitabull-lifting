@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Prototype UX test runs: screenshots and scratch output, regenerated per run.
+/.jez

@@ -41,10 +41,12 @@ export default function WeekSetup({
   profile,
   onSave,
   onSkip,
+  onImport,
 }: {
   profile: Profile;
   onSave: (p: Profile) => void;
   onSkip: () => void;
+  onImport?: () => void;
 }) {
   const [text, setText] = useState("");
   const [asking, setAsking] = useState(false);
@@ -111,14 +113,14 @@ export default function WeekSetup({
         <button
           type="button"
           onClick={onSkip}
-          className="head tap shrink-0 text-[15px] text-dim transition-colors hover:text-fg"
+          className="head tap shrink-0 text-body text-dim transition-colors hover:text-fg"
         >
           Later
         </button>
       </div>
 
-      <h1 className="statement mt-2 text-[44px] text-fg">When can you train?</h1>
-      <p className="mt-1.5 text-[17px] text-dim">
+      <h1 className="statement mt-2 text-figure text-fg">When can you train?</h1>
+      <p className="mt-1.5 text-emphasis text-dim">
         Roughly is fine. A day you keep beats an hour you miss.
       </p>
 
@@ -141,7 +143,7 @@ export default function WeekSetup({
               rows={2}
               autoFocus
               placeholder="Free most evenings, but Wednesdays are bad"
-              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-[16px] text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+              className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <div className="mt-2.5 flex items-center gap-2.5">
               <Pill
@@ -158,7 +160,7 @@ export default function WeekSetup({
                   setTelling(false);
                   setText("");
                 }}
-                className="head h-12 shrink-0 px-4 text-[15px] text-dim transition-colors hover:text-fg"
+                className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
               >
                 Cancel
               </button>
@@ -172,15 +174,15 @@ export default function WeekSetup({
           >
             <span>
               <span className="label block text-dim">Not sure?</span>
-              <span className="mt-1.5 block text-[17px] leading-snug text-fg">
+              <span className="mt-1.5 block text-emphasis leading-snug text-fg">
                 Just tell me about your week and I&apos;ll work it out.
               </span>
             </span>
-            <span className="head shrink-0 text-[15px] text-cyan">Type it</span>
+            <span className="head shrink-0 text-body text-cyan">Type it</span>
           </button>
         )}
         {offline && (
-          <p className="mt-2 text-[15px] text-dim">Worked that out offline.</p>
+          <p className="mt-2 text-body text-dim">Worked that out offline.</p>
         )}
       </div>
 
@@ -193,7 +195,7 @@ export default function WeekSetup({
               type="button"
               onClick={() => setCountAndPlace(n)}
               aria-pressed={count === n}
-              className={`head h-11 flex-1 rounded-full border text-[17px] transition-colors duration-150 ${
+              className={`head h-11 flex-1 rounded-full border text-emphasis transition-colors duration-quick ${
                 count === n ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg"
               }`}
             >
@@ -201,7 +203,7 @@ export default function WeekSetup({
             </button>
           ))}
         </div>
-        <p className="mt-3 text-[15px] text-dim">
+        <p className="mt-3 text-body text-dim">
           Three is the number beginners actually keep. Two is enough to make progress.
         </p>
 
@@ -219,7 +221,7 @@ export default function WeekSetup({
               onClick={() => toggleDay(i)}
               aria-pressed={days.includes(i)}
               aria-label={d}
-              className={`head grid h-11 min-w-0 flex-1 place-items-center rounded-full border-2 text-[17px] transition-colors duration-150 ${
+              className={`head grid h-11 min-w-0 flex-1 place-items-center rounded-full border-2 text-emphasis transition-colors duration-quick ${
                 days.includes(i)
                   ? "border-cyan bg-cyan text-ground"
                   : "border-line-strong text-dim hover:border-fg"
@@ -233,7 +235,7 @@ export default function WeekSetup({
 
       <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
         <p className="label text-dim">When in the day</p>
-        <p className="mt-1 text-[15px] text-dim">Pick as many as genuinely work.</p>
+        <p className="mt-1 text-body text-dim">Pick as many as genuinely work.</p>
         <div className="mt-3 flex flex-col gap-2">
           {ANCHORS.map((a) => {
             const on = anchors?.includes(a.id) ?? false;
@@ -250,12 +252,12 @@ export default function WeekSetup({
                   })
                 }
                 aria-pressed={on}
-                className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+                className={`rounded-xl border p-3.5 text-left transition-colors duration-quick ${
                   on ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
                 }`}
               >
-                <span className="head block text-[17px] text-fg">{a.label}</span>
-                <span className="block text-[15px] text-dim">{a.hint}</span>
+                <span className="head block text-emphasis text-fg">{a.label}</span>
+                <span className="block text-body text-dim">{a.hint}</span>
               </button>
             );
           })}
@@ -269,24 +271,24 @@ export default function WeekSetup({
             type="button"
             onClick={() => setAnchors(anchors?.length === 0 ? undefined : [])}
             aria-pressed={anchors?.length === 0}
-            className={`rounded-xl border p-3.5 text-left transition-colors duration-150 ${
+            className={`rounded-xl border p-3.5 text-left transition-colors duration-quick ${
               anchors?.length === 0
                 ? "border-cyan bg-raise"
                 : "border-transparent bg-raise/40 hover:bg-raise/70"
             }`}
           >
-            <span className="head block text-[17px] text-fg">Whenever I can</span>
-            <span className="block text-[15px] text-dim">It changes week to week</span>
+            <span className="head block text-emphasis text-fg">Whenever I can</span>
+            <span className="block text-body text-dim">It changes week to week</span>
           </button>
         </div>
-        <p className="mt-3 text-[15px] text-dim">
+        <p className="mt-3 text-body text-dim">
           A slot in your day sticks better than a time on a clock. Two slots stick better than
           one you keep missing.
         </p>
       </section>
 
       <div className="mt-auto pt-8">
-        <p className="mb-3 text-[15px] text-dim">{summary}</p>
+        <p className="mb-3 text-body text-dim">{summary}</p>
         <Pill
           onClick={() =>
             onSave({
@@ -302,6 +304,15 @@ export default function WeekSetup({
         >
           That&apos;s my week
         </Pill>
+        {onImport && (
+          <button
+            type="button"
+            onClick={onImport}
+            className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70"
+          >
+            Or paste a workout you already have
+          </button>
+        )}
       </div>
     </main>
   );

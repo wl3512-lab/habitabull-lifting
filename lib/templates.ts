@@ -32,10 +32,36 @@ export interface DayTemplate {
   muscles: Muscle[];
   /** Circuits run lighter and longer, and prefer what needs no setup. */
   style: "strength" | "circuit";
+  /**
+   * Named lifts in preference order, instead of muscle slots.
+   *
+   * Every other day is a shape the picker fills, because "legs" has a dozen
+   * right answers and the best one depends on what kit she has. Cardio has
+   * one: she is going to the machine everybody knows how to use. Naming it
+   * outright beats asking a picker to arrive at it by muscle, which is how it
+   * used to produce a bodyweight circuit nobody would call cardio.
+   *
+   * The first entry the kit allows wins, so the last one has to need nothing.
+   */
+  lifts?: string[];
   /** True for the shape the guidance actually recommends for a novice. */
   recommended?: boolean;
 }
 
+/*
+  A day contains what its hint says it contains.
+
+  Every one of these used to end in a core slot, and the picker is
+  deterministic, so the same core lift landed on all six: a plank on push day,
+  on pull day, on leg day. "Lower body — everything below them" shipped with a
+  plank in it, which is above the hips by any reading.
+
+  Core stays where the description covers it: full body, which promises a bit
+  of everything, and upper body, where the trunk genuinely belongs. The named
+  splits list their muscles and now contain those muscles. Lower body picks up
+  a second hamstring slot in the core slot's place so it is still a full day
+  rather than three lifts.
+*/
 export const TEMPLATES: DayTemplate[] = [
   {
     id: "full-body",
@@ -49,21 +75,21 @@ export const TEMPLATES: DayTemplate[] = [
     id: "push",
     label: "Push day",
     hint: "Chest, shoulders, triceps",
-    muscles: ["chest", "shoulders", "arms", "chest", "core"],
+    muscles: ["chest", "shoulders", "arms", "chest"],
     style: "strength",
   },
   {
     id: "pull",
     label: "Pull day",
     hint: "Back, biceps, hamstrings",
-    muscles: ["back", "hamstrings", "back", "arms", "core"],
+    muscles: ["back", "hamstrings", "back", "arms"],
     style: "strength",
   },
   {
     id: "legs",
     label: "Leg day",
     hint: "Quads, hamstrings, glutes",
-    muscles: ["quads", "hamstrings", "glutes", "quads", "core"],
+    muscles: ["quads", "hamstrings", "glutes", "quads"],
     style: "strength",
   },
   {
@@ -77,15 +103,30 @@ export const TEMPLATES: DayTemplate[] = [
     id: "lower",
     label: "Lower body",
     hint: "Everything below them",
-    muscles: ["quads", "hamstrings", "glutes", "core"],
+    muscles: ["quads", "hamstrings", "glutes", "hamstrings"],
     style: "strength",
   },
   {
     id: "cardio",
     label: "Cardio",
-    hint: "A circuit — high reps, short rests, nothing to set up",
-    muscles: ["glutes", "quads", "chest", "core"],
+    /*
+      A list of what the day can be, like every hint beside it, plus the one
+      clause that makes cardio different from all of them: it is set in time
+      rather than in sets.
+
+      It used to say "Treadmill. Set a time and an incline, then walk it or
+      run it" — instructional where its siblings are descriptive, and wrong
+      twice over now. Treadmill is only the starting pick and five other
+      machines swap in behind it, and the incline belongs to three of the six,
+      so promising one to somebody who picks the rower is promising a control
+      that is not there.
+    */
+    hint: "Treadmill, bike, rower or a run. You set how long",
+    // Kept as the fallback shape if the named lifts are ever unavailable.
+    muscles: ["quads"],
     style: "circuit",
+    // Outdoor run last, because it is the one that needs no gym at all.
+    lifts: ["treadmill", "outdoor-run"],
   },
 ];
 
