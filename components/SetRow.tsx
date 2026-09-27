@@ -1,6 +1,8 @@
 "use client";
 
+import PlateBar from "./PlateBar";
 import Stepper from "./Stepper";
+import { DEFAULT_BAR_LB } from "@/lib/plates";
 import type { LoggedSet } from "@/lib/types";
 
 /**
@@ -24,6 +26,9 @@ export default function SetRow({
   incline = false,
   hold = false,
   lastTime,
+  plates = false,
+  bar = DEFAULT_BAR_LB,
+  onBar,
   onChange,
 }: {
   set: LoggedSet;
@@ -36,19 +41,35 @@ export default function SetRow({
   hold?: boolean;
   /** What this set was last time, if there is a last time. */
   lastTime?: string;
+  /**
+   * Load the bar instead of stepping the number. Barbell lifts only — the
+   * caller decides, because a dumbbell press has no bar and a cable machine
+   * has a pin, and offering plates there would be a lie about the equipment.
+   */
+  plates?: boolean;
+  bar?: number;
+  onBar?: (next: number) => void;
   onChange: (next: LoggedSet) => void;
 }) {
   return (
     <div className="rise flex flex-col gap-3">
-      {increment > 0 && (
-        <Stepper
-          label="Weight"
-          value={set.weight}
-          step={increment}
-          suffix="lb"
-          onChange={(weight) => onChange({ ...set, weight })}
-        />
-      )}
+      {increment > 0 &&
+        (plates ? (
+          <PlateBar
+            weight={set.weight}
+            bar={bar}
+            onWeight={(weight) => onChange({ ...set, weight })}
+            onBar={(next) => onBar?.(next)}
+          />
+        ) : (
+          <Stepper
+            label="Weight"
+            value={set.weight}
+            step={increment}
+            suffix="lb"
+            onChange={(weight) => onChange({ ...set, weight })}
+          />
+        ))}
       <Stepper
         label={cardio ? "Duration" : hold ? "Time" : "Reps"}
         value={set.reps}

@@ -9,6 +9,7 @@ import { Pill } from "./ui";
 import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
 import { EQUIPMENT, MUSCLES } from "@/lib/constraints";
 import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight, topSet } from "@/lib/engine";
+import { DEFAULT_BAR_LB } from "@/lib/plates";
 import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
 import { line, midsetLine } from "@/lib/voice";
@@ -62,6 +63,7 @@ export default function LogSession({
   onFinish,
   onExit,
   onExercise,
+  onProfile,
   initialPicking = false,
 }: {
   session: Session;
@@ -73,6 +75,8 @@ export default function LogSession({
   onFinish: () => void;
   onExit: () => void;
   onExercise: (id: string) => void;
+  /** Remembering the bar she set, so she sets it once. */
+  onProfile?: (p: Profile) => void;
   /**
    * The frame gallery opens straight onto the jump list, the same way it opens
    * Onboarding onto its second screen. It is a real screen with real decisions
@@ -126,6 +130,15 @@ export default function LogSession({
   const meta = exercise ? byId(exercise.exerciseId) : undefined;
   const increment = meta?.increment ?? 5;
   const isCardio = meta?.cardio ?? false;
+  /*
+    Plates are offered where there is a bar to put them on, and nowhere else.
+
+    A dumbbell press and a cable row have weights you select, not load, so the
+    picker would be describing equipment that is not in front of her. The
+    preference is a preference for barbell lifts; everything else keeps the
+    steppers whatever it says.
+  */
+  const usePlates = profile.weightInput === "plates" && meta?.equipment === "barbell";
   const hasIncline = meta?.incline ?? false;
   const isHold = meta?.hold ?? false;
   const activeSet = exercise ? exercise.sets.findIndex((s) => !s.done) : -1;
@@ -776,6 +789,9 @@ export default function LogSession({
             incline={hasIncline}
             hold={isHold}
             lastTime={lastTime}
+            plates={usePlates}
+            bar={profile.barLb ?? DEFAULT_BAR_LB}
+            onBar={(barLb) => onProfile?.({ ...profile, barLb })}
             onChange={(next) => updateSet(activeSet, next)}
           />
         ) : (

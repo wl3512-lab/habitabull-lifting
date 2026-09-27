@@ -185,6 +185,14 @@ export interface Profile {
    */
   restSec?: number;
   /**
+   * How she sets a weight on a barbell lift: the steppers, or by loading the
+   * bar. Only ever offered where plates are a real thing — a dumbbell or a
+   * machine has no bar to load, so those keep the steppers whatever this says.
+   */
+  weightInput?: "steppers" | "plates";
+  /** What her bar weighs. 45 unless she says otherwise. */
+  barLb?: number;
+  /**
    * The old pace setting. Kept, never written, and read only when `restSec` is
    * absent: every device that installed before this stores one of these and
    * localStorage is the only copy there is. Deleting it would silently reset

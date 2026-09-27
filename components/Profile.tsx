@@ -7,6 +7,7 @@ import YourData from "./YourData";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { REST_MAX, REST_MIN, REST_STEP, restSeconds, SHORT_DAYS } from "@/lib/engine";
+import { DEFAULT_BAR_LB } from "@/lib/plates";
 import Stepper from "./Stepper";
 import type { AppState, Profile as ProfileT } from "@/lib/types";
 
@@ -281,6 +282,50 @@ export default function Profile({
           </div>
         </section>
       )}
+
+      {/*
+        Two ways to put a number on a barbell lift, and she picks. The steppers
+        ask what the set weighs and assume she has worked it out; the plates ask
+        what is on the bar and work it out for her. Neither is right for
+        everybody, which is why this is a setting and not a redesign.
+
+        Only barbell lifts change. A dumbbell has no bar to load and a machine
+        has a pin, so those keep the steppers either way — the toggle says so
+        rather than letting her find out.
+      */}
+      <section className="mt-8">
+        <p className="label text-dim">Setting a weight</p>
+        <Card className="mt-3 p-[18px]">
+          <div className="flex gap-1.5">
+            {(
+              [
+                ["steppers", "Steppers"],
+                ["plates", "Load the bar"],
+              ] as const
+            ).map(([id, label]) => {
+              const on = (profile.weightInput ?? "steppers") === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onProfile({ ...profile, weightInput: id })}
+                  className={`head h-11 flex-1 rounded-full border text-body transition-colors ${
+                    on ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-body text-dim">
+            {(profile.weightInput ?? "steppers") === "plates"
+              ? `Tap plates onto a ${profile.barLb ?? DEFAULT_BAR_LB} lb bar and the total works itself out. Barbell lifts only — dumbbells and machines keep the steppers.`
+              : "Plus and minus, or tap the number to type it."}
+          </p>
+        </Card>
+      </section>
 
       {/*
         Rest was set once at signup and then unreachable forever, which is half

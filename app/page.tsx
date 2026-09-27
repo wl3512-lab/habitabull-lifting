@@ -682,6 +682,7 @@ export default function Page() {
         // lose those sets?".
         onExit={() => setView("stopped")}
         onExercise={(id) => openExercise(id, "log")}
+        onProfile={(p2: Profile) => setState((s2) => ({ ...s2, profile: p2 }))}
       />
     );
   }
