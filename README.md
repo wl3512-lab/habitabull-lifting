@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/og.png" alt="HabitaBull Lifting" width="640">
+  <img src="art/cover.png" alt="HabitaBull Lifting" width="640">
 </p>
 
 # HabitaBull Lifting

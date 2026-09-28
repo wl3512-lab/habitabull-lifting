@@ -24,3 +24,11 @@ because a source file is not an asset.
   the closed smile.
 
 The cut-out the app actually uses is `public/mascot.png`.
+
+`cover.png` is the one file here that is used rather than kept: it heads the
+README. It is the 2023 deck's title slide, copied byte for byte from the
+portfolio at lucyliu.xyz so the repo and the case study open on the same
+image. That makes it the one place the old teal direction is still shown on
+purpose. The app's own card, in the shipped charcoal and orange, is
+`public/og.png`, which `app/layout.tsx` serves as the OpenGraph image.
+
