@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="art/cover.png" alt="HabitaBull Lifting" width="640">
+  <img src="art/cover.webp" alt="HabitaBull Lifting: the wordmark, the research, audit and build lines, the why-do-you-lift and set-logging screens, and the bull" width="720">
 </p>
 
 # HabitaBull Lifting
