@@ -12,7 +12,7 @@ import { greetingMood, line } from "@/lib/voice";
 import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor } from "@/lib/schedule";
 import type { CrewDay } from "@/lib/cloud";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
-import { unfinishedSessions } from "@/lib/session-memory";
+import { startedAgo, unfinishedSessions } from "@/lib/session-memory";
 import { previewExercise } from "@/lib/plan";
 import { count } from "@/lib/plural";
 import { weekStrip } from "@/lib/calendar";
@@ -436,7 +436,7 @@ export default function Today({
           <p className="mt-1 text-body text-dim">Your logged sets are saved.</p>
           <button type="button" onClick={() => onResume(session.date)}
             className="head mt-2 min-h-11 text-body text-cyan">
-            Resume workout from {session.date}
+            Resume workout from {startedAgo(session)}
           </button>
         </section>
       ))}

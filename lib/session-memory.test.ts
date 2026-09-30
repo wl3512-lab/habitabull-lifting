@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resumePosition, replaceSessionSets, unfinishedSessions, finishSession, secondsRemaining, endTimedWork } from "./session-memory";
+import { resumePosition, replaceSessionSets, unfinishedSessions, startedAgo, finishSession, secondsRemaining, endTimedWork } from "./session-memory";
+import { historyFor } from "./engine";
 import type { Session } from "./types";
 
 const session = (): Session => ({ date: "2026-09-28", label: "Push", startedAt: "2026-09-28T18:00:00Z", exercises: [
@@ -24,7 +25,32 @@ describe("session recovery", () => {
     const old = session();
     const current = { ...session(), date: "2026-09-29" };
     const finished = { ...session(), date: "2026-09-27", completedAt: "2026-09-27T19:00:00Z" };
-    expect(unfinishedSessions([current, finished, old], "2026-09-29").map(s => s.date)).toEqual(["2026-09-28"]);
+    expect(unfinishedSessions([current, finished, old], "2026-09-29", Date.parse("2026-09-29T09:00:00Z")).map(s => s.date)).toEqual(["2026-09-28"]);
+  });
+  it("keeps an unfinished workout on offer for 24 hours after she started it", () => {
+    expect(unfinishedSessions([session()], "2026-09-29", Date.parse("2026-09-29T17:59:00Z"))).toHaveLength(1);
+  });
+  it("lets the offer go after 24 hours, and the sets she logged still count", () => {
+    const s = session();
+    expect(unfinishedSessions([s], "2026-09-29", Date.parse("2026-09-29T18:00:00Z"))).toEqual([]);
+    expect(historyFor([s], "bench-press")).toEqual([[{ weight: 115, reps: 6, done: true }]]);
+  });
+  it("says how long ago an unfinished workout started, in hours", () => {
+    expect(startedAgo(session(), Date.parse("2026-09-29T05:30:00Z"))).toBe("11 hours ago");
+    expect(startedAgo(session(), Date.parse("2026-09-28T19:00:00Z"))).toBe("1 hour ago");
+  });
+  it("counts minutes under an hour, never zero", () => {
+    expect(startedAgo(session(), Date.parse("2026-09-28T18:40:00Z"))).toBe("40 minutes ago");
+    expect(startedAgo(session(), Date.parse("2026-09-28T18:00:30Z"))).toBe("1 minute ago");
+  });
+  it("calls an old save with no start time yesterday's", () => {
+    const { startedAt: _, ...s } = session();
+    expect(startedAgo(s)).toBe("yesterday");
+  });
+  it("counts an older save with no start time from the end of its own day", () => {
+    const { startedAt: _, ...s } = session();
+    expect(unfinishedSessions([s], "2026-09-29", new Date(2026, 8, 29, 23, 0).getTime())).toHaveLength(1);
+    expect(unfinishedSessions([s], "2026-09-30", new Date(2026, 8, 30, 0, 30).getTime())).toEqual([]);
   });
   it("adding an unfinished set reopens a completed day without losing logged sets", () => {
     const s = session(); s.exercises.forEach(e => e.sets.forEach(x => x.done = true));
