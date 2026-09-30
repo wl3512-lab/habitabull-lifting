@@ -4,7 +4,8 @@ import Chart from "./Chart";
 import { Card, GoalBar, Pill, Stat } from "./ui";
 import YourData from "./YourData";
 import { nameOf } from "@/lib/exercises";
-import { goalProgress, topSet } from "@/lib/engine";
+import { goalProgress } from "@/lib/engine";
+import { exerciseTrack } from "@/lib/progress";
 import type { AppState, Goal, Session } from "@/lib/types";
 import { count } from "@/lib/plural";
 import { isoDate } from "@/lib/calendar";
@@ -79,15 +80,9 @@ export default function Progress({
 
   // exercise id -> best completed set per session, oldest first
   const tracks = new Map<string, { date: string; weight: number; reps: number }[]>();
-  for (const s of done) {
-    for (const e of s.exercises) {
-      const sets = e.sets.filter((x) => x.done);
-      if (sets.length === 0) continue;
-      const top = topSet(sets)!;
-      const list = tracks.get(e.exerciseId) ?? [];
-      list.push({ date: s.date, weight: top.weight, reps: top.reps });
-      tracks.set(e.exerciseId, list);
-    }
+  for (const id of new Set(done.flatMap(s => s.exercises.map(e => e.exerciseId)))) {
+    const track = exerciseTrack(done, id);
+    if (track.length) tracks.set(id, track);
   }
   const ranked = [...tracks.entries()].sort((a, b) => b[1].length - a[1].length);
 

@@ -207,14 +207,35 @@ export function generateRoutine(
   });
 }
 
-/** Every completed set for an exercise, newest session first. */
+/**
+ * Every logged set for an exercise, newest session first.
+ *
+ * A set she logged is a fact, and it counts whether or not she ever pressed
+ * Finish. This used to require `completedAt`, which only the Finish button
+ * writes — and the button most sessions actually end on is End, at the top of
+ * the log screen, which does not. So the ordinary gym session (log four lifts,
+ * put the phone away, tap End) was invisible here: "Last time" kept quoting a
+ * session from days ago, and the next day's targets came back off that older
+ * session too, because this is what feeds them.
+ *
+ * A session she opened and never lifted in still contributes nothing, and that
+ * is the distinction that matters: the filter below drops any session with no
+ * completed set of this lift in it. What is dropped is emptiness, not
+ * unfinished-ness.
+ *
+ * `completedAt` still means what it meant everywhere it is read elsewhere.
+ * A streak, the sessions count and the "that is the whole job" line are about
+ * finishing a workout; this is about what she lifted.
+ */
 export function historyFor(sessions: Session[], exerciseId: string) {
-  return sessions
-    .filter((s) => s.completedAt)
+  // Copied before sorting. `filter` used to hand this a fresh array; without
+  // that, `sort` reorders the caller's own sessions in place, which is React
+  // state everywhere this is called from.
+  return [...sessions]
     .sort((a, b) => b.date.localeCompare(a.date))
-    .map((s) => s.exercises.find((e) => e.exerciseId === exerciseId))
-    .filter((e): e is NonNullable<typeof e> => Boolean(e))
-    .map((e) => e.sets.filter((set) => set.done));
+    .map((s) => s.exercises.filter((e) => e.exerciseId === exerciseId)
+      .flatMap((e) => e.sets.filter((set) => set.done)))
+    .filter((sets) => sets.length > 0);
 }
 
 /**
@@ -300,14 +321,21 @@ export function nextTarget(
   return { weight: held, reps: targetReps, sets, note: "Same weight. Own it this time." };
 }
 
-/** Heaviest completed set ever, per exercise. */
+/**
+ * Heaviest logged set ever, per exercise.
+ *
+ * Counts a set from a session she ended rather than finished, for the same
+ * reason `historyFor` does, and it has to agree with it: if "last time" says
+ * 150 and the best on record says 145, the next 150 gets celebrated as a
+ * personal record she had already set.
+ */
 export function personalRecord(sessions: Session[], exerciseId: string): number {
   let pr = 0;
   for (const s of sessions) {
-    if (!s.completedAt) continue;
-    const e = s.exercises.find((x) => x.exerciseId === exerciseId);
-    if (!e) continue;
-    for (const set of e.sets) if (set.done && set.weight > pr) pr = set.weight;
+    for (const e of s.exercises) {
+      if (e.exerciseId !== exerciseId) continue;
+      for (const set of e.sets) if (set.done && set.weight > pr) pr = set.weight;
+    }
   }
   return pr;
 }
@@ -338,10 +366,6 @@ export function streakWeeks(sessions: Session[], today = new Date()): number {
   return streak;
 }
 
-/**
- * Turn a planned day into an empty session pre-filled with today's targets.
- * Targets come from nextTarget, so the plan already reflects your history.
- */
 /**
  * The best of a lift's completed sets.
  *
@@ -395,29 +419,38 @@ export function plannedShape(
   };
 }
 
+/** Best completed set from the latest session that actually logged this lift. */
+export function lastCompletedSet(sessions: Session[], exerciseId: string) {
+  return topSet(historyFor(sessions, exerciseId)[0] ?? []);
+}
+
+/** Repeat last time's weight/reps together; a plan controls the set count. */
+export function sessionTarget(
+  exerciseId: string,
+  sessions: Session[],
+  level: Level,
+  planned?: { sets: number; reps: number }
+) {
+  const fallback = nextTarget(exerciseId, [], level);
+  const shape = planned ? plannedShape(planned, fallback) : fallback;
+  const last = lastCompletedSet(sessions, exerciseId);
+  return { sets: shape.sets, weight: last?.weight ?? fallback.weight, reps: last?.reps ?? shape.reps };
+}
+
 export function buildSession(routine: Routine, sessions: Session[], level: Level, date: string): Session {
+  // "Last time" has to mean a different day than the one being built. Since a
+  // session counts as history from the first set she logs in it, a day being
+  // rebuilt mid-workout would otherwise read its own sets back as the evidence
+  // for what it should hold.
+  const before = sessions.filter((s) => s.date !== date);
   return {
     date,
     label: routine.label,
     exercises: routine.exercises.map((p) => {
-      const t = nextTarget(p.exerciseId, sessions, level);
-      /*
-        Her plan sets the shape; history sets the load.
-
-        The sets and reps she chose when she built the week were written into
-        the routine and then thrown away here, because this read everything
-        from `nextTarget`. Somebody who set bench at 3 by 12 started every
-        session at the level default instead, with no way to tell why, and the
-        editor she set it in kept showing 12 back at her.
-
-        Weight still comes from history, and that is the part she is not
-        asked to manage: the engine adds, holds or backs off on the evidence
-        of what she actually lifted. What she asked for is how many.
-      */
-      const { sets, reps } = plannedShape(p, t);
+      const { sets, weight, reps } = sessionTarget(p.exerciseId, before, level, p);
       return {
         exerciseId: p.exerciseId,
-        sets: Array.from({ length: sets }, () => ({ weight: t.weight, reps, done: false })),
+        sets: Array.from({ length: sets }, () => ({ weight, reps, done: false })),
       };
     }),
   };
@@ -429,18 +462,20 @@ export function buildSession(routine: Routine, sessions: Session[], level: Level
  * buildSession takes a day's exercise *list* from the routine, so the next time
  * that day comes up it rebuilds from the original template and any lift you
  * added or dropped last time is forgotten. Writing the lineup you actually
- * trained back onto the matching routine (matched by label, the day's name)
- * makes your workout return instead. Only the choice of exercises is carried
- * over; weights keep progressing from history through nextTarget.
+ * trained back onto the matching routine (matched by weekday and label)
+ * makes your workout return instead. Set defaults come from completed history
+ * when the next session is built.
  *
- * Two exemptions: a one-off "something hurts" rebuild (`adapted`) changes only
- * today and must not overwrite the plan, and an empty session never blanks a
- * routine.
+ * Three exemptions: a one-off "something hurts" rebuild (`adapted`) changes
+ * only today and must not overwrite the plan, a quick workout improvised lift
+ * by lift (`freestyle`) is not a redefinition of the day it happened to fall
+ * on, and an empty session never blanks a routine.
  */
 export function rememberLineup(routines: Routine[], session: Session): Routine[] {
-  if (session.adapted || session.exercises.length === 0) return routines;
+  if (session.adapted || session.freestyle || session.exercises.length === 0) return routines;
+  const day = new Date(`${session.date}T00:00:00`).getDay();
   return routines.map((r) =>
-    r.label === session.label
+    r.day === day && r.label === session.label
       ? {
           ...r,
           exercises: session.exercises.map((e) => ({
@@ -553,18 +588,45 @@ export function reconcileWeek(
     if (near) variants[day] = 1 - (fullBodyVariant(near) as number);
   }
 
+  /*
+    A day she has just added is a new day, so it arrives the way every other
+    new day does: named, empty, and one tap from being filled. Her own version
+    of a day type still overlays on top, which is the whole job of the library
+    and the one case where the lifts are hers rather than the app's.
+  */
   const made = overlayDayLibrary(
-    generateRoutine(
-      level,
-      fresh,
-      equipment,
-      favourites,
-      fresh.map(() => "full-body" as TemplateId),
-      variants
+    unfilled(
+      generateRoutine(
+        level,
+        fresh,
+        equipment,
+        favourites,
+        fresh.map(() => "full-body" as TemplateId),
+        variants
+      )
     ),
     library
   );
   return [...anchored, ...made].sort((a, b) => a.day - b.day);
+}
+
+/**
+ * The same week, with the lifts left to her.
+ *
+ * A generated day answers two questions at once: what kind of day this is, and
+ * which lifts are on it. The first is the app doing its job (a beginner has no
+ * basis to design a split, and ACSM is blunt that turning up twice a week
+ * matters more than the shape). The second is the app answering a question it
+ * was not asked, in a way that reads as settled: handed five lifts, the person
+ * least able to judge them is the most likely to accept them.
+ *
+ * So the week arrives as days with names and nothing on them, and "Autofill
+ * for me" in the editor puts this exact lineup back for anyone who wants the
+ * app to decide. Same generator, same answer; the difference is that she asked
+ * for it.
+ */
+export function unfilled(routines: Routine[]): Routine[] {
+  return routines.map((r) => ({ ...r, exercises: [] }));
 }
 
 export function overlayDayLibrary(
@@ -715,6 +777,66 @@ export function mergeRebuild(draft: Session | undefined, rebuilt: Session): Sess
     note: draft.note ?? rebuilt.note,
     exercises: [...logged, ...rebuilt.exercises.filter((e) => !kept.has(e.exerciseId))],
   };
+}
+
+/** Whether two plans for a day are the same workout: same name, same shape. */
+export function samePlan(a: Routine | null | undefined, b: Routine | null | undefined): boolean {
+  if (!a || !b) return a === b || (!a && !b);
+  return (
+    a.label === b.label &&
+    a.exercises.length === b.exercises.length &&
+    a.exercises.every(
+      (e, i) =>
+        e.exerciseId === b.exercises[i].exerciseId &&
+        e.sets === b.exercises[i].sets &&
+        e.reps === b.exercises[i].reps
+    )
+  );
+}
+
+/**
+ * Today's session, caught up with a plan that just changed underneath it.
+ *
+ * The home screen reads today off the open session the moment one exists,
+ * because a temporary swap has to show without being written back into the
+ * plan. The cost was that the opposite edit stopped showing at all: change
+ * Saturday's workout in the editor while Saturday is already open — started
+ * this morning and left, or adapted around a sore shoulder — and Today's lifts
+ * and the Start button both went on listing the old ones, with no way to get
+ * the new ones short of finishing or abandoning the day. That is what "saving
+ * a workout does not update" was.
+ *
+ * So the open day is rebuilt from the new plan, and `mergeRebuild` keeps
+ * whatever she already logged exactly where it is. Three days are left alone:
+ * one already finished (a fact, not a plan), a quick workout (never the plan in
+ * the first place), and a plan that did not actually change — that last one
+ * matters, because rebuilding regardless would reset a weight she had just
+ * dialled in on the log screen.
+ */
+export function refreshOpenDay(
+  sessions: Session[],
+  before: Routine | null | undefined,
+  after: Routine | null | undefined,
+  level: Level,
+  date: string
+): Session[] {
+  if (!after || samePlan(before, after)) return sessions;
+  const open = sessions.find((s) => s.date === date);
+  if (!open || open.completedAt || open.freestyle) return sessions;
+  const rebuilt = mergeRebuild(open, buildSession(after, sessions, level, date));
+  return sessions.map((s) =>
+    s.date === date
+      ? {
+          ...rebuilt,
+          // mergeRebuild only carries these across when something was logged;
+          // a day opened and not yet lifted in is still a day she opened.
+          startedAt: open.startedAt,
+          // Whatever this day was working around, she has just said in as many
+          // words what it should be instead.
+          adapted: undefined,
+        }
+      : s
+  );
 }
 
 /**

@@ -5,13 +5,15 @@ import Bull, { BULL } from "./Bull";
 import CrewToday from "./CrewToday";
 import PlaylistRow from "./PlaylistRow";
 import { Card, GoalBar, Pill } from "./ui";
-import { nameOf } from "@/lib/exercises";
-import { goalProgress, nextTarget, personalRecord, plannedShape, streakWeeks } from "@/lib/engine";
+import { byId, nameOf } from "@/lib/exercises";
+import { goalProgress, personalRecord, streakWeeks } from "@/lib/engine";
 import { describe, parseLocally, type Constraints } from "@/lib/constraints";
 import { greetingMood, line } from "@/lib/voice";
 import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor } from "@/lib/schedule";
 import type { CrewDay } from "@/lib/cloud";
 import type { Goal, Profile, Routine, Session } from "@/lib/types";
+import { unfinishedSessions } from "@/lib/session-memory";
+import { previewExercise } from "@/lib/plan";
 import { count } from "@/lib/plural";
 import { weekStrip } from "@/lib/calendar";
 
@@ -33,6 +35,9 @@ export default function Today({
   sessions,
   today,
   onStart,
+  onResume,
+  onQuick,
+  onPickWorkout,
   onConstraints,
   onExercise,
   onProfile,
@@ -48,11 +53,32 @@ export default function Today({
   sessions: Session[];
   today: string;
   onStart: () => void;
+  onResume?: (date: string) => void;
+  /**
+   * Start a workout with no plan behind it, logged one lift at a time. Optional
+   * so the frame gallery and the tests can render this screen without it.
+   */
+  onQuick?: () => void;
+  /**
+   * Choose what to train on a day the plan says rest.
+   *
+   * Only reached when there is no workout scheduled, which is the one case
+   * where the app has no opinion worth acting on without asking. Optional for
+   * the same reason `onQuick` is: the gallery and the tests render this screen
+   * without a way out of it.
+   */
+  onPickWorkout?: () => void;
   onConstraints: (c: Constraints) => void;
   onExercise: (id: string) => void;
   onProfile: (p: Profile) => void;
   onSetUpWeek: () => void;
-  onEditRoutine: () => void;
+  /**
+   * Open the routine editor. With a weekday, it opens on that day — which is
+   * what the link beside today's lifts means, and what it did not do: it
+   * landed on the first day of the week, so answering "change today" started
+   * with finding today.
+   */
+  onEditRoutine: (day?: number) => void;
   goal: Goal | null;
   onGoal: () => void;
   onOpenDay: (date: string) => void;
@@ -90,6 +116,15 @@ export default function Today({
     : 0;
   const partway = alreadyLogged && setsLeftToday > 0;
   const weeks = streakWeeks(sessions);
+
+  /*
+    A quick workout is an alternative to today's plan, not a second copy of it.
+    There is one session record per date, so once today has one — finished, or
+    part way through — starting a fresh improvised session would be starting
+    over the top of it. What the screen offers then is the session that already
+    exists: "Continue workout", or "Add to today's session".
+  */
+  const started = sessions.some((s) => s.date === today);
 
   // The week as it actually stands. Shared with the rest-day arrival, which
   // draws the same seven days to make the opposite point.
@@ -351,6 +386,14 @@ export default function Today({
     and from above. Direction and pace, no colour: see `.rise, .settle` in
     globals.css for why those are the two knobs.
   */
+  /*
+    A day with a name and nothing on it. Day types arrive blank now and are
+    filled when she asks, so this is a real state rather than a corrupt one:
+    Tuesday is Leg day, and which lifts is still an open question. Starting it
+    would open a session with nothing in it, so the action is to go and answer
+    that instead.
+  */
+  const toBuild = Boolean(routine && routine.exercises.length === 0);
   const resting = !unchosen && !routine;
   const enter = resting ? "settle" : "rise";
 
@@ -385,6 +428,18 @@ export default function Today({
         </h1>
         {subtitle && <p className="mt-1.5 text-emphasis text-dim">{subtitle}</p>}
       </header>
+
+      {onResume && unfinishedSessions(sessions, today).map(session => (
+        <section key={session.date} className="mt-4 rounded-2xl border border-line-strong p-[18px]">
+          <p className="label text-dim">Unfinished · {session.date}</p>
+          <p className="head mt-1 text-head text-fg">{session.label}</p>
+          <p className="mt-1 text-body text-dim">Your logged sets are saved.</p>
+          <button type="button" onClick={() => onResume(session.date)}
+            className="head mt-2 min-h-11 text-body text-cyan">
+            Resume workout from {session.date}
+          </button>
+        </section>
+      ))}
 
       {/*
         What she actually does, versus what she said she would. Stated
@@ -471,12 +526,52 @@ export default function Today({
             </Pill>
           </>
         ) : (
-          <Pill onClick={unchosen ? onSetUpWeek : onStart}>
-            {unchosen ? "Build your workout" : routine ? "Start workout" : "Train anyway"}
+          <Pill
+            onClick={
+              unchosen
+                ? onSetUpWeek
+                : toBuild && routine
+                  ? () => onEditRoutine(routine.day)
+                  : routine
+                    ? onStart
+                    : (onPickWorkout ?? onStart)
+            }
+          >
+            {unchosen
+              ? "Build your workout"
+              : toBuild
+                ? "Build today's workout"
+                : routine
+                  ? (started ? "Continue workout" : "Start workout")
+                  : "Train anyway"}
           </Pill>
         )}
         {/* Under the action, because that is the thing it happens alongside. */}
         {!unchosen && <PlaylistRow profile={profile} onProfile={onProfile} />}
+        {/*
+          The day the plan has no useful opinion: a drop-in somewhere with
+          different kit, a morning she already knows what she is doing, or a
+          first session before anybody has agreed to a week — which is the
+          finding this whole screen is built on, that people want to log a
+          workout before they will set anything up.
+
+          Quiet, and below the plan, because on most days the plan is the better
+          answer and this is the door out of it rather than a rival to it.
+        */}
+        {onQuick && !started && (
+          <Pill variant="ghost" onClick={onQuick}>
+            Quick workout
+          </Pill>
+        )}
+        {/*
+          Explained only here, on the one screen where the words have nothing
+          around them to make sense of: no plan yet, and no session ever.
+        */}
+        {onQuick && !started && unchosen && (
+          <p className="text-body text-dim">
+            No plan needed. Pick a lift, log it, pick the next one.
+          </p>
+        )}
         {open ? (
           <Card className="rise p-[18px]">
             <label htmlFor="note" className="label block text-dim">
@@ -488,7 +583,15 @@ export default function Today({
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               autoFocus
-              placeholder="Only dumbbells today, and my shoulder is tweaked"
+              /*
+                Her own sentence, near enough. "Only dumbbells today, and my
+                shoulder is tweaked" read as two clipped fragments; this reads
+                as somebody explaining their day, which is what the field
+                wants and what the parser handles best. It also names the
+                commonest case out loud: the gym is not where you thought it
+                would be today.
+              */
+              placeholder="I'm working from home, no machines, only dumbbells"
               className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
             />
             <div className="mt-2.5 flex gap-2">
@@ -510,11 +613,32 @@ export default function Today({
             </div>
           </Card>
         ) : (
-          // Nothing to swap before there is a plan to swap out of.
+          /*
+            Nothing to swap before there is a plan to swap out of.
+
+            A text link rather than a second ghost pill. Two identical pills
+            stacked said these were two versions of the same decision, and they
+            are not: a quick workout is another way to train today, and this is
+            a correction to the way already on the screen. It belongs a step
+            below, in the same quiet register as the music line it sits under.
+
+            It used to say "Swap today's plan", which described neither half of
+            what it does. Nothing is swapped: there is no other plan to put
+            here, and the saved one is deliberately left alone. What it takes
+            is a sentence about the day in front of her, a rack that is taken
+            or a shoulder that hurts, and rebuilds this one session around it.
+            So the button asks the question the sheet then asks in full, and
+            somebody with nothing different about today has no reason to open
+            it.
+          */
           !unchosen && (
-            <Pill variant="ghost" onClick={() => setOpen(true)}>
-              Swap today&apos;s plan
-            </Pill>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="tap mx-auto text-caption text-cyan transition-opacity hover:opacity-80"
+            >
+              Something&apos;s different today
+            </button>
           )
         )}
         {understood && (
@@ -597,7 +721,7 @@ export default function Today({
           {!profile.planChosen && (
             <button
               type="button"
-              onClick={onEditRoutine}
+              onClick={() => onEditRoutine()}
               className="mb-3 block w-full rounded-2xl border border-line-strong p-[18px] text-left transition-colors hover:bg-raise/50"
             >
               <span className="label block text-cyan">Before you start</span>
@@ -611,7 +735,7 @@ export default function Today({
             <p className="label text-dim">Today&apos;s lifts</p>
             <button
               type="button"
-              onClick={onEditRoutine}
+              onClick={() => onEditRoutine(new Date(`${today}T00:00:00`).getDay())}
               className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
               Edit
@@ -627,21 +751,19 @@ export default function Today({
             className="mt-3 flex flex-col gap-2"
             style={{ "--lead": "380ms", "--stagger": "45ms" } as React.CSSProperties}
           >
+            {routine.exercises.length === 0 && (
+              <li className="rounded-2xl bg-card p-[18px]">
+                <p className="head text-emphasis text-fg">No lifts on this one yet.</p>
+                <p className="mt-1 text-body leading-snug text-dim">
+                  Pick them yourself, or have the app fill it in for you.
+                </p>
+              </li>
+            )}
             {routine.exercises.map((e, i) => {
-              /*
-                The same split `buildSession` makes, and for the same reason:
-                her plan sets the shape, history sets the load.
-
-                This read sets and reps off `nextTarget` too, which answers
-                with the level default and knows nothing about the week she
-                built. So a bench day she set to 3 by 12 was previewed here as
-                3 by 8, while the session it started was 3 by 12 — the screen
-                that says what today is disagreed with today. Profile was right
-                and this was wrong, which is the wrong way round for the screen
-                you actually read before training.
-              */
-              const t = nextTarget(e.exerciseId, sessions, profile.level);
-              const { sets, reps } = plannedShape(e, t);
+              const draftExercise = sessions.find(s => s.date === today && !s.completedAt)?.exercises[i];
+              const t = previewExercise(e, sessions, profile.level, draftExercise);
+              const { sets, reps } = t;
+              const meta = byId(e.exerciseId);
               return (
                 <li key={e.exerciseId} className={`${enter} stage`} style={{ "--step": i } as React.CSSProperties}>
                   <button
@@ -655,12 +777,12 @@ export default function Today({
                       </span>
                       {t.weight > 0 && (
                         <span className="tabular statement block text-title text-fg">
-                          {t.weight} lb
+                          {t.weight}{meta?.incline ? "% incline" : " lb"}
                         </span>
                       )}
                     </span>
                     <span className="tabular statement shrink-0 text-head text-cyan">
-                      {sets} × {reps}
+                      {meta?.cardio ? `${reps} min` : `${sets} × ${reps}${meta?.hold ? " sec" : ""}`}
                     </span>
                   </button>
                 </li>
@@ -676,7 +798,9 @@ export default function Today({
             <Bull size={BULL.companion} />
             <h2 className="head mt-3 text-emphasis text-fg">Nothing here.</h2>
             <p className="mt-1 text-body text-dim">
-              Rest is part of progress. If you want to train anyway, pull up your next session.
+              {onPickWorkout
+                ? "Rest is part of progress. If you want to train anyway, you pick the workout."
+                : "Rest is part of progress. If you want to train anyway, pull up your next session."}
             </p>
           </Card>
         </div>

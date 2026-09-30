@@ -1,5 +1,5 @@
 import type { CrewDay, CrewMember, CrewPhoto } from "@/lib/cloud";
-import type { AppState, WeighIn, Profile, Routine, Session } from "@/lib/types";
+import type { AppState, SavedWorkout, WeighIn, Profile, Routine, Session } from "@/lib/types";
 
 /**
  * Stand-in data for the frame gallery.
@@ -114,6 +114,48 @@ export const draft: Session = {
   ],
 };
 
+/**
+ * A quick workout the second it starts: no plan behind it and no lift chosen
+ * yet, which is the normal opening state of one rather than an error.
+ */
+export const quickDraft: Session = {
+  date: iso(0),
+  label: "Quick workout",
+  startedAt: at(0, 20),
+  exercises: [],
+  freestyle: true,
+};
+
+/**
+ * Two workouts she saved herself: one shaped in the week editor, one kept at
+ * the end of a session she made up as she went. Both can go on any day, which
+ * is the whole point of them existing apart from the week.
+ */
+export const workouts: SavedWorkout[] = [
+  {
+    id: "own-hotel-gym-day-1",
+    name: "Hotel gym day",
+    createdAt: at(4, 7),
+    exercises: [
+      { exerciseId: "goblet-squat", sets: 3, reps: 10, weight: 50 },
+      { exerciseId: "db-row", sets: 3, reps: 10, weight: 40 },
+      { exerciseId: "push-up", sets: 3, reps: 12, weight: 0 },
+    ],
+  },
+  {
+    id: "own-leg-day-1",
+    name: "Leg day",
+    template: "legs",
+    createdAt: at(20, 18),
+    exercises: [
+      { exerciseId: "back-squat", sets: 4, reps: 6, weight: 145 },
+      { exerciseId: "romanian-deadlift", sets: 3, reps: 8, weight: 85 },
+      { exerciseId: "leg-press", sets: 3, reps: 10, weight: 180 },
+      { exerciseId: "calf-raise", sets: 3, reps: 12, weight: 90 },
+    ],
+  },
+];
+
 export const goal = { exerciseId: "back-squat", targetWeight: 185, targetDate: iso(-70) };
 
 /**
@@ -134,7 +176,7 @@ export const weighIns: WeighIn[] = (() => {
 /** The day the frames render as, matching the rest of the fixture dates. */
 export const today = iso(0);
 
-export const state: AppState = { profile, routines, sessions, goal, challenge: undefined, weighIns };
+export const state: AppState = { profile, routines, sessions, goal, challenge: undefined, weighIns, workouts };
 
 /** Straight out of onboarding: a reason, no plan chosen, nothing trained. */
 export const firstRunProfile: Profile = { ...profile, planChosen: false };

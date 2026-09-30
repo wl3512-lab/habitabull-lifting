@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastAttempt } from "./LogSession";
+import { lastAttempt, loadNext } from "./LogSession";
 import type { Session } from "@/lib/types";
 
 const session = (date: string, exerciseId: string, sets: [number, number][]): Session => ({
@@ -54,5 +54,53 @@ describe("lastAttempt", () => {
 
   it("says nothing at all the first time", () => {
     expect(lastAttempt([], "back-squat", 5)).toBeUndefined();
+  });
+});
+
+describe("changing the weight during rest", () => {
+  const rest = (): Session => ({
+    date: "2026-09-26",
+    label: "Leg day",
+    exercises: [
+      {
+        exerciseId: "back-squat",
+        sets: [
+          { weight: 45, reps: 8, done: true },
+          { weight: 45, reps: 8, done: false },
+          { weight: 45, reps: 8, done: false },
+        ],
+      },
+      { exerciseId: "bench-press", sets: [{ weight: 45, reps: 8, done: false }] },
+    ],
+  });
+
+  it("loads the set she is about to do, and the ones after it", () => {
+    const out = loadNext(rest(), 0, "back-squat", 55);
+    expect(out.exercises[0].sets.map((s) => s.weight)).toEqual([45, 55, 55]);
+  });
+
+  it("never touches a set already logged", () => {
+    const out = loadNext(rest(), 0, "back-squat", 95);
+    expect(out.exercises[0].sets[0]).toEqual({ weight: 45, reps: 8, done: true });
+  });
+
+  it("leaves every other lift where it was", () => {
+    const out = loadNext(rest(), 0, "back-squat", 95);
+    expect(out.exercises[1]).toEqual(rest().exercises[1]);
+  });
+
+  it("changes the lift the rest is open on, not another copy of it", () => {
+    // A session can hold the same lift twice; the index is the one resting.
+    const twice = rest();
+    twice.exercises[1] = { exerciseId: "back-squat", sets: [{ weight: 45, reps: 8, done: false }] };
+    const out = loadNext(twice, 1, "back-squat", 65);
+    expect(out.exercises[0].sets.map((s) => s.weight)).toEqual([45, 45, 45]);
+    expect(out.exercises[1].sets[0].weight).toBe(65);
+  });
+
+  it("does nothing when that lift has no set left to load", () => {
+    const finished = rest();
+    finished.exercises[0].sets = finished.exercises[0].sets.map((s) => ({ ...s, done: true }));
+    expect(loadNext(finished, 0, "back-squat", 95)).toEqual(finished);
   });
 });

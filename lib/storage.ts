@@ -1,5 +1,7 @@
 import { setCustomExercises } from "./exercises";
-import type { AppState, Exercise, PlannedExercise, Session, WeighIn } from "./types";
+import { saneCustomExercises, saneDayLibrary, saneWeighIns } from "./sane";
+import { saneWorkouts } from "./workouts";
+import type { AppState, Session, WeighIn } from "./types";
 
 const KEY = "habitabull.v1";
 
@@ -58,7 +60,7 @@ export function load(): AppState {
     const parsed = JSON.parse(raw) as Partial<AppState>;
     // Into the registry before anything reads byId, so a custom lift is
     // indistinguishable from a built-in one from the first render.
-    const customExercises = sane(parsed.customExercises);
+    const customExercises = saneCustomExercises(parsed.customExercises);
     setCustomExercises(customExercises);
     return {
       customExercises,
@@ -70,73 +72,11 @@ export function load(): AppState {
       challenge: parsed.challenge,
       weighIns: saneWeighIns(parsed.weighIns),
       dayLibrary: saneDayLibrary(parsed.dayLibrary),
+      workouts: saneWorkouts(parsed.workouts),
     };
   } catch {
     return EMPTY;
   }
-}
-
-/**
- * Weigh-ins get the same treatment as custom lifts: they came from
- * localStorage, and a NaN or a string in `lb` would reach the chart as a
- * geometry value and blank the whole card. Sorted here rather than at every
- * read site, so anything downstream can assume oldest-first.
- */
-function saneWeighIns(list: unknown): WeighIn[] {
-  if (!Array.isArray(list)) return [];
-  return list
-    .filter(
-      (w): w is WeighIn =>
-        Boolean(w) &&
-        typeof w === "object" &&
-        typeof (w as WeighIn).date === "string" &&
-        typeof (w as WeighIn).lb === "number" &&
-        Number.isFinite((w as WeighIn).lb) &&
-        (w as WeighIn).lb > 0
-    )
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
-/**
- * The saved day-per-template library came from localStorage too. Keep only
- * entries that are arrays of things with an exerciseId; anything malformed is
- * dropped rather than reaching the routine builder as a bad plan.
- */
-function saneDayLibrary(v: unknown): Record<string, PlannedExercise[]> | undefined {
-  if (!v || typeof v !== "object") return undefined;
-  const out: Record<string, PlannedExercise[]> = {};
-  for (const [k, list] of Object.entries(v as Record<string, unknown>)) {
-    if (!Array.isArray(list)) continue;
-    const items = list.filter(
-      (p): p is PlannedExercise =>
-        Boolean(p) && typeof p === "object" && typeof (p as PlannedExercise).exerciseId === "string"
-    );
-    if (items.length) out[k] = items;
-  }
-  return Object.keys(out).length ? out : undefined;
-}
-
-/**
- * A stored custom lift is as untrusted as an imported one: it came from
- * localStorage, which anything on the origin can write. Anything missing a
- * field the app will dereference is dropped rather than crashing a render
- * somewhere far away from here.
- */
-function sane(list: unknown): Exercise[] {
-  if (!Array.isArray(list)) return [];
-  return list.filter(
-    (e): e is Exercise =>
-      Boolean(e) &&
-      typeof e === "object" &&
-      typeof (e as Exercise).id === "string" &&
-      typeof (e as Exercise).name === "string" &&
-      typeof (e as Exercise).primary === "string" &&
-      typeof (e as Exercise).equipment === "string" &&
-      typeof (e as Exercise).increment === "number" &&
-      typeof (e as Exercise).cue === "string" &&
-      Array.isArray((e as Exercise).steps) &&
-      Array.isArray((e as Exercise).mistakes)
-  );
 }
 
 /**

@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Pill } from "./ui";
 import { chime } from "@/lib/chime";
 import { haptic } from "@/lib/haptics";
-import { nameOf } from "@/lib/exercises";
+import { byId, nameOf } from "@/lib/exercises";
+import { secondsRemaining } from "@/lib/session-memory";
 import { count } from "@/lib/plural";
 
 const R = 84;
@@ -26,16 +27,24 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s % 60)
  */
 export default function RestTimer({
   seconds,
+  deadline,
   mode = "rest",
   workLabel,
   nextExerciseId,
   onPickNext,
   nextWeight,
   nextReps,
+  onNextWeight,
+  weightStep = 5,
+  onAddSet,
+  onDropSet,
+  canDropSet = false,
+  setsLeft,
   onDone,
   onEnd,
 }: {
   seconds: number;
+  deadline?: number;
   /**
    * `rest` is the gap between sets. `work` is the set itself, which only
    * cardio has: a treadmill is twenty minutes of doing the thing, not four
@@ -56,6 +65,40 @@ export default function RestTimer({
   nextWeight?: number;
   nextReps?: number;
   /**
+   * Change the weight on the set you are resting before, from here.
+   *
+   * Rest is when you find out the number is wrong. The plates are already on
+   * the bar, or the rack only has the next size up, or the last set moved so
+   * badly that the next one should not be the same — and until this existed the
+   * only way to act on any of it was to sit out the rest, get back to the
+   * working screen and fix it there with the bar loaded wrong in front of you.
+   *
+   * Absent for a lift with no weight on it, which is why it is optional rather
+   * than always drawn: a stepper either side of "12 reps" is a control that
+   * cannot do anything.
+   */
+  onNextWeight?: (lb: number) => void;
+  /** The smallest sensible jump for that lift, in lb. */
+  weightStep?: number;
+  /**
+   * Add or drop a set on the lift she is resting before.
+   *
+   * The same pair that sits under the primary action on the working screen,
+   * because rest is when the decision actually gets made: whether there is one
+   * more in her is something she finds out standing still, two minutes after
+   * the set that raised the question. Reaching it meant skipping the rest to
+   * get back to a screen that had the buttons.
+   *
+   * Dropping is refused, not hidden, when the last set is already logged or it
+   * is the only one left: a set that happened is a fact, and a lift with no
+   * sets is not a lift.
+   */
+  onAddSet?: () => void;
+  onDropSet?: () => void;
+  canDropSet?: boolean;
+  /** Sets still to do on that lift, the one she is resting before included. */
+  setsLeft?: number;
+  /**
    * In work mode this hands back the minutes actually spent, which is not
    * always the minutes asked for. Somebody who sets twenty and steps off at
    * twelve did twelve, and logging the twenty would be the app writing down a
@@ -67,19 +110,19 @@ export default function RestTimer({
   const working = mode === "work";
   // A target timestamp, not a decrementing counter: phones suspend timers when
   // the screen locks, and coming back to a stalled clock is worse than none.
-  const endsAt = useRef(Date.now() + seconds * 1000);
+  const endsAt = useRef(deadline ?? Date.now() + seconds * 1000);
   const rang = useRef(false);
-  const [left, setLeft] = useState(seconds);
+  const [left, setLeft] = useState(() => secondsRemaining(endsAt.current));
 
   useEffect(() => {
-    endsAt.current = Date.now() + seconds * 1000;
+    endsAt.current = deadline ?? Date.now() + seconds * 1000;
     rang.current = false;
     const tick = () =>
-      setLeft(Math.max(0, Math.ceil((endsAt.current - Date.now()) / 1000)));
+      setLeft(secondsRemaining(endsAt.current));
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [seconds]);
+  }, [seconds, deadline]);
 
   const done = left === 0;
   const progress = seconds > 0 ? (seconds - left) / seconds : 1;
@@ -170,35 +213,155 @@ export default function RestTimer({
         still a useful thing to say; a number nobody has is not.
       */}
       {!working && nextExerciseId && (() => {
-        const inner = (
-          <>
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="label text-dim">Next up</p>
-              {onPickNext && <span className="head text-caption text-cyan">Change</span>}
-            </div>
-            <div className="mt-1.5 flex items-baseline justify-between gap-3">
-              <span className="head text-head text-fg">{nameOf(nextExerciseId)}</span>
-              {nextReps !== undefined && (
-                <span className="tabular statement shrink-0 text-head text-cyan">
-                  {nextWeight ? `${nextWeight} lb × ${nextReps}` : count(nextReps, "rep")}
-                </span>
-              )}
-            </div>
-          </>
+        const name = nameOf(nextExerciseId);
+        /*
+          The weight is adjustable where there is a weight to adjust. A lift
+          logged in reps or seconds carries none, so it keeps the plain figure
+          and the row stays a sentence rather than a control panel.
+        */
+        const tunable =
+          Boolean(onNextWeight) && nextWeight !== undefined && nextReps !== undefined && weightStep > 0;
+        const meta = byId(nextExerciseId);
+        const figure = nextReps === undefined ? null
+          : meta?.cardio ? `${nextReps} min${meta.incline && nextWeight ? ` · ${nextWeight}% incline` : ""}`
+          : meta?.hold ? `${nextReps} sec`
+          : nextWeight ? `${nextWeight} lb × ${nextReps}`
+          : count(nextReps, "rep");
+
+        const head = (
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="label text-dim">Next up</p>
+            {onPickNext &&
+              (tunable ? (
+                /*
+                  Its own control once the card holds steppers: a card-sized
+                  button cannot contain them, and a "Change" that is really the
+                  whole card is a tap target that swallows the thumb aiming for
+                  minus.
+                */
+                <button
+                  type="button"
+                  onClick={onPickNext}
+                  className="head tap -my-2 py-2 text-caption text-cyan transition-opacity hover:opacity-70"
+                >
+                  Change
+                </button>
+              ) : (
+                <span className="head text-caption text-cyan">Change</span>
+              ))}
+          </div>
         );
-        return onPickNext ? (
-          <button
-            type="button"
-            onClick={onPickNext}
-            aria-label={`Next up: ${nameOf(nextExerciseId)}. Change what comes next.`}
-            className="mt-[104px] w-full rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
-          >
-            {inner}
-          </button>
-        ) : (
-          <div className="mt-[104px] rounded-2xl bg-card p-[18px]">{inner}</div>
+
+        if (!tunable) {
+          const inner = (
+            <>
+              {head}
+              <div className="mt-1.5 flex items-baseline justify-between gap-3">
+                <span className="head text-head text-fg">{name}</span>
+                {figure && (
+                  <span className="tabular statement shrink-0 text-head text-cyan">{figure}</span>
+                )}
+              </div>
+            </>
+          );
+          return onPickNext ? (
+            <button
+              type="button"
+              onClick={onPickNext}
+              aria-label={`Next up: ${name}. Change what comes next.`}
+              className="mt-[104px] w-full rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
+            >
+              {inner}
+            </button>
+          ) : (
+            <div className="mt-[104px] rounded-2xl bg-card p-[18px]">{inner}</div>
+          );
+        }
+
+        const lb = nextWeight ?? 0;
+        const bump = (dir: 1 | -1) =>
+          onNextWeight?.(Math.max(0, Math.round((lb + dir * weightStep) * 2) / 2));
+
+        return (
+          <div className="mt-[104px] rounded-2xl bg-card p-[18px]">
+            {head}
+            <p className="head mt-1.5 text-head text-fg">{name}</p>
+            {/*
+              44px targets rather than the 56 the setup steppers use. This sits
+              on a screen that already has an orange button and a ring on it,
+              and the number between them is read at a glance far more often
+              than it is changed — it is a correction, not the main event.
+            */}
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => bump(-1)}
+                disabled={lb <= 0}
+                aria-label={`Take ${weightStep} pounds off ${name}`}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-raise text-title leading-none text-cyan transition-colors duration-quick hover:bg-line active:bg-line disabled:opacity-30"
+              >
+                −
+              </button>
+              <p
+                aria-live="polite"
+                className="tabular statement min-w-0 flex-1 text-center text-head text-cyan"
+              >
+                {/* Always in pounds here, including at zero: the row is a
+                    weight control, and "8 reps" above a minus button reads as
+                    the minus doing nothing. */}
+                {`${lb} lb × ${nextReps}`}
+              </p>
+              <button
+                type="button"
+                onClick={() => bump(1)}
+                aria-label={`Put ${weightStep} more pounds on ${name}`}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-raise text-title leading-none text-cyan transition-colors duration-quick hover:bg-line active:bg-line"
+              >
+                +
+              </button>
+            </div>
+          </div>
         );
       })()}
+
+      {/*
+        Under the card rather than in it. The card is a statement about what is
+        coming; this changes how much of it there is, and the count is the only
+        feedback there is — the set list it edits is on the screen behind this
+        one, so a plus that silently did something would be a plus that did
+        nothing as far as anyone standing here can tell.
+      */}
+      {!working && (onAddSet || onDropSet) && (
+        <div className="mt-3 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={onDropSet}
+            disabled={!onDropSet || !canDropSet}
+            aria-label="Remove the last set from this lift"
+            className="head tap text-body text-dim transition-colors hover:text-fg disabled:opacity-40"
+          >
+            − Set
+          </button>
+          {setsLeft === undefined ? (
+            <span aria-hidden className="text-body text-dim">
+              ·
+            </span>
+          ) : (
+            <span aria-live="polite" className="tabular text-body text-dim">
+              {count(setsLeft, "set")} left
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onAddSet}
+            disabled={!onAddSet}
+            aria-label="Add a set to this lift"
+            className="head tap text-body text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
+          >
+            + Set
+          </button>
+        </div>
+      )}
 
       <div className="mt-auto pt-8">
         <Pill onClick={() => onDone(working ? (done ? undefined : spent()) : undefined)}>

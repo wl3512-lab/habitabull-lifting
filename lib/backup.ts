@@ -1,4 +1,6 @@
+import { saneCustomExercises, saneDayLibrary, saneWeighIns } from "./sane";
 import type { AppState } from "./types";
+import { saneWorkouts } from "./workouts";
 
 /**
  * Getting your training out of the browser.
@@ -89,6 +91,26 @@ export function parseBackup(raw: unknown): { state: AppState; photos: BackupPhot
       )
     : [];
 
+  /*
+    Everything else the store holds.
+
+    These four used to be dropped on the floor. The file carried them — export
+    writes the whole state object — and the parser named the fields it returned
+    one by one, so anything added to `AppState` after this function was written
+    silently did not come back: her weigh-ins, the lifts she added by hand, the
+    day library behind the day-type picker, and later her saved workouts. The
+    file said "one file holds everything" and restoring it dropped four things.
+
+    Each is validated by the same function the load path uses, and shaped the
+    way that path shapes it: a file from a picker is no more trusted than
+    localStorage is, and a restored state that differs in shape from a loaded one
+    is a second version of the store for every reader downstream to get wrong.
+    So the two lists come back as lists, and the two keyed-or-absent fields keep
+    their own contract of being undefined when there is nothing in them.
+
+    Whoever adds the next field to `AppState`: it belongs here too, and the
+    round-trip test below is the one that will tell you.
+  */
   return {
     state: {
       profile,
@@ -96,6 +118,10 @@ export function parseBackup(raw: unknown): { state: AppState; photos: BackupPhot
       sessions,
       goal,
       goalDismissed: typeof s.goalDismissed === "boolean" ? s.goalDismissed : undefined,
+      weighIns: saneWeighIns(s.weighIns),
+      customExercises: saneCustomExercises(s.customExercises),
+      dayLibrary: saneDayLibrary(s.dayLibrary),
+      workouts: saneWorkouts(s.workouts),
       challenge:
         isObj(s.challenge) && typeof s.challenge.month === "string"
           ? (s.challenge as unknown as AppState["challenge"])

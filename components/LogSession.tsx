@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Bull, { BULL } from "./Bull";
 import RestTimer from "./RestTimer";
 import SetLogged from "./SetLogged";
@@ -8,12 +8,13 @@ import SetRow from "./SetRow";
 import { Pill } from "./ui";
 import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
 import { EQUIPMENT, MUSCLES } from "@/lib/constraints";
-import { alternativesFor, LEVEL_SETS, personalRecord, repsFor, restSeconds, startingWeight, topSet } from "@/lib/engine";
+import { alternativesFor, LEVEL_SETS, personalRecord, restSeconds, lastCompletedSet, sessionTarget } from "@/lib/engine";
 import { DEFAULT_BAR_LB } from "@/lib/plates";
 import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
 import { line, midsetLine } from "@/lib/voice";
-import type { Equipment, Exercise, LoggedSet, Muscle, Profile, Session } from "@/lib/types";
+import type { Equipment, Exercise, LoggedSet, Muscle, Profile, Session, SessionTimer } from "@/lib/types";
+import { resumePosition, replaceSessionSets, endTimedWork } from "@/lib/session-memory";
 import { count } from "@/lib/plural";
 
 /**
@@ -37,21 +38,40 @@ import { count } from "@/lib/plural";
  * plank somebody held for a minute is the bug that got reported.
  */
 export function lastAttempt(history: Session[], exerciseId: string, increment: number) {
-  const prior = history
-    .filter((s) => s.completedAt)
-    .sort((a, b) => b.date.localeCompare(a.date));
   const meta = byId(exerciseId);
-  for (const s of prior) {
-    const ex = s.exercises.find((e) => e.exerciseId === exerciseId);
-    const sets = ex?.sets.filter((x) => x.done) ?? [];
-    if (sets.length === 0) continue;
-    const best = topSet(sets)!;
+  const best = lastCompletedSet(history, exerciseId);
+  if (best) {
     if (meta?.cardio) return `${best.reps} min`;
     if (meta?.hold) return `${best.reps} sec`;
     if (increment === 0) return count(best.reps, "rep");
     return `${best.weight} lb × ${best.reps}`;
   }
   return undefined;
+}
+
+/**
+ * Put a different weight on the set she is resting before.
+ *
+ * The rest screen can change the load, because rest is when you find out the
+ * number is wrong — the plates are already on, the rack only has the next size
+ * up, the last set moved badly. It writes into the session rather than into the
+ * rest card alone, or the new number would last exactly as long as the timer
+ * and the bar would be loaded for a set the app still thinks is 45.
+ *
+ * It carries to the sets after it on that lift for the same reason logging one
+ * does: a correction made at the rack is about the lift, not about one set of
+ * it. Sets already logged are facts and are never touched, and the lift is
+ * matched on its position as well as its id, because a session can hold the
+ * same lift twice and the rest is open on one of them.
+ */
+export function loadNext(session: Session, index: number, exerciseId: string, lb: number): Session {
+  const exercises = session.exercises.map((e, i) => {
+    if (i !== index || e.exerciseId !== exerciseId) return e;
+    const at = e.sets.findIndex((s) => !s.done);
+    if (at === -1) return e;
+    return { ...e, sets: e.sets.map((s, j) => (j >= at && !s.done ? { ...s, weight: lb } : s)) };
+  });
+  return { ...session, exercises };
 }
 
 export default function LogSession({
@@ -72,7 +92,7 @@ export default function LogSession({
   onChange: (next: Session) => void;
   /** Persist a lift the library did not have, so it is there next time too. */
   onAddCustom: (e: Exercise) => void;
-  onFinish: () => void;
+  onFinish: (next?: Session) => void;
   onExit: () => void;
   onExercise: (id: string) => void;
   /** Remembering the bar she set, so she sets it once. */
@@ -87,7 +107,17 @@ export default function LogSession({
   // The lift picker for adding to a session mid-way. Null unless open; the
   // chosen muscle narrows the list the same way the routine editor does.
   const [addingMuscle, setAddingMuscle] = useState<Muscle | "cardio" | null>(null);
-  const [adding, setAdding] = useState(false);
+  /*
+    A quick workout: no plan behind it, built one lift at a time.
+
+    Until the first lift is chosen the picker *is* the screen, and there is no
+    set row to fall back to — which is why this is held apart from `adding`
+    rather than just seeding it. `adding` is a sheet you can cancel back out of;
+    `mustPick` is the state the session is in.
+  */
+  const freestyle = Boolean(session.freestyle);
+  const mustPick = freestyle && session.exercises.length === 0;
+  const [adding, setAdding] = useState(mustPick);
   /*
     How many sets the lift being added gets. Seeded from the level the same way
     the planned day is, so the default is unchanged — the difference is only
@@ -104,19 +134,25 @@ export default function LogSession({
   const [picking, setPicking] = useState(initialPicking);
   /** Which row in the jump list has its swap options open. */
   const [swapping, setSwapping] = useState<string | null>(null);
-  const [rest, setRest] = useState<{
-    seconds: number;
-    exerciseId: string;
-    weight: number;
-    reps: number;
-    /** `work` is the cardio set itself running, not the gap after it. */
-    mode?: "rest" | "work";
-    label?: string;
-  } | null>(null);
-  const [index, setIndex] = useState(() => {
-    const i = session.exercises.findIndex((e) => e.sets.some((s) => !s.done));
-    return i === -1 ? 0 : i;
-  });
+  const currentSession = useRef(session);
+  currentSession.current = session;
+  function publish(next: Session) {
+    currentSession.current = next;
+    onChange(next);
+  }
+  const [rest, showRest] = useState<SessionTimer | null>(() => resumePosition(session).timer);
+  const [index, showIndex] = useState(() => resumePosition(session).exerciseIndex);
+  function setIndex(exerciseIndex: number) {
+    showIndex(exerciseIndex);
+    const latest = currentSession.current;
+    publish({ ...latest, checkpoint: { ...resumePosition(latest), exerciseIndex } });
+  }
+  function setRest(next: (Omit<SessionTimer, "endsAt"> & { endsAt?: number }) | null) {
+    const timer = next ? { ...next, endsAt: next.endsAt ?? Date.now() + next.seconds * 1000 } : null;
+    showRest(timer);
+    const latest = currentSession.current;
+    publish({ ...latest, checkpoint: { ...resumePosition(latest), timer } });
+  }
   // The confirmation beat between logging a set and the rest timer. Null except
   // for the ~650ms it is on screen; `advance` is the deferred move to rest.
   const [logged, setLogged] = useState<{
@@ -189,8 +225,7 @@ export default function LogSession({
 
   function writeSets(sets: LoggedSet[]) {
     if (!exercise) return;
-    const exercises = session.exercises.map((e, i) => (i === index ? { ...e, sets } : e));
-    onChange({ ...session, exercises });
+    publish(replaceSessionSets(currentSession.current, index, sets));
   }
 
   function updateSet(i: number, next: LoggedSet) {
@@ -248,6 +283,7 @@ export default function LogSession({
     const isBest = increment > 0 && pr > 0 && set.weight > pr;
     unlockAudio(); // let the rest bell through on iOS later
     haptic(isBest ? "best" : "log");
+    advance(); // Persist the timer before the confirmation beat can be interrupted.
     setLogged({
       summary: isCardio
         ? `${set.reps} min${set.weight > 0 ? ` · ${set.weight}% incline` : ""}`
@@ -258,13 +294,19 @@ export default function LogSession({
             : `${set.weight} lb × ${set.reps}`,
       best: isBest,
       resting: !lastOfSession,
-      advance,
+      advance: () => {},
     });
   }
 
   function reopenSet(i: number) {
     if (!exercise) return;
     writeSets(exercise.sets.map((s, j) => (j === i ? { ...s, done: false } : s)));
+  }
+
+  function setNextWeight(lb: number) {
+    if (!rest) return;
+    setRest({ ...rest, weight: lb });
+    publish(loadNext(currentSession.current, index, rest.exerciseId, lb));
   }
 
   // Add a lift to the session in progress. Weight, reps and set count come out
@@ -276,15 +318,12 @@ export default function LogSession({
     const m = byId(exerciseId);
     // Cardio is one block of time rather than sets, so the count does not
     // apply to it and the chooser is hidden for it.
-    const sets: LoggedSet[] = m?.cardio
-      ? [{ weight: 0, reps: 20, done: false }]
-      : Array.from({ length: Math.max(1, addSets) }, () => ({
-          weight: m ? startingWeight(m, profile.level) : 0,
-          reps: m ? repsFor(m, profile.level) : 8,
-          done: false,
-        }));
+    const target = sessionTarget(exerciseId, history, profile.level);
+    const sets: LoggedSet[] = Array.from({ length: m?.cardio ? 1 : Math.max(1, addSets) }, () => ({
+      weight: target.weight, reps: target.reps, done: false,
+    }));
     const exercises = [...session.exercises, { exerciseId, sets }];
-    onChange({ ...session, exercises, completedAt: undefined });
+    publish({ ...currentSession.current, exercises, completedAt: undefined });
     setIndex(exercises.length - 1);
     setAdding(false);
     setAddingMuscle(null);
@@ -301,7 +340,7 @@ export default function LogSession({
     would either delete it or misattribute it.
   */
   function swapLift(from: string, to: string) {
-    const meta = byId(to);
+    const target = sessionTarget(to, history, profile.level);
     const exercises = session.exercises.map((e) =>
       e.exerciseId === from
         ? {
@@ -309,12 +348,13 @@ export default function LogSession({
             exerciseId: to,
             sets: e.sets.map((s) => ({
               ...s,
-              weight: meta ? startingWeight(meta, profile.level) : 0,
+              weight: target.weight,
+              reps: target.reps,
             })),
           }
         : e
     );
-    onChange({ ...session, exercises });
+    publish({ ...currentSession.current, exercises });
     setSwapping(null);
   }
 
@@ -352,33 +392,7 @@ export default function LogSession({
     addLift(made.id);
   }
 
-  if (!exercise) {
-    return (
-      <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
-        <h1 className="statement text-figure text-fg">Nothing to work with.</h1>
-        <p className="mt-1.5 text-emphasis text-dim">
-          Everything on today&apos;s plan got ruled out. Loosen what you asked to work around,
-          or train a different day.
-        </p>
-        <div className="mt-auto pt-10">
-          <Pill onClick={onExit}>Back</Pill>
-        </div>
-      </main>
-    );
-  }
-
-  if (logged) {
-    return (
-      <SetLogged
-        summary={logged.summary}
-        best={logged.best}
-        resting={logged.resting}
-        onSkip={skipConfirm}
-      />
-    );
-  }
-
-  if (adding) {
+  if (adding || mustPick) {
     const exclude = session.exercises.map((e) => e.exerciseId);
     const options =
       addingMuscle === "cardio"
@@ -389,10 +403,21 @@ export default function LogSession({
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="statement text-figure text-fg">Add a lift</h1>
+          <h1 className="statement text-figure text-fg">
+            {mustPick ? "Quick workout" : freestyle ? "Next lift" : "Add a lift"}
+          </h1>
           <button
             type="button"
             onClick={() => {
+              /*
+                There is nothing to cancel back to on the first pick of a quick
+                workout — the picker is the whole session so far — so the way
+                out of it is the way out of the session.
+              */
+              if (mustPick) {
+                onExit();
+                return;
+              }
               setAdding(false);
               setAddingMuscle(null);
             }}
@@ -401,6 +426,16 @@ export default function LogSession({
             Cancel
           </button>
         </div>
+        {/*
+          Said once, where the mode starts, because it is the one thing about a
+          quick workout that is not obvious from the screen: this is not a plan
+          being built, it is what she is doing right now.
+        */}
+        {mustPick && (
+          <p className="mt-1.5 text-emphasis text-dim">
+            One lift at a time. Log this one, then pick the next.
+          </p>
+        )}
         {/*
           Sets first, because it applies to whatever gets picked below and
           reading it after the tap that already added the lift would be too
@@ -516,6 +551,38 @@ export default function LogSession({
           </>
         )}
       </main>
+    );
+  }
+
+  /*
+    An empty session means two opposite things. On a planned day it means every
+    lift got ruled out by a constraint and there is nothing to do; on a quick
+    workout it means she has not picked her first lift yet, which is the normal
+    opening state and wants the picker, not a dead end.
+  */
+  if (!exercise) {
+    return (
+      <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
+        <h1 className="statement text-figure text-fg">Nothing to work with.</h1>
+        <p className="mt-1.5 text-emphasis text-dim">
+          Everything on today&apos;s plan got ruled out. Loosen what you asked to work around,
+          or train a different day.
+        </p>
+        <div className="mt-auto pt-10">
+          <Pill onClick={onExit}>Back</Pill>
+        </div>
+      </main>
+    );
+  }
+
+  if (logged) {
+    return (
+      <SetLogged
+        summary={logged.summary}
+        best={logged.best}
+        resting={logged.resting}
+        onSkip={skipConfirm}
+      />
     );
   }
 
@@ -653,11 +720,24 @@ export default function LogSession({
     return (
       <RestTimer
         seconds={rest.seconds}
+        deadline={rest.endsAt}
         mode={rest.mode}
         workLabel={rest.label}
         nextExerciseId={rest.exerciseId}
         nextWeight={rest.weight}
         nextReps={rest.reps}
+        /*
+          Adjusting the load from here, where she is standing when she finds
+          out the number is wrong. Withheld from cardio and from anything with
+          no weight on it — a stepper beside "12 reps" moves a number nothing
+          reads.
+        */
+        onNextWeight={
+          (byId(rest.exerciseId)?.increment ?? 5) > 0 && !byId(rest.exerciseId)?.cardio
+            ? setNextWeight
+            : undefined
+        }
+        weightStep={byId(rest.exerciseId)?.increment ?? 5}
         /*
           Between sets is when you find out the rack is taken. The rest is
           left standing rather than cancelled, so backing out of the list
@@ -665,6 +745,36 @@ export default function LogSession({
           for the set she is no longer about to do.
         */
         onPickNext={() => setPicking(true)}
+        /*
+          The set count, changed from the screen she is standing on when she
+          decides. Wired to the lift the rest is for, which `index` is already
+          pointing at — `completeSet` advances it before the timer opens — and
+          checked against `rest.exerciseId` rather than assumed, because a
+          mismatch would quietly add a set to the wrong lift.
+
+          Cardio has no set count to change: it is one block of time, which is
+          the same reason the working screen hides these for it.
+        */
+        onAddSet={
+          exercise?.exerciseId === rest.exerciseId && !byId(rest.exerciseId)?.cardio
+            ? addSet
+            : undefined
+        }
+        onDropSet={
+          exercise?.exerciseId === rest.exerciseId && !byId(rest.exerciseId)?.cardio
+            ? dropSet
+            : undefined
+        }
+        canDropSet={Boolean(
+          exercise &&
+            exercise.sets.length > 1 &&
+            !exercise.sets[exercise.sets.length - 1].done
+        )}
+        setsLeft={
+          exercise?.exerciseId === rest.exerciseId
+            ? exercise.sets.filter((set) => !set.done).length
+            : undefined
+        }
         onDone={(minutesDone) => {
           const wasWork = rest.mode === "work";
           setRest(null);
@@ -674,8 +784,10 @@ export default function LogSession({
           completeSet(activeSet, minutesDone === undefined ? undefined : { reps: minutesDone });
         }}
         onEnd={() => {
+          const finished = rest.mode === "work"
+            ? endTimedWork(currentSession.current, index, rest) : currentSession.current;
           setRest(null);
-          onFinish();
+          onFinish(finished);
         }}
       />
     );
@@ -781,6 +893,24 @@ export default function LogSession({
 
       <div className="flex-1 px-6 pb-6 pt-4">
         {!exerciseDone ? (
+          <>
+            {meta?.equipment === "barbell" && increment > 0 && onProfile && (
+              <div className="mb-3 flex gap-2" aria-label="Weight entry method">
+                {(["steppers", "plates"] as const).map(mode => (
+                  <button key={mode} type="button" aria-pressed={(profile.weightInput ?? "steppers") === mode}
+                    onClick={() => onProfile({ ...profile, weightInput: mode })}
+                    className={`head min-h-11 flex-1 rounded-full border px-3 text-body ${(profile.weightInput ?? "steppers") === mode ? "border-cyan bg-cyan/10 text-cyan" : "border-line-strong text-dim"}`}>
+                    {mode === "plates" ? "Load the bar" : "Use + / −"}
+                  </button>
+                ))}
+              </div>
+            )}
+            {profile.weightInput === "plates" && meta?.equipment !== "barbell" && (
+              <details className="mb-3 rounded-xl bg-card px-4 py-2 text-body text-dim">
+                <summary className="head min-h-9 cursor-pointer py-2 text-cyan">Why no bar here?</summary>
+                <p className="pb-2 leading-snug">Load the bar appears on barbell exercises. {isCardio ? "This exercise uses a duration timer." : increment > 0 ? "For this exercise, use + / − or type the weight directly." : "This exercise uses your body weight, so only reps or time are needed."}</p>
+              </details>
+            )}
           <SetRow
             key={activeSet}
             set={exercise.sets[activeSet]}
@@ -794,6 +924,7 @@ export default function LogSession({
             onBar={(barLb) => onProfile?.({ ...profile, barLb })}
             onChange={(next) => updateSet(activeSet, next)}
           />
+          </>
         ) : (
           <div className="rise flex flex-col items-center pt-4">
             {/*
@@ -804,12 +935,19 @@ export default function LogSession({
               size={BULL.speak}
               react
               say={
-                allDone
-                  ? line("done", doneSets)
-                  : midsetLine(
-                      session.exercises.filter((e) => e.sets.some((s) => !s.done)).length,
-                      doneSets
-                    )
+                allDone && freestyle
+                  ? /*
+                      Nothing is over. A quick workout ends when she says so, and
+                      "That's the work. Go eat something." over a Next lift
+                      button is the bull contradicting the screen he is on.
+                    */
+                    line("midset", doneSets)
+                  : allDone
+                    ? line("done", doneSets)
+                    : midsetLine(
+                        session.exercises.filter((e) => e.sets.some((s) => !s.done)).length,
+                        doneSets
+                      )
               }
             />
           </div>
@@ -844,7 +982,13 @@ export default function LogSession({
               <Pill onClick={() => completeSet(activeSet)}>Log set</Pill>
             )}
             <p className="mt-2.5 text-center text-body text-dim">
-              {activeSet === exercise.sets.length - 1 && isLastExercise
+              {/*
+                Only a plan can run out. In a quick workout the last set logged
+                is never known to be the last one coming, so claiming it is puts
+                a full stop in front of somebody who may well add three more
+                lifts.
+              */}
+              {activeSet === exercise.sets.length - 1 && isLastExercise && !freestyle
                 ? "Last set of the session."
                 : "Rest as long as you need. Nothing is counting."}
             </p>
@@ -880,18 +1024,39 @@ export default function LogSession({
             )}
           </>
         ) : isLastExercise ? (
-          <>
-            <Pill onClick={onFinish} disabled={doneSets === 0}>
-              Finish workout
-            </Pill>
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70"
-            >
-              Add a lift
-            </button>
-          </>
+          freestyle ? (
+            /*
+              The loop a quick workout is: log a lift, pick the next one. The
+              orange button is that loop rather than the exit, because no plan
+              has just run out — she stops when she decides to, and deciding is
+              the quiet control underneath, disabled until there is a set to
+              finish with.
+            */
+            <>
+              <Pill onClick={() => setAdding(true)}>Next lift</Pill>
+              <button
+                type="button"
+                onClick={() => onFinish()}
+                disabled={doneSets === 0}
+                className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
+              >
+                Finish workout
+              </button>
+            </>
+          ) : (
+            <>
+              <Pill onClick={() => onFinish()} disabled={doneSets === 0}>
+                Finish workout
+              </Pill>
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="head tap mt-2.5 block w-full text-center text-body text-cyan transition-opacity hover:opacity-70"
+              >
+                Add a lift
+              </button>
+            </>
+          )
         ) : (
           <>
             <Pill onClick={() => setIndex(index + 1)}>Next exercise</Pill>

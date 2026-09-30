@@ -57,6 +57,43 @@ export interface Routine {
   /** Which named day this is. Absent on plans made before day types existed. */
   template?: TemplateId;
   exercises: PlannedExercise[];
+  /**
+   * The saved workout this day is, if it is one.
+   *
+   * Set when she puts a saved workout on a day and when she saves a day as a
+   * workout, and it is what makes the two stay the same thing afterwards:
+   * adding a lift to Tuesday updates the workout Tuesday is, instead of
+   * leaving her with a "Leg day" in her list that is missing the lift she
+   * added to her leg day. Cleared when the day becomes a different type,
+   * because at that point it is not that workout any more.
+   */
+  workoutId?: string;
+}
+
+/**
+ * A workout of her own, saved by name so it can be put on another day.
+ *
+ * `dayLibrary` beside it does a different job and both are needed: that one is
+ * automatic and keyed by day *type*, so pressing "Leg day" brings back the leg
+ * day she shaped. It holds exactly one of each type, has no name, and she
+ * cannot see it. This one she named, on purpose, and there can be four of them
+ * — the whole point is choosing which of her own workouts Thursday gets.
+ *
+ * Weights are stored but barely matter: `buildSession` progresses every load
+ * from her logged history, so what a saved workout really carries is the
+ * choice of lifts, in order, with their sets and reps.
+ */
+export interface SavedWorkout {
+  id: string;
+  /** What she called it. Free text — it becomes the day's label on screen. */
+  name: string;
+  exercises: PlannedExercise[];
+  /** The day type it was shaped from, if it had one. Carried so a day it lands
+      on still knows what kind of day it is. */
+  template?: TemplateId;
+  /** ISO timestamp. Newest first in the list, so a workout she just made is
+      the one at the top. */
+  createdAt: string;
 }
 
 export interface LoggedSet {
@@ -70,7 +107,24 @@ export interface LoggedExercise {
   sets: LoggedSet[];
 }
 
+/** Saved clock deadline, so backgrounding or reopening does not restart time. */
+export interface SessionTimer {
+  seconds: number;
+  endsAt: number;
+  exerciseId: string;
+  weight: number;
+  reps: number;
+  mode?: "rest" | "work";
+  label?: string;
+}
+
+export interface SessionCheckpoint {
+  exerciseIndex: number;
+  timer: SessionTimer | null;
+}
+
 export interface Session {
+  checkpoint?: SessionCheckpoint;
   /** ISO date, local, YYYY-MM-DD */
   date: string;
   label: string;
@@ -90,6 +144,18 @@ export interface Session {
    * over the saved plan the way a deliberately edited day does.
    */
   adapted?: boolean;
+  /**
+   * A workout with no plan behind it, built one lift at a time as it happened:
+   * pick a lift, log its sets, pick the next. The whole session is the picker
+   * and the set row, which is why it needs a flag rather than being inferred
+   * from an empty exercise list — an empty list also means "every lift on
+   * today's plan got ruled out", and those two want opposite screens.
+   *
+   * Exempt from carrying its lineup back onto a routine for the same reason
+   * `adapted` is: improvising once on a Thursday is not a decision about what
+   * Thursday is.
+   */
+  freestyle?: boolean;
 }
 
 /**
@@ -242,4 +308,10 @@ export interface AppState {
    * generated default. Full-body is deliberately excluded: it alternates.
    */
   dayLibrary?: Record<string, PlannedExercise[]>;
+  /**
+   * Workouts she saved and named herself, newest first. Separate from the week:
+   * removing a day does not remove the workout that was on it, and saving one
+   * is not an edit to the plan.
+   */
+  workouts?: SavedWorkout[];
 }

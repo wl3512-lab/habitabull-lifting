@@ -1,15 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import WeightInputSettings from "./WeightInputSettings";
 import BodyWeight from "./BodyWeight";
 import PlaylistRow from "./PlaylistRow";
 import YourData from "./YourData";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
+import { count } from "@/lib/plural";
 import { REST_MAX, REST_MIN, REST_STEP, restSeconds, SHORT_DAYS } from "@/lib/engine";
-import { DEFAULT_BAR_LB } from "@/lib/plates";
 import Stepper from "./Stepper";
-import type { AppState, Profile as ProfileT } from "@/lib/types";
+import type { AppState, Equipment, Profile as ProfileT } from "@/lib/types";
+
+/** Every kit the generator knows, in the order the gym floor suggests. */
+const EQUIPMENT: { id: Equipment; label: string }[] = [
+  { id: "barbell", label: "Barbells" },
+  { id: "dumbbell", label: "Dumbbells" },
+  { id: "machine", label: "Machines" },
+  { id: "kettlebell", label: "Kettlebells" },
+  { id: "bodyweight", label: "Bodyweight" },
+];
 
 /**
  * You, and the setup that is yours rather than today's.
@@ -75,6 +85,14 @@ export default function Profile({
     run — so this returns undefined rather than assuming one exists.
   */
   const labelFor = (d: number) => routines.find((r) => r.day === d)?.label;
+  /*
+    Workouts she saved and named. Listed here because this is where she comes
+    looking for them — the section above is her week, and a workout she kept at
+    the end of a session is not on a day yet by definition. Putting one on a day
+    is the plan editor's job, so this lists them and links there rather than
+    growing a second way to edit the week.
+  */
+  const saved = state.workouts ?? [];
   const when = profile.anchors?.length
     ? profile.anchors.map((a) => ANCHOR[a] ?? a).join(", ")
     : profile.anchors === undefined
@@ -207,6 +225,44 @@ export default function Profile({
         )}
       </section>
 
+      {saved.length > 0 && (
+        <section className="mt-8">
+          <div className="flex items-center justify-between gap-4">
+            <p className="label text-dim">Saved workouts</p>
+            <button
+              type="button"
+              onClick={() => onEditPlan()}
+              className="head tap text-caption text-cyan transition-opacity hover:opacity-70"
+            >
+              Put one on a day
+            </button>
+          </div>
+          <div className="mt-3 flex flex-col gap-2.5">
+            {saved.map((w) => {
+              const on = routines.filter((r) => r.label === w.name).map((r) => SHORT_DAYS[r.day]);
+              return (
+                <Card key={w.id} className="p-[18px]">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h2 className="head text-emphasis text-fg">{w.name}</h2>
+                    <span className="label shrink-0 text-dim">
+                      {count(w.exercises.length, "lift")}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-body leading-snug text-dim">
+                    {w.exercises.map((e) => nameOf(e.exerciseId)).join(", ")}
+                  </p>
+                  {/* Where it is currently running, which is the thing this
+                      list cannot otherwise say. */}
+                  {on.length > 0 && (
+                    <p className="mt-1.5 text-body text-cyan">On {on.join(", ")}</p>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Schedule and equipment — the frame the plan is built inside. */}
       <section className="mt-8">
         <div className="flex items-center justify-between gap-4">
@@ -270,18 +326,96 @@ export default function Profile({
         </Card>
       </section>
 
-      {kit.length > 0 && (
-        <section className="mt-8">
-          <p className="label text-dim">Equipment</p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {kit.map((k) => (
-              <span key={k} className="rounded-full bg-raise px-3 py-1.5 text-caption text-fg">
-                {k === "bodyweight" ? "bodyweight" : `${k}s`}
-              </span>
-            ))}
+      {/*
+        Both of these were set for her at signup and then frozen: onboarding
+        never asks (a beginner has no basis to answer, which is deliberate),
+        and this screen drew them as text. So the two facts the engine leans on
+        hardest were the two she could not correct. Moving gyms meant living
+        with a plan built for kit she no longer had.
+
+        Changing either changes what the app chooses *next*: the lifts autofill
+        reaches for, the swaps it offers, the sets and reps a new day gets.
+        Neither rewrites the week she already has, because a setting that
+        quietly rebuilds her days is the plan changing itself, which this app
+        does not do.
+      */}
+      <section className="mt-8">
+        <p className="label text-dim">Training experience</p>
+        <Card className="mt-3 p-[18px]">
+          <div className="flex flex-col gap-2">
+            {(
+              [
+                ["new", "New to this", "Fewer sets, lighter starts, full body days."],
+                ["returning", "Coming back", "You have lifted before and stopped."],
+                ["experienced", "Experienced", "More sets, and the app assumes less."],
+              ] as const
+            ).map(([id, label, hint]) => {
+              const on = profile.level === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onProfile({ ...profile, level: id })}
+                  className={`rounded-xl border p-3.5 text-left transition-colors duration-quick ${
+                    on ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
+                  }`}
+                >
+                  <span className="head block text-emphasis text-fg">{label}</span>
+                  <span className="block text-body text-dim">{hint}</span>
+                </button>
+              );
+            })}
           </div>
-        </section>
-      )}
+          <p className="mt-3 text-body text-dim">
+            Your weights come from what you have actually lifted, so changing this moves the
+            shape of a new day rather than the numbers on it.
+          </p>
+        </Card>
+      </section>
+
+      <section className="mt-8">
+        <p className="label text-dim">Equipment</p>
+        <Card className="mt-3 p-[18px]">
+          <div className="flex flex-wrap gap-1.5">
+            {EQUIPMENT.map(({ id, label }) => {
+              const on = kit.includes(id);
+              /*
+                The last one cannot be turned off. An empty gym leaves the
+                generator nothing to pick from, and a screen that lets you
+                arrive at a plan it cannot build is a screen that breaks later
+                and somewhere else.
+              */
+              const last = on && kit.length === 1;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={last}
+                  onClick={() =>
+                    onProfile({
+                      ...profile,
+                      equipment: on ? kit.filter((k) => k !== id) : [...kit, id],
+                    })
+                  }
+                  className={`head h-11 rounded-full border px-4 text-body transition-colors duration-quick disabled:opacity-60 ${
+                    on
+                      ? "border-cyan bg-cyan text-ground"
+                      : "border-line-strong text-dim hover:border-fg"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-body text-dim">
+            What the gym you actually go to has. New lifts and swaps come from this; the days
+            you have already built keep whatever is on them.
+          </p>
+        </Card>
+      </section>
 
       {/*
         Two ways to put a number on a barbell lift, and she picks. The steppers
@@ -293,39 +427,7 @@ export default function Profile({
         has a pin, so those keep the steppers either way — the toggle says so
         rather than letting her find out.
       */}
-      <section className="mt-8">
-        <p className="label text-dim">Setting a weight</p>
-        <Card className="mt-3 p-[18px]">
-          <div className="flex gap-1.5">
-            {(
-              [
-                ["steppers", "Steppers"],
-                ["plates", "Load the bar"],
-              ] as const
-            ).map(([id, label]) => {
-              const on = (profile.weightInput ?? "steppers") === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => onProfile({ ...profile, weightInput: id })}
-                  className={`head h-11 flex-1 rounded-full border text-body transition-colors ${
-                    on ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-3 text-body text-dim">
-            {(profile.weightInput ?? "steppers") === "plates"
-              ? `Tap plates onto a ${profile.barLb ?? DEFAULT_BAR_LB} lb bar and the total works itself out. Barbell lifts only — dumbbells and machines keep the steppers.`
-              : "Plus and minus, or tap the number to type it."}
-          </p>
-        </Card>
-      </section>
+      <WeightInputSettings profile={profile} onProfile={onProfile} />
 
       {/*
         Rest was set once at signup and then unreachable forever, which is half

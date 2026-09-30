@@ -17,6 +17,7 @@ import Arrival from "@/components/Arrival";
 import Booting from "@/components/Booting";
 import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
+import PickWorkout from "@/components/PickWorkout";
 import ProfileScreen from "@/components/Profile";
 import Progress from "@/components/Progress";
 import RestTimer from "@/components/RestTimer";
@@ -225,6 +226,7 @@ function gallery(challenge: Challenge) {
                 today={today}
                 goal={f.goal}
                 onStart={f.noop}
+                onQuick={f.noop}
                 onConstraints={f.noop}
                 onExercise={f.noop}
                 onProfile={f.noop}
@@ -259,6 +261,18 @@ function gallery(challenge: Challenge) {
                 initialPicking
               />
             </Frame>
+            <Frame n="04f" name="Quick workout" note="The day the plan has no useful opinion — a drop-in somewhere with different kit, a morning she already knows what she is doing, or a first session before anybody has agreed to a week, which is the finding the home screen is built on: people want to log a workout before they will set anything up. It opens genuinely empty rather than with a guess in it, and the picker is the screen rather than a sheet over one, because there is nothing behind it yet. From here it is a loop of two screens — log the lift, pick the next — and the orange button is the loop rather than the exit, since no plan has run out. Finishing it never writes the improvisation back over the day it fell on.">
+              <LogSession
+                session={f.quickDraft}
+                history={f.sessions}
+                profile={f.profile}
+                onChange={f.noop}
+                onAddCustom={f.noop}
+                onFinish={f.noop}
+                onExit={f.noop}
+                onExercise={f.noop}
+              />
+            </Frame>
             <Frame n="04b" name="Set logged" note="The beat between tapping Log set and the rest timer. Not a loading page — the set is already written; this is the acknowledgement for a moment about to be spent resting anyway. ~650ms, tap to skip, and nothing at all under reduced motion.">
               <SetLogged summary="145 lb × 6" best={false} resting onSkip={f.noop} />
             </Frame>
@@ -271,14 +285,40 @@ function gallery(challenge: Challenge) {
             <Frame n="03b" name="Import a workout" note="Paste a plan you already have — from notes, a coach, anywhere — and the model reads it into routines, validated against the real library. Lifts the app doesn't have are created as customs; weights are never taken from the text. You confirm before it saves.">
               <ImportWorkout profile={f.profile} onDone={f.noop} onCancel={f.noop} />
             </Frame>
-            <Frame n="05" name="Rest" note="The 45 lb plate from the 2023 app icon, doing a job. It never nags and never advances on its own.">
+            <Frame n="05" name="Rest" note="The 45 lb plate from the 2023 app icon, doing a job. It never nags and never advances on its own. Both corrections you make standing at the rack are here: change the lift that comes next, or change the weight on it.">
               <RestTimer
                 seconds={120}
                 nextExerciseId="deadlift"
                 nextWeight={185}
                 nextReps={5}
+                weightStep={5}
+                onPickNext={f.noop}
+                onNextWeight={f.noop}
+                onAddSet={f.noop}
+                onDropSet={f.noop}
+                canDropSet
+                setsLeft={2}
                 onDone={f.noop}
                 onEnd={f.noop}
+              />
+            </Frame>
+            <Frame n="05b" name="Rest day · pick a workout" note="What &quot;train anyway&quot; asks now. It used to open whichever day came next in the rotation, which answers a question nobody asked: somebody training on a rest day has already decided to train and usually knows what. The list is hers rather than the library's, the workouts she saved by name first and then the days of her own week, which are the versions she shaped rather than the templates they came from. Whatever she picks is a one-off and never moves the week.">
+              <PickWorkout
+                profile={f.profile}
+                workouts={f.workouts}
+                routines={f.routines}
+                /* A push day she shaped months ago and no longer trains. */
+                dayLibrary={{
+                  push: [
+                    { exerciseId: "bench-press", sets: 4, reps: 6, weight: 105 },
+                    { exerciseId: "overhead-press", sets: 3, reps: 8, weight: 65 },
+                    { exerciseId: "dumbbell-fly", sets: 3, reps: 12, weight: 20 },
+                  ],
+                }}
+                today={0}
+                onPick={f.noop}
+                onQuick={f.noop}
+                onBack={f.noop}
               />
             </Frame>
             <Frame n="06" name="Personal record" note="The whole app inverts to orange. No confetti and no badge — the inversion is the celebration.">
@@ -316,6 +356,7 @@ function gallery(challenge: Challenge) {
                 today={today}
                 goal={null}
                 onStart={f.noop}
+                onQuick={f.noop}
                 onConstraints={f.noop}
                 onExercise={f.noop}
                 onProfile={f.noop}
@@ -333,6 +374,7 @@ function gallery(challenge: Challenge) {
                 today={today}
                 goal={null}
                 onStart={f.noop}
+                onQuick={f.noop}
                 onConstraints={f.noop}
                 onExercise={f.noop}
                 onProfile={f.noop}
@@ -351,6 +393,7 @@ function gallery(challenge: Challenge) {
                 goal={f.goal}
                 crewPreview={f.crewDay}
                 onStart={f.noop}
+                onQuick={f.noop}
                 onConstraints={f.noop}
                 onExercise={f.noop}
                 onProfile={f.noop}
@@ -368,6 +411,7 @@ function gallery(challenge: Challenge) {
                 today={f.lastSession.date}
                 goal={null}
                 onStart={f.noop}
+                onQuick={f.noop}
                 onConstraints={f.noop}
                 onExercise={f.noop}
                 onProfile={f.noop}
@@ -385,6 +429,7 @@ function gallery(challenge: Challenge) {
                 today={f.lastSession.date}
                 goal={null}
                 onStart={f.noop}
+                onQuick={f.noop}
                 onConstraints={f.noop}
                 onExercise={f.noop}
                 onProfile={f.noop}
@@ -399,6 +444,27 @@ function gallery(challenge: Challenge) {
                 session={{ ...f.lastSession, note: "Felt strong. Go up 5 lb next time." }}
                 records={["back-squat"]}
                 profile={f.profile}
+                onProfile={f.noop}
+                onSave={f.noop}
+                onSkip={f.noop}
+              />
+            </Frame>
+            <Frame
+              n="16b"
+              name="After the workout · keep this one?"
+              note="A workout she made up as she went lives nowhere once this screen closes, because a quick session is deliberately not written back over the day it landed on. So this is where it is offered a name, and after that it can go on any day."
+            >
+              <AfterWorkout
+                session={{
+                  ...f.lastSession,
+                  label: "Quick workout",
+                  freestyle: true,
+                  note: undefined,
+                }}
+                records={[]}
+                profile={f.profile}
+                workouts={f.workouts}
+                onSaveWorkout={f.noop}
                 onProfile={f.noop}
                 onSave={f.noop}
                 onSkip={f.noop}
@@ -477,6 +543,21 @@ function gallery(challenge: Challenge) {
                 initialAdding="core"
                 profile={f.profile}
                 routines={f.routines}
+                onSave={f.noop}
+                onBack={f.noop}
+              />
+            </Frame>
+            <Frame
+              n="14d"
+              name="Edit the week · her own workouts"
+              note="Workouts she saved, above the seven shapes the app knows. Pressing a day type brings back a leg day; this brings back hers, and it is the only way one workout reaches two days without being rebuilt lift by lift."
+            >
+              <RoutineEditor
+                profile={f.profile}
+                routines={f.routines}
+                workouts={f.workouts}
+                onSaveWorkout={f.noop}
+                onRemoveWorkout={f.noop}
                 onSave={f.noop}
                 onBack={f.noop}
               />

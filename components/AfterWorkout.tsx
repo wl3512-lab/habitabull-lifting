@@ -2,10 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Pill, Stat } from "./ui";
-import { crewCode, enabled, sharePhoto } from "@/lib/cloud";
+import { crewCode, enabled, sharePhoto, type SharedDay } from "@/lib/cloud";
 import { nameOf } from "@/lib/exercises";
 import { addPhoto, listPhotos, photoData } from "@/lib/photos";
-import type { Profile, Session } from "@/lib/types";
+import {
+  NAME_MAX,
+  cleanName,
+  fromSession,
+  makeWorkout,
+  savedAs,
+  shareableFromSession,
+} from "@/lib/workouts";
+import type { Profile, SavedWorkout, Session } from "@/lib/types";
 
 /**
  * The session, written down (deck p29/p30: "option to write notes", "option to
@@ -36,6 +44,9 @@ export default function AfterWorkout({
   onProfile,
   onSave,
   onSkip,
+  workouts,
+  onSaveWorkout,
+  onShareWorkout,
 }: {
   session: Session;
   records: string[];
@@ -43,6 +54,16 @@ export default function AfterWorkout({
   onProfile: (p: Profile) => void;
   onSave: (note: string | undefined) => void;
   onSkip: () => void;
+  /** What she has already saved, so an identical workout is not offered twice. */
+  workouts?: SavedWorkout[];
+  /**
+   * Keep what she just trained as a workout of her own. Committed the moment
+   * she presses it, not with the note — "Nothing to add" is a real way off this
+   * screen and a workout she asked to keep must not leave with it.
+   */
+  onSaveWorkout?: (w: SavedWorkout) => void;
+  /** Share the named workout to the crew as copyable lifts, never numbers. */
+  onShareWorkout?: (w: SharedDay) => Promise<boolean | void> | boolean | void;
 }) {
   const remembered = profile.sharePhotos === true;
   const [note, setNote] = useState(session.note ?? "");
@@ -54,11 +75,31 @@ export default function AfterWorkout({
   // Only a photo added on this screen can be shared from it.
   const [added, setAdded] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  /*
+    Keeping this workout.
+
+    A quick workout is improvised lift by lift and deliberately does not write
+    itself back over the day it landed on, and neither does a day rebuilt around
+    something that hurts. Both are right, and both mean the session she just
+    trained exists nowhere once this screen closes — so this is where to ask. A
+    planned day needs no asking: it already comes back next week on its own.
+
+    "Quick workout" is the app's word for a session it had no plan for, so it is
+    not a name for hers. The field starts empty and says what a name looks like.
+  */
+  const lineup = fromSession(session);
+  const impromptu = Boolean(session.freestyle || session.adapted);
+  const held = savedAs(workouts ?? [], lineup);
+  const [workoutName, setWorkoutName] = useState("");
+  const [kept, setKept] = useState<string | null>(null);
+  const [crewShare, setCrewShare] = useState<"idle" | "sharing" | "shared" | "failed">("idle");
 
   const hasCrew = enabled() && Boolean(crewCode());
   // The switch is drawn and remembered on the same condition, so a remembered
   // "on" can never survive into a session where nothing was there to tick.
   const canShare = hasCrew && added.length > 0;
+  const canShareWorkout = Boolean(hasCrew && onShareWorkout && impromptu && lineup.length > 0);
+  const named = kept ?? held?.name ?? cleanName(workoutName);
 
   useEffect(() => {
     listPhotos().then((all) => setPhotoCount(all.filter((p) => p.date === session.date).length));
@@ -82,6 +123,34 @@ export default function AfterWorkout({
   // the count keeps the tiles roomy instead of letting a long minute count push
   // the row past the screen edge.
   const statCount = (minutes !== null ? 1 : 0) + 2 + (records.length > 0 ? 1 : 0);
+
+  function keepWorkout() {
+    const name = cleanName(workoutName);
+    if (!name || !onSaveWorkout || lineup.length === 0) return;
+    onSaveWorkout(makeWorkout(name, lineup));
+    setKept(name);
+  }
+
+  function keepWorkoutNamed(name: string): string | null {
+    const existing = kept ?? held?.name;
+    if (existing) return existing;
+    const clean = cleanName(name);
+    if (!clean || !onSaveWorkout || lineup.length === 0) return null;
+    onSaveWorkout(makeWorkout(clean, lineup));
+    setKept(clean);
+    return clean;
+  }
+
+  async function shareWorkout() {
+    if (!onShareWorkout) return;
+    const name = keepWorkoutNamed(workoutName);
+    if (!name) return;
+    const shareable = shareableFromSession(session, name);
+    if (!shareable) return;
+    setCrewShare("sharing");
+    const ok = await onShareWorkout(shareable);
+    setCrewShare(ok === false ? "failed" : "shared");
+  }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -137,6 +206,110 @@ export default function AfterWorkout({
           </div>
         )}
       </div>
+
+      {/*
+        The one question this screen asks about the training rather than about
+        recording it: was that a workout you want again? It sits above the photo
+        and the note because it is about what just happened, and it is skippable
+        by being ignored, like everything else here.
+      */}
+      {(onSaveWorkout || onShareWorkout) && impromptu && lineup.length > 0 && (
+        <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+          {(kept ?? held) ? (
+            <>
+              <p className="label text-done">Kept</p>
+              <p className="mt-1.5 text-emphasis leading-snug text-fg">
+                Saved as {kept ?? held?.name}.
+              </p>
+              <p className="mt-1 text-body leading-snug text-dim">
+                It is in your saved workouts. Put it on any day from your plan.
+              </p>
+              {canShareWorkout && (
+                <div className="mt-4 border-t border-line pt-3.5">
+                  <p className="label text-dim">Crew</p>
+                  <p className="mt-1 text-body leading-snug text-dim">
+                    Share the lifts so they can copy it. Never your weights.
+                  </p>
+                  <Pill
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void shareWorkout()}
+                    disabled={crewShare === "sharing" || crewShare === "shared"}
+                    className="mt-3 h-11 w-full"
+                  >
+                    {crewShare === "sharing"
+                      ? "Sharing..."
+                      : crewShare === "shared"
+                        ? "Shared with crew"
+                        : "Share with crew"}
+                  </Pill>
+                  {crewShare === "failed" && (
+                    <p role="status" className="mt-2 text-body text-dim">
+                      Could not reach your crew. The workout is still saved here.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="label text-dim">Keep this one?</p>
+              <p className="mt-1.5 text-emphasis leading-snug text-fg">
+                {session.freestyle
+                  ? "You made this up as you went. Name it and you can train it again."
+                  : "Today was rebuilt, so it is not on your plan. Name it and you can put it on a day."}
+              </p>
+              <p className="mt-1 text-body leading-snug text-dim">
+                {lineup.map((e) => nameOf(e.exerciseId)).join(", ")}
+              </p>
+              <div className="mt-3 flex items-center gap-2.5">
+                <input
+                  value={workoutName}
+                  onChange={(e) => setWorkoutName(e.target.value)}
+                  maxLength={NAME_MAX}
+                  placeholder="Hotel gym day"
+                  aria-label="Name this workout"
+                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                />
+                <button
+                  type="button"
+                  onClick={keepWorkout}
+                  disabled={!onSaveWorkout || !cleanName(workoutName)}
+                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
+                >
+                  Save
+                </button>
+              </div>
+              {canShareWorkout && (
+                <div className="mt-3 border-t border-line pt-3.5">
+                  <p className="text-body leading-snug text-dim">
+                    Share it with your crew too. They get the lifts to copy, not your
+                    weights.
+                  </p>
+                  <Pill
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void shareWorkout()}
+                    disabled={!named || crewShare === "sharing" || crewShare === "shared"}
+                    className="mt-3 h-11 w-full"
+                  >
+                    {crewShare === "sharing"
+                      ? "Sharing..."
+                      : crewShare === "shared"
+                        ? "Shared with crew"
+                        : "Share with crew"}
+                  </Pill>
+                  {crewShare === "failed" && (
+                    <p role="status" className="mt-2 text-body text-dim">
+                      Could not reach your crew. The workout is still saved here.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
 
       <input
         ref={fileRef}
@@ -207,7 +380,7 @@ export default function AfterWorkout({
           </span>
           <span className="flex-1">
             <span className="block text-emphasis leading-snug text-fg">
-              Share this with your crew
+              Share this photo with your crew
             </span>
             <span className="mt-0.5 block text-body leading-snug text-dim">
               {note.trim()

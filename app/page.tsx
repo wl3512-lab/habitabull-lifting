@@ -17,6 +17,7 @@ import Booting from "@/components/Booting";
 import StoppedEarly from "@/components/StoppedEarly";
 import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
+import PickWorkout, { type WorkoutChoice } from "@/components/PickWorkout";
 import Progress from "@/components/Progress";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar, { type Tab } from "@/components/TabBar";
@@ -28,13 +29,17 @@ import {
   rememberLineup,
   mergeDayLibrary,
   generateRoutine,
+  unfilled,
   reconcileWeek,
   mergeRebuild,
   personalRecord,
   rebuildDay,
 } from "@/lib/engine";
+import { finishSession } from "@/lib/session-memory";
+import { applyPlan } from "@/lib/plan";
 import { enabled, publishPlan, pushCheckins } from "@/lib/cloud";
 import { setCustomExercises } from "@/lib/exercises";
+import { removeWorkout, saveWorkout, syncWorkouts, withSharedWorkout } from "@/lib/workouts";
 import { challengeFor } from "@/lib/crew";
 import { launchPlaylist } from "@/lib/spotify";
 import { greetingMood } from "@/lib/voice";
@@ -53,9 +58,25 @@ import { weekStrip } from "@/lib/calendar";
 import { setBusy } from "@/lib/busy";
 import type { SharedDay } from "@/lib/cloud";
 import type { Constraints } from "@/lib/constraints";
-import type { AppState, Challenge, Goal, Profile, Routine, Session } from "@/lib/types";
+import type { AppState, Challenge, Goal, Profile, Routine, SavedWorkout, Session } from "@/lib/types";
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "stopped" | "import";
+/**
+ * What a quick workout is called, on the home screen, in the calendar and in
+ * history. Named rather than left blank because every other session has a name
+ * and a blank one would read as a bug — and not named after the weekday it fell
+ * on, which is the thing a quick workout deliberately is not.
+ */
+const QUICK_LABEL = "Quick workout";
+
+function copyableWeek(routines: Routine[]): SharedDay[] {
+  return routines.map((r) => ({
+    day: r.day,
+    label: r.label,
+    exercises: r.exercises.map((e) => e.exerciseId),
+  }));
+}
+
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "stopped" | "import" | "pick";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -69,6 +90,21 @@ export default function Page() {
   const [planDay, setPlanDay] = useState<number | null>(null);
   const [records, setRecords] = useState<string[]>([]);
   const [today, setToday] = useState(() => todayISO());
+  const [activeDate, setActiveDate] = useState<string | null>(null);
+  const workoutDate = ["log", "done", "after", "stopped", "comeback", "exercise"].includes(view)
+    ? activeDate ?? today : today;
+
+  useEffect(() => {
+    const updateDay = () => setToday(todayISO());
+    window.addEventListener("focus", updateDay);
+    document.addEventListener("visibilitychange", updateDay);
+    const interval = window.setInterval(updateDay, 30000);
+    return () => {
+      window.removeEventListener("focus", updateDay);
+      document.removeEventListener("visibilitychange", updateDay);
+      window.clearInterval(interval);
+    };
+  }, []);
   // Where an exercise detail screen returns to, so it can open from anywhere.
   const [detail, setDetail] = useState<{ id: string; from: View } | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
@@ -144,18 +180,10 @@ export default function Page() {
     off switch on that screen. Silent is the wrong default for a photo; a list
     of exercise names is not the same kind of thing.
   */
-  const planKey = JSON.stringify(
-    state.routines.map((r) => [r.day, r.label, r.exercises.map((e) => e.exerciseId)])
-  );
+  const planKey = JSON.stringify(copyableWeek(state.routines));
   useEffect(() => {
     if (!ready || !enabled() || state.profile?.shareWeek === false) return;
-    void publishPlan(
-      state.routines.map((r) => ({
-        day: r.day,
-        label: r.label,
-        exercises: r.exercises.map((e) => e.exerciseId),
-      }))
-    );
+    void publishPlan(copyableWeek(state.routines));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, planKey, state.profile?.shareWeek]);
 
@@ -178,7 +206,10 @@ export default function Page() {
         onDone={(p: Profile) =>
           setState({
             profile: p,
-            routines: generateRoutine(p.level, p.trainingDays, p.equipment),
+            // Named days with nothing on them. The first thing after this is
+            // the week screen and then the day editor, where "Autofill for me"
+            // is waiting for anyone who wants the app to choose.
+            routines: unfilled(generateRoutine(p.level, p.trainingDays, p.equipment)),
             sessions: [],
             goal: null,
           })
@@ -216,7 +247,7 @@ export default function Page() {
     );
   }
 
-  const draft = sessionFor(sessions, today);
+  const draft = sessionFor(sessions, workoutDate);
   // On a rest day, "train anyway" pulls up the next routine in the rotation.
   // Sorted before the wrap-around: unsorted, "the next training day" can pick
   // a day that has already passed.
@@ -240,6 +271,54 @@ export default function Page() {
         }
       : scheduled;
 
+  /**
+   * Whether starting a workout right now is a comeback.
+   *
+   * A gap of a week or more gets its own beat before the first set — unless the
+   * arrival beat already said it this morning. One welcome back a day, at the
+   * door rather than again on the way to the bar. Shared by both ways in, since
+   * the gap is a fact about her week and not about which button she pressed.
+   */
+  function comebackNow(): boolean {
+    const lastDone = state.sessions
+      .filter((x) => x.completedAt && x.date < today)
+      .map((x) => x.date)
+      .sort()
+      .pop();
+    return !welcomed && greetingMood(lastDone, today) === "return";
+  }
+
+  /**
+   * A workout with no plan behind it, logged one lift at a time.
+   *
+   * The plan is the app's opinion, and there are days it has no useful one:
+   * a drop-in at a gym with different kit, a morning where she already knows
+   * what she is doing, a first session before anybody has agreed to a week —
+   * which is the research finding the whole home screen is built on, that
+   * people want to log a workout before they will set anything up.
+   *
+   * It opens with the session genuinely empty rather than with a guess in it.
+   * `freestyle` is what tells the log screen that empty means "pick your first
+   * lift" and tells `rememberLineup` not to write this improvisation back over
+   * a saved day.
+   */
+  function startQuick() {
+    if (!profile || draft) return; // one record per date; never over a session
+    setActiveDate(today);
+    launchPlaylist(profile.playlistId);
+    setState((s) => ({
+      ...s,
+      sessions: upsertSession(s.sessions, {
+        date: today,
+        label: QUICK_LABEL,
+        exercises: [],
+        startedAt: new Date().toISOString(),
+        freestyle: true,
+      }),
+    }));
+    setView(comebackNow() ? "comeback" : "log");
+  }
+
   function startLogging() {
     if (!profile) return;
     /*
@@ -248,17 +327,9 @@ export default function Page() {
       after: if music is going to fail it should fail before anything has been
       committed, and the call itself swallows everything anyway.
     */
+    setActiveDate(today);
     launchPlaylist(profile.playlistId);
-    // A gap of a week or more turns starting into a comeback, which gets its
-    // own beat before the first set. Judged on completed sessions before today.
-    const lastDone = state.sessions
-      .filter((x) => x.completedAt && x.date < today)
-      .map((x) => x.date)
-      .sort()
-      .pop();
-    // Unless the arrival beat already said it this morning. One welcome back a
-    // day, at the door rather than again on the way to the bar.
-    const isComeback = !welcomed && greetingMood(lastDone, today) === "return";
+    const isComeback = comebackNow();
     if (!draft && routine) {
       setState((s) => ({
         ...s,
@@ -268,6 +339,40 @@ export default function Page() {
         }),
       }));
     }
+    setView(isComeback ? "comeback" : "log");
+  }
+
+  /**
+   * A workout she chose on a day the plan says rest.
+   *
+   * Built through `buildSession` like any other day, so the weights and reps
+   * are the ones her history says, not the ones frozen into the workout when
+   * she saved it. The label is the workout's, so the session reads as the thing
+   * she chose everywhere it is shown later.
+   *
+   * Marked `adapted`, which is what stops it redefining anything: today is not
+   * this workout's day, and a leg day done on a Sunday is not a decision that
+   * Sunday is leg day. It also puts the "keep this?" offer on the screen
+   * afterwards, which is the right offer for a day that came from nowhere.
+   */
+  function startFrom(choice: WorkoutChoice) {
+    if (!profile || draft) return; // one record per date; never over a session
+    setActiveDate(today);
+    launchPlaylist(profile.playlistId);
+    const isComeback = comebackNow();
+    setState((s) => ({
+      ...s,
+      sessions: upsertSession(s.sessions, {
+        ...buildSession(
+          { day: dow, label: choice.label, template: choice.template, exercises: choice.exercises },
+          s.sessions,
+          profile.level,
+          today
+        ),
+        startedAt: new Date().toISOString(),
+        adapted: true,
+      }),
+    }));
     setView(isComeback ? "comeback" : "log");
   }
 
@@ -322,10 +427,56 @@ export default function Page() {
     setView("progress");
   }
 
-  function finish() {
-    if (!draft) return;
-    const prior = sessions.filter((s) => s.date !== today);
-    const hit = draft.exercises
+  /*
+    Her own saved workouts.
+
+    Both writers commit on their own rather than riding along with a plan save,
+    because the library is not the plan: she can save a workout from the screen
+    that ends a session, where there is no plan edit in flight at all, and
+    cancelling an edit to Wednesday must not take back a workout she kept while
+    she was in there.
+  */
+  /**
+   * A restored backup, replacing everything.
+   *
+   * The registry is filled before the state lands, for the same reason adding a
+   * lift by hand fills it first: it is a module variable, so writing it does not
+   * re-render anything. `save` does register it, but that runs in an effect
+   * *after* the render the new state causes — so the first screen after a
+   * restore drew every custom lift as its raw id
+   * ("custom-cable-crossover-mtluc…") and stayed that way until something else
+   * happened to refresh it. Which is on the screen the restore lands on: Today
+   * lists the lifts in her plan.
+   */
+  function importState(next: AppState) {
+    setCustomExercises(next.customExercises ?? []);
+    setState(next);
+    setView("today");
+  }
+
+  function keepWorkout(w: SavedWorkout) {
+    setState((s) => ({ ...s, workouts: saveWorkout(s.workouts, w) }));
+  }
+
+  function dropWorkout(id: string) {
+    setState((s) => ({ ...s, workouts: removeWorkout(s.workouts, id) }));
+  }
+
+  async function shareWorkoutWithCrew(day: SharedDay): Promise<boolean> {
+    const week = state.profile?.shareWeek === false ? [] : copyableWeek(state.routines);
+    const res = await publishPlan(withSharedWorkout(week, day));
+    return Boolean(res?.shared);
+  }
+
+  function finish(next?: Session) {
+    const finishing = next ?? draft;
+    if (!finishing) return;
+    if (!finishing.exercises.some(e => e.sets.some(s => s.done))) {
+      setView("today");
+      return;
+    }
+    const prior = sessions.filter((s) => s.date < finishing.date);
+    const hit = finishing.exercises
       .filter((e) => {
         const best = Math.max(0, ...e.sets.filter((s) => s.done).map((s) => s.weight));
         return best > 0 && best > personalRecord(prior, e.exerciseId);
@@ -342,17 +493,16 @@ export default function Page() {
       // A one-off "something hurts" rebuild is exempt: it changes only today.
       // Next time this day comes up, the workout you actually did returns; the
       // day library keeps it per day type, so pressing that day again does too.
-      const routines = rememberLineup(s.routines, draft);
+      const routines = finishing.date === today ? rememberLineup(s.routines, finishing) : s.routines;
       return {
         ...s,
         routines,
         dayLibrary: mergeDayLibrary(s.dayLibrary, routines),
-        sessions: upsertSession(s.sessions, {
-          ...draft,
-          // Drop untouched sets so history reflects what was actually done.
-          exercises: draft.exercises.map((e) => ({ ...e, sets: e.sets.filter((x) => x.done) })),
-          completedAt: new Date().toISOString(),
-        }),
+        // And into the saved workout, if this day is one. A lift added at the
+        // rack is an edit to her workout exactly as much as one added in the
+        // editor is, and only one of the two used to survive.
+        workouts: syncWorkouts(s.workouts, routines),
+        sessions: upsertSession(s.sessions, finishSession(finishing, new Date().toISOString())),
       };
     });
     setView("done");
@@ -390,13 +540,16 @@ export default function Page() {
   }
 
   if (view === "after") {
-    const finished = sessionFor(sessions, today);
+    const finished = sessionFor(sessions, workoutDate);
     if (finished) {
       return (
         <AfterWorkout
           session={finished}
           records={records}
           profile={profile}
+          workouts={state.workouts}
+          onSaveWorkout={keepWorkout}
+          onShareWorkout={shareWorkoutWithCrew}
           onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
           onSave={(note?: string) => {
             setState((s) => ({
@@ -428,6 +581,9 @@ export default function Page() {
         routines={routines}
         focusDay={planDay ?? undefined}
         library={state.dayLibrary}
+        workouts={state.workouts}
+        onSaveWorkout={keepWorkout}
+        onRemoveWorkout={dropWorkout}
         onAddCustom={(e) => {
           /*
             The registry is filled here, not left to `save`. It is a module
@@ -445,9 +601,7 @@ export default function Page() {
           // Saving the plan is the moment she has actually chosen it, so the
           // first-run prompt retires.
           setState((s) => ({
-            ...s,
-            routines: r,
-            dayLibrary: mergeDayLibrary(s.dayLibrary, r),
+            ...applyPlan(s, r, profile.level, today),
             profile: s.profile ? { ...s.profile, planChosen: true } : s.profile,
           }));
           setView("today");
@@ -472,18 +626,17 @@ export default function Page() {
             the types carried across, the full-body variant was positional, so
             the same edit still changed which lifts Wednesday had.
           */
-          setState((s) => ({
-            ...s,
-            profile: p,
-            routines: reconcileWeek(
+          setState((s) => {
+            const routines = reconcileWeek(
               s.routines,
               p.trainingDays,
               p.level,
               p.equipment,
               p.favourites ?? [],
               s.dayLibrary
-            ),
-          }));
+            );
+            return { ...applyPlan(s, routines, p.level, today), profile: p };
+          });
           /*
             Where to go next.
 
@@ -526,18 +679,19 @@ export default function Page() {
         profile={profile}
         onCancel={() => setView("week")}
         onDone={(routines, customs) => {
-          const nextCustoms = [...(state.customExercises ?? []), ...customs];
-          setCustomExercises(nextCustoms);
-          setState((s) => ({
-            ...s,
-            routines,
-            customExercises: nextCustoms,
-            profile: {
-              ...profile,
-              planChosen: true,
-              trainingDays: [...new Set(routines.map((r) => r.day))].sort((a, b) => a - b),
-            },
-          }));
+          setState((s) => {
+            const customExercises = [...(s.customExercises ?? []), ...customs];
+            setCustomExercises(customExercises);
+            return {
+              ...applyPlan(s, routines, profile.level, today),
+              customExercises,
+              profile: {
+                ...profile,
+                planChosen: true,
+                trainingDays: [...new Set(routines.map((r) => r.day))].sort((a, b) => a - b),
+              },
+            };
+          });
           setView("today");
         }}
       />
@@ -555,8 +709,7 @@ export default function Page() {
           // Copying a day is choosing a plan, so the first-run prompt retires
           // the same way saving the editor does.
           setState((s) => ({
-            ...s,
-            routines: next,
+            ...applyPlan(s, next, profile.level, today),
             profile: s.profile ? { ...s.profile, planChosen: true } : s.profile,
           }));
           setCopying(null);
@@ -628,10 +781,7 @@ export default function Page() {
         goal={goal}
         onGoal={() => setView("goal")}
         state={state}
-        onImport={(next: AppState) => {
-          setState(next);
-          setView("today");
-        }}
+        onImport={importState}
       />,
       "progress"
     );
@@ -645,10 +795,7 @@ export default function Page() {
         today={today}
         onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
         onWeighIn={saveWeighIn}
-        onImport={(next: AppState) => {
-          setState(next);
-          setView("today");
-        }}
+        onImport={importState}
         onEditPlan={(day) => {
           setPlanDay(day ?? null);
           setView("routine");
@@ -667,8 +814,9 @@ export default function Page() {
   if (view === "log" && draft) {
     return (
       <LogSession
+        key={draft.date}
         session={draft}
-        history={sessions.filter((s) => s.date !== today)}
+        history={sessions.filter((s) => s.date < draft.date)}
         profile={profile}
         onChange={updateDraft}
         onAddCustom={(e) => {
@@ -680,7 +828,18 @@ export default function Page() {
         // Not straight home. Ending early is the one screen change in the app
         // that used to happen with no transition and no answer to "did I just
         // lose those sets?".
-        onExit={() => setView("stopped")}
+        //
+        // A quick workout that never got a lift is the exception: nothing was
+        // started, so there is nothing to reassure anyone about, and the empty
+        // record has to go or Today reports a session with nothing in it.
+        onExit={() => {
+          if (draft.freestyle && draft.exercises.length === 0) {
+            setState((s) => ({ ...s, sessions: s.sessions.filter((x) => x.date !== draft.date) }));
+            setView("today");
+            return;
+          }
+          setView("stopped");
+        }}
         onExercise={(id) => openExercise(id, "log")}
         onProfile={(p2: Profile) => setState((s2) => ({ ...s2, profile: p2 }))}
       />
@@ -703,7 +862,7 @@ export default function Page() {
   }
 
   if (view === "done") {
-    const finished = sessionFor(sessions, today);
+    const finished = sessionFor(sessions, workoutDate);
     if (finished) {
       return (
         <Finished
@@ -719,18 +878,51 @@ export default function Page() {
     }
   }
 
+  if (view === "pick") {
+    return (
+      <PickWorkout
+        profile={profile}
+        workouts={state.workouts}
+        routines={routines}
+        dayLibrary={state.dayLibrary}
+        today={dow}
+        onPick={startFrom}
+        onQuick={startQuick}
+        onBack={() => setView("today")}
+      />
+    );
+  }
+
   return placed(
     <Today
       profile={profile}
       routine={todayPlan}
       sessions={sessions}
       today={today}
+      onResume={(date) => {
+        setActiveDate(date);
+        setView("log");
+      }}
       onStart={startLogging}
+      onQuick={startQuick}
+      /*
+        Only on a rest day, and only with something to choose from. With an
+        empty week and nothing saved the picker would be an empty screen
+        between her and a workout, so the old behaviour stands there.
+      */
+      onPickWorkout={
+        routines.length > 0 || (state.workouts?.length ?? 0) > 0
+          ? () => setView("pick")
+          : undefined
+      }
       onConstraints={applyConstraints}
       onExercise={(id) => openExercise(id, "today")}
       onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
       onSetUpWeek={() => setView("week")}
-      onEditRoutine={() => setView("routine")}
+      onEditRoutine={(day) => {
+        setPlanDay(day ?? null);
+        setView("routine");
+      }}
       goal={goal}
       onGoal={() => setView("goal")}
       onOpenDay={(d: string) => {

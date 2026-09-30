@@ -27,7 +27,7 @@ const finished: Session = {
   exercises: [{ exerciseId: "bench-press", sets: [set(95, 8, true), set(95, 8, true), set(95, 8, true)] }],
 };
 
-/** What `applyConstraints` does when "Swap today's plan" is tapped. */
+/** What `applyConstraints` does when "Something's different today" is tapped. */
 const swapPlan = (sessions: Session[]) =>
   upsertSession(
     sessions.filter((x) => x.date !== TODAY || x.completedAt),

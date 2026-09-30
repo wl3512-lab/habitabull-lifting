@@ -72,13 +72,7 @@ export default function Finished({
   const prior = sessions.filter((s) => s.date !== session.date);
   const best = records
     .map((id) => {
-      const now = Math.max(
-        0,
-        ...session.exercises
-          .find((e) => e.exerciseId === id)!
-          .sets.filter((s) => s.done)
-          .map((s) => s.weight)
-      );
+      const now = personalRecord([session], id);
       const was = personalRecord(prior, id);
       return { id, was, by: now - was, now };
     })

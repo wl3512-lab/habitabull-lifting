@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSession,
+  sessionTarget,
   generateRoutine,
   rebuildDay,
   nextTarget,
@@ -21,6 +22,9 @@ import {
   suggestFrom,
   LEVEL_SETS,
   reconcileWeek,
+  refreshOpenDay,
+  samePlan,
+  unfilled,
 } from "./engine";
 import { byId } from "./exercises";
 import type { Equipment, Routine, Session } from "./types";
@@ -191,9 +195,20 @@ describe("nextTarget", () => {
     expect(t.note).toMatch(/reps/i);
   });
 
-  it("ignores sessions that were never completed", () => {
-    const abandoned: Session = { ...session("2026-08-01", "back-squat", 3, 10, 200), completedAt: undefined };
-    expect(nextTarget("back-squat", [abandoned], "new").note).toMatch(/first time/i);
+  it("counts a session she ended rather than finished", () => {
+    // End, at the top of the log screen, does not write completedAt; Finish
+    // does. Requiring it here meant the ordinary gym session did not exist.
+    const ended: Session = { ...session("2026-08-01", "back-squat", 3, 10, 200), completedAt: undefined };
+    expect(nextTarget("back-squat", [ended], "new").note).not.toMatch(/first time/i);
+  });
+
+  it("ignores a session she opened and never lifted in", () => {
+    const opened: Session = {
+      date: "2026-08-01",
+      label: "Leg day",
+      exercises: [{ exerciseId: "back-squat", sets: [{ weight: 200, reps: 10, done: false }] }],
+    };
+    expect(nextTarget("back-squat", [opened], "new").note).toMatch(/first time/i);
   });
 
   it("always lands on a loadable weight", () => {
@@ -244,11 +259,11 @@ describe("buildSession", () => {
     expect(s.exercises.every((e) => e.sets.every((set) => !set.done))).toBe(true);
   });
 
-  it("carries progression forward from history", () => {
+  it("repeats the completed weight from history", () => {
     const id = routine.exercises[0].exerciseId;
     const prior = [session("2026-08-23", id, 3, 10, 100)];
     const s = buildSession(routine, prior, "new", "2026-08-30");
-    expect(s.exercises[0].sets[0].weight).toBe(nextTarget(id, prior, "new").weight);
+    expect(s.exercises[0].sets[0]).toEqual({ weight: 100, reps: 10, done: false });
   });
 
   it("is not marked complete on creation", () => {
@@ -582,9 +597,9 @@ describe("rememberLineup", () => {
   /** A finished Leg day where a lift was added and one dropped. */
   function trained(label: string, ids: string[], extra: Partial<Session> = {}): Session {
     return {
-      date: "2026-09-08",
+      date: "2026-09-07",
       label,
-      completedAt: "2026-09-08T12:00:00.000Z",
+      completedAt: "2026-09-07T12:00:00.000Z",
       exercises: ids.map((id) => ({
         exerciseId: id,
         sets: [{ weight: 100, reps: 9, done: true }],
@@ -617,8 +632,25 @@ describe("rememberLineup", () => {
     expect(out).toEqual([legDay]);
   });
 
+  /*
+    A quick workout is improvised lift by lift and happens to fall on a weekday.
+    Writing its lineup back would let one drop-in session — two machines and a
+    bike, because the rack was busy — redefine Leg day permanently.
+  */
+  it("leaves the plan alone for a quick workout", () => {
+    const quick = trained("Leg day", ["hip-abductor"], { freestyle: true });
+    expect(rememberLineup([legDay], quick)).toEqual([legDay]);
+  });
+
+  it("leaves the plan alone even when the quick workout shares its name", () => {
+    const quick = trained("Quick workout", ["hip-abductor"], { freestyle: true });
+    expect(rememberLineup([{ ...legDay, label: "Quick workout" }], quick)[0].exercises).toEqual(
+      legDay.exercises
+    );
+  });
+
   it("never blanks a routine from an empty session", () => {
-    const out = rememberLineup([legDay], { date: "2026-09-08", label: "Leg day", exercises: [] });
+    const out = rememberLineup([legDay], { date: "2026-09-07", label: "Leg day", exercises: [] });
     expect(out).toEqual([legDay]);
   });
 });
@@ -1023,5 +1055,256 @@ describe("adding a day to a built week", () => {
     const after = reconcileWeek(picked, [1, 2, 3, 5, 6], "new", KIT);
     expect(after.map((r) => r.template)).toEqual(["push", "cardio", "pull", "legs", "full-body"]);
     expect(after.find((r) => r.day === 2)).toEqual(picked[1]);
+  });
+});
+
+describe("an open day catching up with a plan that changed", () => {
+  const plan = (label: string, ids: string[]): Routine => ({
+    day: 6,
+    label,
+    exercises: ids.map((exerciseId) => ({ exerciseId, sets: 3, reps: 8, weight: 45 })),
+  });
+
+  /** Today, opened and not finished. */
+  const open = (ids: string[], done = 0): Session => ({
+    date: "2026-09-26",
+    label: "Leg day",
+    startedAt: "2026-09-26T17:00:00.000Z",
+    exercises: ids.map((exerciseId, i) => ({
+      exerciseId,
+      sets: Array.from({ length: 3 }, () => ({ weight: 45, reps: 8, done: i < done })),
+    })),
+  });
+
+  const before = plan("Leg day", ["back-squat", "romanian-deadlift"]);
+  const after = plan("Push day", ["bench-press", "overhead-press"]);
+
+  it("rebuilds a started-but-unlogged day from the new plan", () => {
+    const out = refreshOpenDay([open(["back-squat", "romanian-deadlift"])], before, after, "new", "2026-09-26");
+    expect(out[0].exercises.map((e) => e.exerciseId)).toEqual(["bench-press", "overhead-press"]);
+    expect(out[0].label).toBe("Push day");
+    // Opened is still opened: the duration the summary reports survives.
+    expect(out[0].startedAt).toBe("2026-09-26T17:00:00.000Z");
+  });
+
+  it("keeps the sets she already did, and adds the new lifts after them", () => {
+    const out = refreshOpenDay(
+      [open(["back-squat", "romanian-deadlift"], 1)],
+      before,
+      after,
+      "new",
+      "2026-09-26"
+    );
+    expect(out[0].exercises.map((e) => e.exerciseId)).toEqual([
+      "back-squat",
+      "bench-press",
+      "overhead-press",
+    ]);
+    expect(out[0].exercises[0].sets.every((s) => s.done)).toBe(true);
+  });
+
+  it("leaves a finished day alone", () => {
+    const done = { ...open(["back-squat"], 1), completedAt: "2026-09-26T18:00:00.000Z" };
+    expect(refreshOpenDay([done], before, after, "new", "2026-09-26")).toEqual([done]);
+  });
+
+  it("leaves a quick workout alone — it was never the plan", () => {
+    const quick = { ...open(["back-squat"]), freestyle: true };
+    expect(refreshOpenDay([quick], before, after, "new", "2026-09-26")).toEqual([quick]);
+  });
+
+  it("leaves the day alone when the plan did not actually change", () => {
+    // Otherwise every save would reset a weight she had just dialled in.
+    const session = open(["back-squat", "romanian-deadlift"]);
+    session.exercises[0].sets[0].weight = 135;
+    expect(refreshOpenDay([session], before, plan("Leg day", ["back-squat", "romanian-deadlift"]), "new", "2026-09-26"))
+      .toEqual([session]);
+  });
+
+  it("touches no other day", () => {
+    const other: Session = { ...open(["back-squat"]), date: "2026-09-25" };
+    const out = refreshOpenDay([other, open(["back-squat"])], before, after, "new", "2026-09-26");
+    expect(out[0]).toEqual(other);
+  });
+
+  it("does nothing when today has no session yet", () => {
+    expect(refreshOpenDay([], before, after, "new", "2026-09-26")).toEqual([]);
+  });
+});
+
+describe("samePlan", () => {
+  const p = (label: string, sets: number): Routine => ({
+    day: 1,
+    label,
+    exercises: [{ exerciseId: "back-squat", sets, reps: 8, weight: 45 }],
+  });
+
+  it("is true for the same name and the same shape", () => {
+    expect(samePlan(p("Leg day", 3), p("Leg day", 3))).toBe(true);
+  });
+
+  it("notices a renamed day, a changed set count, and a missing plan", () => {
+    expect(samePlan(p("Leg day", 3), p("Legs", 3))).toBe(false);
+    expect(samePlan(p("Leg day", 3), p("Leg day", 4))).toBe(false);
+    expect(samePlan(null, p("Leg day", 3))).toBe(false);
+    expect(samePlan(null, null)).toBe(true);
+  });
+});
+
+
+describe("remembered set defaults", () => {
+  it.each([0, 1, 2])("uses a best on set %i for every future set", (bestIndex) => {
+    const prior = session("2026-09-20", "bench-press", 3, 8, 95);
+    prior.exercises[0].sets[bestIndex] = { weight: 115, reps: 6, done: true };
+    const skipped = session("2026-09-22", "bench-press", 1, 20, 200);
+    skipped.exercises[0].sets[0].done = false;
+    const plan: Routine = { day: 1, label: "Push", exercises: [{ exerciseId: "bench-press", sets: 4, reps: 12, weight: 0 }] };
+    const result = buildSession(plan, [prior, skipped], "new", "2026-09-28");
+    expect(result.exercises[0].sets).toEqual(Array.from({ length: 4 }, () => ({ weight: 115, reps: 6, done: false })));
+  });
+
+  it("includes repeated entries for the same exercise in last time", () => {
+    const prior = session("2026-09-20", "bench-press", 1, 8, 95);
+    prior.exercises.push({ exerciseId: "bench-press", sets: [{ weight: 115, reps: 7, done: true }] });
+    const plan: Routine = { day: 1, label: "Push", exercises: [{ exerciseId: "bench-press", sets: 1, reps: 12, weight: 0 }] };
+    expect(buildSession(plan, [prior], "new", "2026-09-28").exercises[0].sets[0]).toEqual({ weight: 115, reps: 7, done: false });
+  });
+});
+
+
+it("uses remembered reps for an added bodyweight exercise", () => {
+  const prior = session("2026-09-20", "push-up", 3, 10, 0);
+  prior.exercises[0].sets[1].reps = 17;
+  expect(sessionTarget("push-up", [prior], "new")).toMatchObject({ weight: 0, reps: 17 });
+});
+
+
+describe("memory isolation", () => {
+  it("finishing Monday does not overwrite Wednesday with the same name", () => {
+    const monday: Routine = { day: 1, label: "Push", exercises: [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 95 }] };
+    const wednesday: Routine = { ...monday, day: 3, exercises: [{ exerciseId: "push-up", sets: 2, reps: 15, weight: 0 }] };
+    const done = { ...session("2026-09-28", "bench-press", 4, 6, 115), label: "Push" };
+    const out = rememberLineup([monday, wednesday], done);
+    expect(out[0].exercises[0].sets).toBe(4);
+    expect(out[1]).toEqual(wednesday);
+  });
+
+  it("does not write an old session into a workout moved to another weekday", () => {
+    const moved: Routine = { day: 3, label: "Push", exercises: [{ exerciseId: "push-up", sets: 2, reps: 15, weight: 0 }] };
+    const done = { ...session("2026-09-28", "bench-press", 4, 6, 115), label: "Push" };
+    expect(rememberLineup([moved], done)).toEqual([moved]);
+  });
+
+  it("counts a record in the second occurrence of a lift", () => {
+    const done = session("2026-09-28", "bench-press", 1, 8, 95);
+    done.exercises.push({ exerciseId: "bench-press", sets: [{ weight: 135, reps: 5, done: true }, { weight: 200, reps: 1, done: false }] });
+    expect(personalRecord([done], "bench-press")).toBe(135);
+  });
+});
+
+/**
+ * The two complaints behind this: "last time" quoting a session from days ago,
+ * and the same workout coming back with different reps each time. Both are one
+ * bug. A session ends on End far more often than on Finish, End writes no
+ * `completedAt`, and everything that answers "what did she lift last time"
+ * read only sessions that had one.
+ */
+describe("a session ended rather than finished still counts as last time", () => {
+  const legDay: Routine = {
+    day: 1,
+    label: "Leg day",
+    exercises: [{ exerciseId: "back-squat", sets: 3, reps: 8, weight: 0 }],
+  };
+
+  /** What the log screen writes when she logs sets and taps End. */
+  function ended(date: string, reps: number, weight: number): Session {
+    return {
+      date,
+      label: "Leg day",
+      exercises: [
+        {
+          exerciseId: "back-squat",
+          sets: Array.from({ length: 3 }, () => ({ weight, reps, done: true })),
+        },
+      ],
+    };
+  }
+
+  it("carries the weight and reps of the last session she logged in", () => {
+    const built = buildSession(legDay, [ended("2026-09-20", 6, 145)], "new", "2026-09-27");
+    expect(built.exercises[0].sets[0]).toMatchObject({ weight: 145, reps: 6 });
+  });
+
+  it("prefers the most recent session, not the most recently finished one", () => {
+    const history = [
+      { ...ended("2026-09-13", 10, 95), completedAt: "2026-09-13T18:00:00.000Z" },
+      ended("2026-09-20", 6, 145),
+    ];
+    const built = buildSession(legDay, history, "new", "2026-09-27");
+    expect(built.exercises[0].sets[0]).toMatchObject({ weight: 145, reps: 6 });
+  });
+
+  it("gives the same workout the same reps every session, given the same history", () => {
+    const first = buildSession(legDay, [ended("2026-09-20", 6, 145)], "new", "2026-09-27");
+    const second = buildSession(legDay, [ended("2026-09-20", 6, 145)], "new", "2026-10-04");
+    expect(second.exercises[0].sets.map((s) => s.reps)).toEqual(
+      first.exercises[0].sets.map((s) => s.reps)
+    );
+  });
+
+  it("does not read a day's own logged sets back into itself", () => {
+    // refreshOpenDay rebuilds the open day from the new plan, and passes the
+    // sessions it is rebuilding from — today's included.
+    const open = ended("2026-09-27", 3, 225);
+    const built = buildSession(legDay, [ended("2026-09-20", 6, 145), open], "new", "2026-09-27");
+    expect(built.exercises[0].sets[0]).toMatchObject({ weight: 145, reps: 6 });
+  });
+
+  it("counts an unfinished session as a personal record, so the two agree", () => {
+    expect(personalRecord([ended("2026-09-20", 6, 145)], "back-squat")).toBe(145);
+  });
+
+  it("leaves the caller's sessions in the order it was given them", () => {
+    const history = [ended("2026-09-13", 10, 95), ended("2026-09-20", 6, 145)];
+    buildSession(legDay, history, "new", "2026-09-27");
+    expect(history.map((s) => s.date)).toEqual(["2026-09-13", "2026-09-20"]);
+  });
+});
+
+describe("a week arrives named and empty", () => {
+  it("keeps each day's name and type and drops only the lifts", () => {
+    const week = generateRoutine("new", [1, 3, 5], ALL);
+    const blank = unfilled(week);
+    expect(blank.map((r) => r.label)).toEqual(week.map((r) => r.label));
+    expect(blank.map((r) => r.template)).toEqual(week.map((r) => r.template));
+    expect(blank.every((r) => r.exercises.length === 0)).toBe(true);
+  });
+
+  it("does not empty the week it was given", () => {
+    const week = generateRoutine("new", [1], ALL);
+    unfilled(week);
+    expect(week[0].exercises.length).toBeGreaterThan(0);
+  });
+
+  it("gives a newly added training day nothing on it", () => {
+    const existing = generateRoutine("new", [1], ALL);
+    const week = reconcileWeek(existing, [1, 4], "new", ALL);
+    expect(week.find((r) => r.day === 4)?.exercises).toEqual([]);
+    // And leaves the day she already trains exactly as it was.
+    expect(week.find((r) => r.day === 1)?.exercises).toEqual(existing[0].exercises);
+  });
+
+  it("still brings back her own version of a day type she has shaped", () => {
+    const hers = [{ exerciseId: "back-squat", sets: 4, reps: 6, weight: 145 }];
+    const week = reconcileWeek(
+      [{ day: 1, label: "Leg day", template: "legs", exercises: [] }],
+      [1, 4],
+      "new",
+      ALL,
+      [],
+      { legs: hers }
+    );
+    // The new day is full body, which the library deliberately never holds.
+    expect(week.find((r) => r.day === 4)?.exercises).toEqual([]);
   });
 });

@@ -6,7 +6,24 @@ import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, star
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
 import { byId, cardioLifts, makeCustomExercise, nameOf, searchLifts } from "@/lib/exercises";
 import { count } from "@/lib/plural";
-import type { Equipment, Exercise, Muscle, PlannedExercise, Profile, Routine } from "@/lib/types";
+import {
+  NAME_MAX,
+  cleanName,
+  makeWorkout,
+  placeOn,
+  savedAs,
+  suggestName,
+  yourWorkoutsCategory,
+} from "@/lib/workouts";
+import type {
+  Equipment,
+  Exercise,
+  Muscle,
+  PlannedExercise,
+  Profile,
+  Routine,
+  SavedWorkout,
+} from "@/lib/types";
 
 const FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -40,7 +57,10 @@ export default function RoutineEditor({
   routines,
   focusDay,
   library,
+  workouts,
   onSave,
+  onSaveWorkout,
+  onRemoveWorkout,
   onAddCustom,
   initialAdding = null,
   onBack,
@@ -51,7 +71,17 @@ export default function RoutineEditor({
   focusDay?: number;
   /** The user's saved version of each named day type, keyed by template id. */
   library?: Record<string, PlannedExercise[]>;
+  /** Workouts she saved and named, newest first. Any of them can go on any day. */
+  workouts?: SavedWorkout[];
   onSave: (r: Routine[]) => void;
+  /**
+   * A workout of her own, saved by name. Committed straight away rather than
+   * with the week, for the same reason a custom lift is: her library is not the
+   * plan, and cancelling an edit to Wednesday should not throw away the workout
+   * she saved while she was in here.
+   */
+  onSaveWorkout?: (w: SavedWorkout) => void;
+  onRemoveWorkout?: (id: string) => void;
   /** A lift the library does not have, added by hand. */
   onAddCustom?: (e: Exercise) => void;
   /** Opens straight into the picker, so /frames can show it. */
@@ -90,8 +120,21 @@ export default function RoutineEditor({
     them out of the same variable is how a failure ends up phrased as a reason.
   */
   const [weekOffline, setWeekOffline] = useState(false);
+  const [pane, setPane] = useState<"editor" | "workouts">("editor");
   const [ownName, setOwnName] = useState("");
   const [ownBusy, setOwnBusy] = useState(false);
+  /* Naming a workout to save. Closed until asked for, like the week textarea. */
+  const [naming, setNaming] = useState(false);
+  const [workoutName, setWorkoutName] = useState("");
+  /*
+    What just happened to this day, said once. Putting a workout on a day
+    changes the list below and the heading above it, and on a phone the heading
+    is what scrolls off — so the change needs saying rather than assuming she
+    saw it.
+  */
+  const [saidSo, setSaidSo] = useState<string | null>(null);
+  /** Which workout's remove button has been pressed once. */
+  const [removing, setRemoving] = useState<string | null>(null);
 
   /**
    * A lift the library has never heard of.
@@ -306,17 +349,278 @@ export default function RoutineEditor({
       id === "full-body"
         ? undefined
         : draft.find((r) => r.template === id && r.exercises.length)?.exercises ?? library?.[id];
-    const exercises = saved?.length ? saved : rebuilt.exercises;
-    setDraft(draft.map((r, i) => (i === dayIndex ? { ...rebuilt, day: r.day, exercises } : r)));
+    /*
+      A day type she has never shaped arrives empty, and the button below
+      fills it if she wants that.
+
+      It used to arrive as five lifts the app had chosen, which reads as the
+      answer rather than as a suggestion: picking "Leg day" and being handed a
+      leg day makes the lineup feel settled, and the people most likely to
+      accept it are the ones with the least basis to judge it. A blank day
+      asks the question out loud instead, and "Autofill for me" is there for
+      the beginner who genuinely wants the app to decide.
+
+      Her own version of a day type still comes back untouched. That is hers,
+      not a default, and forgetting it to ask a question she has already
+      answered would be worse than either.
+    */
+    const exercises = saved?.length ? saved : [];
+    // A day that has just become a different type is no longer the workout it
+    // was, so the link goes with the lineup it described.
+    setDraft(
+      draft.map((r, i) =>
+        i === dayIndex ? { ...rebuilt, day: r.day, exercises, workoutId: undefined } : r
+      )
+    );
     setOpenId(null);
     (setHunt(""), setAdding(null));
   }
+
+  /*
+    Her own saved workouts.
+
+    The day-type list under this is seven shapes the app knows; this is the
+    workouts she built. Both are needed and hers goes first: once she has
+    shaped a leg day, "that one again, on Thursday" is a more specific answer
+    than "leg day", and the app cannot regenerate it — the seven shapes rebuild
+    from muscle slots and would hand back a different lineup.
+  */
+  const mine = workouts ?? [];
+  const already = savedAs(mine, routine.exercises);
+  const nameTaken = mine.find(
+    (w) => w.name.toLowerCase() === cleanName(workoutName).toLowerCase()
+  );
+
+  function startNaming() {
+    setWorkoutName(suggestName(routine.label, mine));
+    setNaming(true);
+  }
+
+  function keepWorkout() {
+    const name = cleanName(workoutName);
+    if (!name || !onSaveWorkout || routine.exercises.length === 0) return;
+    const made = makeWorkout(name, routine.exercises, routine.template);
+    /*
+      The day becomes the workout it was just saved as, so editing it again
+      edits the workout rather than a copy of it. Saving under a name she has
+      already used keeps that workout's id, which is the rule `saveWorkout`
+      documents, so the link has to point at the id that survives rather than
+      at the one just generated.
+    */
+    const id = nameTaken?.id ?? made.id;
+    setDraft(draft.map((r, i) => (i === dayIndex ? { ...r, workoutId: id } : r)));
+    onSaveWorkout(made);
+    setNaming(false);
+    setWorkoutName("");
+    setSaidSo(nameTaken ? `Updated ${name}.` : `Saved as ${name}.`);
+  }
+
+  /**
+   * The app's answer, when she asks for it.
+   *
+   * Same generator the week was built from, for her level and the kit she says
+   * she has, so what lands here is what the old automatic fill would have put
+   * there. The difference is only that she asked.
+   */
+  function autofill() {
+    const [built] = generateRoutine(
+      profile.level,
+      [routine.day],
+      profile.equipment,
+      profile.favourites ?? [],
+      [routine.template ?? "full-body"]
+    );
+    if (!built?.exercises.length) return;
+    setDraft(
+      draft.map((r, i) => (i === dayIndex ? { ...r, exercises: built.exercises } : r))
+    );
+    setSaidSo(`Filled ${FULL[routine.day]} with ${count(built.exercises.length, "lift")}.`);
+  }
+
+  /**
+   * Put one of her workouts on the day she is editing. It replaces the day
+   * rather than appending to it, because that is what picking a workout off a
+   * list means; the lift-by-lift edits below are still there for borrowing one
+   * movement.
+   */
+  function putOn(w: SavedWorkout) {
+    setDraft(placeOn(draft, routine.day, w));
+    setOpenId(null);
+    (setHunt(""), setAdding(null));
+    setRemoving(null);
+    setPane("editor");
+    setSaidSo(`${FULL[routine.day]} is now ${w.name}.`);
+  }
+
+  const ownWorkouts = yourWorkoutsCategory(
+    mine,
+    Boolean(onSaveWorkout && routine.exercises.length > 0)
+  );
 
   const thorough = coversTwiceWeekly(draft.map((r) => r.template ?? "full-body"));
   const used = routine.exercises.map((e) => e.exerciseId);
   const suggestions = suggestFrom(profile.favourites ?? [], profile.equipment).filter(
     (sg) => !used.includes(sg.tryThis)
   );
+
+  if (pane === "workouts") {
+    return (
+      <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
+        <div className="flex items-start justify-between gap-4">
+          <p className="label text-cyan">Your workouts</p>
+          <button
+            type="button"
+            onClick={() => {
+              setPane("editor");
+              setNaming(false);
+              setRemoving(null);
+            }}
+            className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
+          >
+            Back
+          </button>
+        </div>
+
+        <h1 className="statement mt-2 text-figure text-fg">{FULL[routine.day]}</h1>
+        <p className="mt-1.5 text-emphasis leading-snug text-dim">
+          Put one of your saved workouts on this day, or save this day as a workout.
+        </p>
+
+        <section className="mt-6 rounded-2xl bg-card p-[18px]">
+          <p className="label text-dim">Saved workouts</p>
+          {mine.length > 0 ? (
+            <ul className="mt-3 flex flex-col gap-2">
+              {mine.map((w) => {
+                const on = already?.id === w.id;
+                const sure = removing === w.id;
+                return (
+                  <li
+                    key={w.id}
+                    className={`flex items-center rounded-xl border transition-colors duration-quick ${
+                      on ? "border-cyan bg-raise" : "border-transparent bg-raise/40"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => putOn(w)}
+                      aria-pressed={on}
+                      className="min-w-0 flex-1 p-3.5 text-left"
+                    >
+                      <span className="head block truncate text-emphasis text-fg">{w.name}</span>
+                      <span className="block truncate text-body text-dim">
+                        {count(w.exercises.length, "lift")} ·{" "}
+                        {w.exercises.map((e) => nameOf(e.exerciseId)).join(", ")}
+                      </span>
+                    </button>
+                    {onRemoveWorkout && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!sure) {
+                            setRemoving(w.id);
+                            return;
+                          }
+                          onRemoveWorkout(w.id);
+                          setRemoving(null);
+                          setSaidSo(`Removed ${w.name}.`);
+                        }}
+                        aria-label={sure ? `Confirm removing ${w.name}` : `Remove ${w.name}`}
+                        className={`head h-11 shrink-0 rounded-full px-3.5 text-body transition-colors duration-quick ${
+                          sure ? "text-action" : "text-dim hover:text-fg"
+                        }`}
+                      >
+                        {sure ? "Sure?" : "Remove"}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-2 text-emphasis leading-snug text-fg">
+              Nothing saved yet.
+            </p>
+          )}
+        </section>
+
+        {onSaveWorkout && routine.exercises.length > 0 && (
+          <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
+            {already ? (
+              <p className="text-body leading-snug text-dim">
+                This day is already saved as {already.name}. Change a lift, sets or reps to save an updated version.
+              </p>
+            ) : naming ? (
+              <>
+                <label htmlFor="workout-name" className="label block text-dim">
+                  Call it
+                </label>
+                <input
+                  id="workout-name"
+                  value={workoutName}
+                  onChange={(e) => setWorkoutName(e.target.value)}
+                  maxLength={NAME_MAX}
+                  autoFocus
+                  placeholder="Leg day"
+                  className="mt-2.5 w-full rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                />
+                <div className="mt-2.5 flex items-center gap-2.5">
+                  <Pill
+                    size="sm"
+                    className="h-12 flex-1"
+                    onClick={keepWorkout}
+                    disabled={!cleanName(workoutName)}
+                  >
+                    {nameTaken ? "Update it" : "Save it"}
+                  </Pill>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNaming(false);
+                      setWorkoutName("");
+                    }}
+                    className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {nameTaken && (
+                  <p className="mt-2 text-body leading-snug text-dim">
+                    You already have a {nameTaken.name}. Saving replaces it.
+                  </p>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={startNaming}
+                className="flex w-full items-baseline justify-between gap-3 text-left"
+              >
+                <span>
+                  <span className="label block text-dim">This day</span>
+                  <span className="mt-1.5 block text-emphasis leading-snug text-fg">
+                    Save {FULL[routine.day]} as a workout you can put on any day.
+                  </span>
+                </span>
+                <span className="head shrink-0 text-body text-cyan">Save</span>
+              </button>
+            )}
+          </section>
+        )}
+
+        {saidSo && (
+          <p role="status" className="mt-3 text-body leading-snug text-dim">
+            {saidSo}
+          </p>
+        )}
+
+        <div className="mt-auto pt-8">
+          <Pill variant="ghost" onClick={() => setPane("editor")}>
+            Back to day types
+          </Pill>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
@@ -346,6 +650,11 @@ export default function RoutineEditor({
                 setDayIndex(i);
                 setOpenId(null);
                 (setHunt(""), setAdding(null));
+                // Said about the day she has just left, so it does not follow
+                // her onto the next one.
+                setSaidSo(null);
+                setNaming(false);
+                setRemoving(null);
               }}
               aria-pressed={i === dayIndex}
               className={`head h-11 flex-1 rounded-full border text-emphasis transition-colors duration-quick ${
@@ -360,9 +669,29 @@ export default function RoutineEditor({
         </div>
       )}
 
+      {saidSo && (
+        <p role="status" className="mt-3 rounded-2xl bg-card p-[18px] text-body leading-snug text-dim">
+          {saidSo}
+        </p>
+      )}
+
       <section className="mt-4 rounded-2xl bg-card p-[18px]">
         <p className="label text-dim">What kind of day</p>
         <div className="mt-3 flex flex-col gap-2">
+          {ownWorkouts && (
+            <button
+              type="button"
+              onClick={() => {
+                closeAdd();
+                setPane("workouts");
+                setRemoving(null);
+              }}
+              className="rounded-xl border border-transparent bg-raise/40 p-3.5 text-left transition-colors duration-quick hover:bg-raise/70"
+            >
+              <span className="head block text-emphasis text-fg">{ownWorkouts.label}</span>
+              <span className="block text-body text-dim">{ownWorkouts.hint}</span>
+            </button>
+          )}
           {TEMPLATES.map((t) => {
             const on = (routine.template ?? "full-body") === t.id;
             return (
@@ -540,15 +869,24 @@ export default function RoutineEditor({
                           label="sets"
                         />
                       </div>
+                      {/*
+                        Fives only for a hold, where the number is seconds.
+                        `increment === 0` was the wrong test for that: it is
+                        true of every unloaded lift, so pull-ups, push-ups,
+                        dips and bodyweight squats all stepped by five. Six
+                        pull-ups was a number you could not ask for, because
+                        the control skipped it and went to ten. Reps go up by
+                        one, the way you actually earn them.
+                      */}
                       <div className="mt-2.5 flex items-center gap-3">
-                        <span className="flex-1 text-body text-dim">Reps</span>
+                        <span className="flex-1 text-body text-dim">{meta?.hold ? "Time" : "Reps"}</span>
                         <Stepper
                           value={e.reps}
-                          min={1}
+                          min={meta?.hold ? 5 : 1}
                           max={60}
-                          step={meta?.increment === 0 ? 5 : 1}
+                          step={meta?.hold ? 5 : 1}
                           onChange={(n) => update(e.exerciseId, { reps: n })}
-                          label="reps"
+                          label={meta?.hold ? "seconds" : "reps"}
                         />
                       </div>
                     </>
@@ -590,10 +928,25 @@ export default function RoutineEditor({
         })}
       </ul>
 
+      {/*
+        The one empty state, now that a day type arrives empty rather than
+        pre-filled. Three ways out of it and they are genuinely different
+        answers: choose the lifts, have the app choose them, or let the day
+        stay a rest day.
+      */}
       {routine.exercises.length === 0 && (
-        <p className="mt-4 text-body text-dim">
-          Nothing on this day. Add a lift, or leave it as a rest day.
-        </p>
+        <div className="mt-4">
+          <p className="text-body leading-snug text-dim">
+            Nothing on this day. Add a lift below, or leave it as a rest day.
+          </p>
+          <Pill size="sm" variant="ghost" className="mt-3" onClick={autofill}>
+            Autofill for me
+          </Pill>
+          <p className="mt-2 text-body leading-snug text-dim">
+            Fills it with {templateOf(routine.template ?? "full-body").label.toLowerCase()} work
+            the app picks, for your level and your kit. Change anything after.
+          </p>
+        </div>
       )}
 
       {adding ? (
