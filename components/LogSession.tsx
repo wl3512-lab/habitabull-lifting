@@ -906,9 +906,13 @@ export default function LogSession({
               </div>
             )}
             {profile.weightInput === "plates" && meta?.equipment !== "barbell" && (
-              <details className="mb-3 rounded-xl bg-card px-4 py-2 text-body text-dim">
-                <summary className="head min-h-9 cursor-pointer py-2 text-cyan">Why no bar here?</summary>
-                <p className="pb-2 leading-snug">Load the bar appears on barbell exercises. {isCardio ? "This exercise uses a duration timer." : increment > 0 ? "For this exercise, use + / − or type the weight directly." : "This exercise uses your body weight, so only reps or time are needed."}</p>
+              /*
+                A footnote rather than a card: it answers a question only someone
+                who chose "Load the bar" will have, so it stays out of the set's way.
+              */
+              <details className="mb-3 text-caption text-dim">
+                <summary className="tap cursor-pointer underline decoration-line-strong underline-offset-4">Why no bar here?</summary>
+                <p className="mt-1 leading-snug">Load the bar appears on barbell exercises. {isCardio ? "This exercise uses a duration timer." : increment > 0 ? "For this exercise, use + / − or type the weight directly." : "This exercise uses your body weight, so only reps or time are needed."}</p>
               </details>
             )}
           <SetRow

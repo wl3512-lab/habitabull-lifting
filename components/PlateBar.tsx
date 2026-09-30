@@ -58,54 +58,26 @@ export default function PlateBar({
       </div>
 
       {/*
-        The bar itself, with the stack growing outward from the collar. Plate
-        height is by denomination so the shape reads at a glance — a 45 is
-        taller than a 10 on a real rack too. Only one side is drawn: drawing
-        both would be symmetrical and twice as small on a 390px screen, and
-        the label already says each side.
+        The whole bar: a short loaded sleeve at each end of a long bare shaft,
+        which is the shape you recognise at a rack. It used to draw one side,
+        plates at a collar and bar running off the edge, and that read as a
+        lopsided bar rather than as equipment. One side was meant to save room
+        on a 390px screen, but the plates never needed it: five of them take
+        about a quarter of the well. Plate height is by denomination so the
+        shape reads at a glance, a 45 taller than a 10 as on a real rack.
       */}
-      <div className="relative h-24 overflow-hidden rounded-xl bg-ground">
-        {/*
-          The bar runs the whole width, so the space to the right of the stack
-          reads as the rest of the sleeve rather than as emptiness. The collar
-          is where the plates stop, which is the thing you are looking at when
-          you check a load at a rack.
-        */}
-        <span
-          aria-hidden
-          className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 bg-line-strong"
-        />
-        <span
-          aria-hidden
-          className="absolute left-7 top-1/2 h-5 w-2 -translate-y-1/2 rounded-sm bg-dim"
-        />
-        <div className="absolute inset-y-0 left-9 flex items-center gap-0.5 pr-3">
-          {plates.length === 0 ? (
-            <span className="pl-2.5 text-body text-dim">Just the bar</span>
-          ) : (
-            plates.map((p, i) => (
-              <button
-                key={`${p}-${i}`}
-                type="button"
-                onClick={() => set(removePlate(plates, p))}
-                aria-label={`Take off one ${p} pound plate`}
-                className="shrink-0 rounded transition-opacity hover:opacity-70"
-                style={{
-                  width: p >= 25 ? 15 : p >= 10 ? 12 : 9,
-                  // 45 fills the well, 2.5 keeps enough body to be tappable.
-                  height: `${Math.max(30, Math.round((p / 45) * 82))}%`,
-                  // Heavier plates read darker, the way a rack does.
-                  background: p >= 25 ? "var(--color-cyan)" : "var(--color-cyan-soft)",
-                }}
-              />
-            ))
-          )}
-        </div>
+      <div className="flex h-24 items-center rounded-xl bg-ground px-3">
+        <Sleeve side="left" plates={plates} onRemove={(p) => set(removePlate(plates, p))} />
+        <span aria-hidden className="h-7 w-1.5 shrink-0 rounded-sm bg-dim" />
+        <span aria-hidden className="h-1.5 min-w-8 flex-1 bg-line-strong" />
+        <span aria-hidden className="h-7 w-1.5 shrink-0 rounded-sm bg-dim" />
+        <Sleeve side="right" plates={plates} onRemove={(p) => set(removePlate(plates, p))} />
       </div>
 
+      {/* What is on the bar in words, the empty bar included, so nothing is written over the drawing. */}
       <p className="text-body text-dim">
         {plates.length === 0
-          ? "Tap a plate to load it. Each one goes on both ends."
+          ? "Just the bar. Tap a plate below to put one on each end."
           : `${plates.map((p) => (p % 1 ? p : p.toFixed(0))).join(" · ")} a side`}
       </p>
 
@@ -156,6 +128,60 @@ export default function PlateBar({
           <span className="text-body text-dim">lb</span>
         </span>
       </label>
+    </div>
+  );
+}
+
+/**
+ * One loaded end of the bar. The sleeve is thicker than the shaft and a quarter
+ * of the well, so the bare shaft between the collars is always the long part.
+ * Plates stack outward from the collar, heaviest against it, the order you load
+ * them in; a heavy load squeezes them to fit rather than running off the end.
+ *
+ * Both ends can be tapped to take a plate off, since either is where a thumb
+ * lands. The right-hand one is a mirror, kept out of the tab order and the
+ * accessibility tree, so each plate is announced once.
+ */
+function Sleeve({
+  side,
+  plates,
+  onRemove,
+}: {
+  side: "left" | "right";
+  plates: number[];
+  onRemove: (plate: number) => void;
+}) {
+  const mirror = side === "right";
+  return (
+    <div
+      aria-hidden={mirror || undefined}
+      className={`relative flex h-full shrink-0 basis-[24%] items-center gap-0.5 ${
+        mirror ? "" : "flex-row-reverse"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 bg-line-strong ${
+          mirror ? "rounded-r-sm" : "rounded-l-sm"
+        }`}
+      />
+      {plates.map((p, i) => (
+        <button
+          key={`${p}-${i}`}
+          type="button"
+          tabIndex={mirror ? -1 : undefined}
+          onClick={() => onRemove(p)}
+          aria-label={`Take off one ${p} pound plate`}
+          className="relative min-w-[3px] rounded transition-opacity hover:opacity-70"
+          style={{
+            flex: `0 1 ${p >= 25 ? 15 : p >= 10 ? 12 : 9}px`,
+            // 45 fills the well, 2.5 keeps enough body to be tappable.
+            height: `${Math.max(30, Math.round((p / 45) * 82))}%`,
+            // Heavier plates read darker, the way a rack does.
+            background: p >= 25 ? "var(--color-cyan)" : "var(--color-cyan-soft)",
+          }}
+        />
+      ))}
     </div>
   );
 }
