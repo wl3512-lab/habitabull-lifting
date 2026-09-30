@@ -886,6 +886,12 @@ export default function Page() {
         routines={routines}
         dayLibrary={state.dayLibrary}
         today={dow}
+        /*
+          What today already is, when it is anything. Starting that is what the
+          button on Today does, so the list leaves it out and the screen says
+          what she is choosing instead of.
+        */
+        planned={todayPlan ? { label: todayPlan.label, exercises: todayPlan.exercises } : undefined}
         onPick={startFrom}
         onQuick={startQuick}
         onBack={() => setView("today")}

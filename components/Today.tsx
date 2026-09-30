@@ -558,7 +558,24 @@ export default function Today({
           Quiet, and below the plan, because on most days the plan is the better
           answer and this is the door out of it rather than a rival to it.
         */}
-        {onQuick && !started && (
+        {/*
+          On a day with a plan, the alternative to the plan is the picker, not
+          the quick workout: not everybody's Monday is the same workout every
+          week, and somebody whose Monday is legs this week and back and biceps
+          the next needs to say so without editing the week to say it. Logging
+          as she goes lives inside that list, where it is one of the answers
+          rather than the only one.
+
+          Before there is a plan, it stays the quick workout. There is nothing
+          to pick between yet, and a picker with one row in it is a worse door
+          than the door itself.
+        */}
+        {onPickWorkout && !started && !unchosen && routine && (
+          <Pill variant="ghost" onClick={onPickWorkout}>
+            Something else today
+          </Pill>
+        )}
+        {onQuick && !started && (!onPickWorkout || unchosen) && (
           <Pill variant="ghost" onClick={onQuick}>
             Quick workout
           </Pill>

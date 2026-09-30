@@ -46,6 +46,7 @@ export default function PickWorkout({
   routines,
   dayLibrary,
   today,
+  planned,
   onPick,
   onQuick,
   onBack,
@@ -63,15 +64,36 @@ export default function PickWorkout({
   dayLibrary?: Record<string, PlannedExercise[]>;
   /** Today's weekday, so the rest day can be named rather than implied. */
   today: number;
+  /**
+   * What today is already planned as, on a training day.
+   *
+   * Not everybody's Monday is the same workout every week. Somebody whose
+   * Monday is legs this week and back and biceps the next is not editing their
+   * week when they say so, they are saying what today is, so this screen is
+   * reachable with a plan already on the day.
+   *
+   * Its own lineup is left out of the list below: starting it is what the
+   * button on Today already does, and a second way to start the same session
+   * is the screen inventing a decision.
+   */
+  planned?: { label: string; exercises: PlannedExercise[] };
   onPick: (choice: WorkoutChoice) => void;
   /** Log it lift by lift, with nothing planned. */
   onQuick?: () => void;
   onBack: () => void;
 }) {
-  const fromWeek = weekChoices(routines, workouts);
+  const isPlanned = (lineup: PlannedExercise[]) =>
+    Boolean(planned && sameLineup(planned.exercises, lineup));
+
+  const mine = workouts.filter((w) => !isPlanned(w.exercises));
+  const fromWeek = weekChoices(routines, workouts).filter((c) => !isPlanned(c.exercises));
   const fromLibrary = libraryChoices(
     dayLibrary,
-    [...workouts.map((w) => w.exercises), ...fromWeek.map((c) => c.exercises)],
+    [
+      ...workouts.map((w) => w.exercises),
+      ...fromWeek.map((c) => c.exercises),
+      ...(planned ? [planned.exercises] : []),
+    ],
     (template) => TEMPLATES.find((t) => t.id === template)?.label
   );
 
@@ -86,6 +108,7 @@ export default function PickWorkout({
     one she wants.
   */
   const hers = [
+    ...(planned ? [planned.exercises] : []),
     ...workouts.map((w) => w.exercises),
     ...fromWeek.map((c) => c.exercises),
     ...fromLibrary.map((c) => c.exercises),
@@ -156,7 +179,9 @@ export default function PickWorkout({
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-start justify-between gap-4">
-        <p className="label text-cyan">{SHORT[today]} is a rest day</p>
+        <p className="label text-cyan">
+          {planned ? `Today is ${planned.label}` : `${SHORT[today]} is a rest day`}
+        </p>
         <button
           type="button"
           onClick={onBack}
@@ -168,15 +193,16 @@ export default function PickWorkout({
 
       <h1 className="statement mt-2 text-figure leading-none text-fg">What are you doing?</h1>
       <p className="mt-2 text-body leading-snug text-dim">
-        Training today does not move your week. Whatever you pick is a one-off, and tomorrow
-        is still whatever it was.
+        {planned
+          ? `Whatever you pick is just today. ${SHORT[today]} is still ${planned.label} next week.`
+          : "Training today does not move your week. Whatever you pick is a one-off, and tomorrow is still whatever it was."}
       </p>
 
-      {workouts.length > 0 && (
+      {mine.length > 0 && (
         <section className="mt-6">
           <p className="label text-dim">Your workouts</p>
           <ul className="mt-2.5 flex flex-col gap-2.5">
-            {workouts.map((w) => (
+            {mine.map((w) => (
               <Row
                 key={w.id}
                 title={w.name}

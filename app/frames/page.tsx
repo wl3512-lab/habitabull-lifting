@@ -236,6 +236,24 @@ function gallery(challenge: Challenge) {
                 onOpenDay={f.noop}
               />
             </Frame>
+            <Frame n="01h" name="Today · nothing on it yet" tab="today" note="A day types arrive blank now, so this is a real state rather than a broken one: Tuesday is Full body A, and which lifts is still an open question. Starting it would open a session with nothing in it, so the action is to go and answer that instead.">
+              <Today
+                profile={f.profile}
+                routine={{ ...f.routines[0], exercises: [] }}
+                sessions={f.sessions}
+                today={today}
+                goal={f.goal}
+                onStart={f.noop}
+                onQuick={f.noop}
+                onConstraints={f.noop}
+                onExercise={f.noop}
+                onProfile={f.noop}
+                onSetUpWeek={f.noop}
+                onEditRoutine={f.noop}
+                onGoal={f.noop}
+                onOpenDay={f.noop}
+              />
+            </Frame>
             <Frame n="04" name="Logging" note="56px steppers, one orange button, finished sets as a bar you can tap to correct.">
               <LogSession
                 session={f.draft}
@@ -300,6 +318,18 @@ function gallery(challenge: Challenge) {
                 setsLeft={2}
                 onDone={f.noop}
                 onEnd={f.noop}
+              />
+            </Frame>
+            <Frame n="05c" name="Training day · something else today" note="Not everybody's Monday is the same workout every week. Somebody whose Monday is legs this week and back and biceps the next is not editing their week when they say so, they are saying what today is, so the same list is reachable with a plan already on the day. What today is planned as is left out of it, since the orange button on Today already starts that, and the line at the top says what the week still thinks Wednesday is.">
+              <PickWorkout
+                profile={f.profile}
+                workouts={f.workouts}
+                routines={f.routines}
+                today={3}
+                planned={{ label: f.routines[1].label, exercises: f.routines[1].exercises }}
+                onPick={f.noop}
+                onQuick={f.noop}
+                onBack={f.noop}
               />
             </Frame>
             <Frame n="05b" name="Rest day · pick a workout" note="What &quot;train anyway&quot; asks now. It used to open whichever day came next in the rotation, which answers a question nobody asked: somebody training on a rest day has already decided to train and usually knows what. The list is hers rather than the library's, the workouts she saved by name first and then the days of her own week, which are the versions she shaped rather than the templates they came from. Whatever she picks is a one-off and never moves the week.">
@@ -534,6 +564,14 @@ function gallery(challenge: Challenge) {
               <RoutineEditor
                 profile={f.profile}
                 routines={f.routines}
+                onSave={f.noop}
+                onBack={f.noop}
+              />
+            </Frame>
+            <Frame n="14d" name="Edit the week · a blank day" note="Picking Leg day used to hand back five lifts the app had chosen, which reads as the answer rather than as a suggestion, and the people most likely to accept it are the ones least able to judge it. A day type arrives named and empty, and Autofill for me puts back exactly what the old automatic fill would have. Her own shaped version of a day type still returns untouched.">
+              <RoutineEditor
+                profile={f.profile}
+                routines={[{ ...f.routines[0], label: "Leg day", template: "legs", exercises: [] }, ...f.routines.slice(1)]}
                 onSave={f.noop}
                 onBack={f.noop}
               />
