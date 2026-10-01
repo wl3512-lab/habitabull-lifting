@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { adjustedLine, readConstraints } from "@/lib/adjust";
 import type { Constraints } from "@/lib/constraints";
 import { nameOf } from "@/lib/exercises";
@@ -98,10 +98,27 @@ export default function PickWorkout({
     const text = note.trim();
     if (!text || !onAdjust) return;
     setAsking(true);
-    const { constraints, offline } = await readConstraints(text);
-    setAsking(false);
-    onAdjust(constraints, adjustedLine(constraints, offline));
+    let read: Awaited<ReturnType<typeof readConstraints>>;
+    try {
+      read = await readConstraints(text);
+    } finally {
+      // Reset even if the read ever rejects, so the box is never stuck asking.
+      setAsking(false);
+    }
+    onAdjust(read.constraints, adjustedLine(read.constraints, read.offline));
   }
+
+  /*
+    Closing the box with Cancel removes the focused control, which would drop
+    focus to the page. Put it back on the button that opened the box, but only
+    when the box was open a moment ago, so first mount does not take focus.
+  */
+  const adjustButton = useRef<HTMLButtonElement>(null);
+  const wasAdjusting = useRef(false);
+  useEffect(() => {
+    if (wasAdjusting.current && !adjusting) adjustButton.current?.focus();
+    wasAdjusting.current = adjusting;
+  }, [adjusting]);
 
   const isPlanned = (lineup: PlannedExercise[]) =>
     Boolean(planned && sameLineup(planned.exercises, lineup));
@@ -225,9 +242,10 @@ export default function PickWorkout({
             <button
               type="button"
               onClick={onStartPlanned}
-              aria-label={`Start ${planned.label}, planned for today: ${lifts(planned.exercises)}`}
               className="w-full p-[18px] text-left"
             >
+              {/* A verb in front of the visible text, so the name still contains what is shown. */}
+              <span className="sr-only">Start </span>
               <span className="label inline-block rounded-full border border-action px-2 py-0.5 text-action">
                 Planned for today
               </span>
@@ -267,6 +285,7 @@ export default function PickWorkout({
                       <button
                         type="button"
                         onClick={() => setAdjusting(false)}
+                        disabled={asking}
                         className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
                       >
                         Cancel
@@ -276,6 +295,7 @@ export default function PickWorkout({
                 ) : (
                   <button
                     type="button"
+                    ref={adjustButton}
                     onClick={() => setAdjusting(true)}
                     className="head tap text-body text-cyan transition-opacity hover:opacity-70"
                   >
