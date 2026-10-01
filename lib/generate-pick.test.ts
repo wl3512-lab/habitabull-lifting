@@ -123,6 +123,50 @@ describe("what the model is shown", () => {
   });
 });
 
+/*
+  The add-a-lift picker lost its muscle step, so a search that finds nothing
+  asks among the day's own muscles instead of one. The rail is the same: what
+  the model may answer is exactly the union it was shown.
+*/
+describe("asking among the day's muscles", () => {
+  const ask = (muscles: unknown, text = "easy on the wrists") =>
+    POST(
+      new Request("https://app.test/api/generate", {
+        method: "POST",
+        body: JSON.stringify({ intent: "pick", muscles, equipment: ["dumbbell", "machine"], text }),
+      })
+    );
+
+  it("shows lifts from every muscle on the day and nothing from the others", async () => {
+    reply = { id: "db-curl", why: "fine" };
+    await ask(["back", "arms"]);
+    const shown = prompts[0];
+    for (const m of ["back", "arms"] as const) {
+      for (const e of alternativesFor(m, ["dumbbell", "machine"])) expect(shown).toContain(`${e.id} =`);
+    }
+    expect(shown).not.toContain("plank =");
+  });
+
+  it("passes an answer from any of the day's muscles", async () => {
+    const back = alternativesFor("back", ["dumbbell", "machine"])[0];
+    reply = { id: back.id, why: "Pull with your elbows." };
+    expect((await (await ask(["back", "arms"])).json()).id).toBe(back.id);
+  });
+
+  it("discards an answer from a muscle the day does not train", async () => {
+    reply = { id: "plank", why: "Hold it." };
+    const out = await (await ask(["back", "arms"])).json();
+    expect(out.id).not.toBe("plank");
+    expect(out.source).toBe("local");
+  });
+
+  it("ignores names that are not muscles, and refuses a request with none left", async () => {
+    expect((await ask(["back", "wings"])).status).toBe(200);
+    expect((await ask(["wings"])).status).toBe(400);
+    expect((await ask("back")).status).toBe(400);
+  });
+});
+
 describe("building a week", () => {
   const week = (text: string, count = 3) =>
     POST(

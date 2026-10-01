@@ -106,7 +106,7 @@ function sanitizeAvailability(raw: unknown) {
  * the same rules engine as adding it by hand.
  */
 function pickSystem(muscle: string, options: { id: string; name: string }[]) {
-  return `A gym-goer is choosing a ${muscle} exercise and has asked for help.
+  return `A gym-goer is choosing an exercise for ${muscle} and has asked for help.
 
 Choose ONE from this list. These are the only exercises that exist:
 ${options.map((o) => `${o.id} = ${o.name}`).join("\n")}
@@ -215,6 +215,7 @@ export async function POST(request: Request) {
   let text = "";
   let intent = "constraints";
   let muscle: Muscle | null = null;
+  let muscles: Muscle[] = [];
   let equipment: Equipment[] = [];
   let exclude: string[] = [];
   let bodyCount: unknown = 3;
@@ -231,9 +232,18 @@ export async function POST(request: Request) {
     if (body?.intent === "availability") intent = "availability";
     if (body?.intent === "pick") {
       intent = "pick";
-      const muscles: readonly string[] = MUSCLES;
+      const known: readonly string[] = MUSCLES;
       const kit: readonly string[] = EQUIPMENT;
-      muscle = muscles.includes(body?.muscle) ? (body.muscle as Muscle) : null;
+      muscle = known.includes(body?.muscle) ? (body.muscle as Muscle) : null;
+      /*
+        The add-a-lift picker has no muscle step any more: she searches, and
+        when nothing matches she can ask in the same words. What it sends
+        instead is the day's own muscles, so a pull day asks among back and
+        biceps lifts. Same rail either way: only these ids can come back.
+      */
+      muscles = Array.isArray(body?.muscles)
+        ? [...new Set(body.muscles.filter((m: unknown) => typeof m === "string" && known.includes(m)) as Muscle[])]
+        : [];
       equipment = Array.isArray(body?.equipment)
         ? (body.equipment.filter((e: unknown) => typeof e === "string" && kit.includes(e)) as Equipment[])
         : [];
@@ -355,9 +365,13 @@ export async function POST(request: Request) {
   }
 
   if (intent === "pick") {
-    if (!muscle) return NextResponse.json({ error: "Bad request" }, { status: 400 });
+    if (!muscle && muscles.length === 0) return NextResponse.json({ error: "Bad request" }, { status: 400 });
 
-    const options = alternativesFor(muscle, equipment, exclude);
+    const from = muscle ? [muscle] : muscles;
+    // One list across the day's muscles, each lift once, in the order they come.
+    const options = [
+      ...new Map(from.flatMap((m) => alternativesFor(m, equipment, exclude)).map((o) => [o.id, o])).values(),
+    ];
     if (options.length === 0) return NextResponse.json({ id: null, why: null, source: "local" });
 
     // What the screen would have suggested on its own, and what we fall back to.
@@ -373,7 +387,7 @@ export async function POST(request: Request) {
           model: MODEL,
           input: {
             prompt: text,
-            system_prompt: pickSystem(muscle, options.map((o) => ({ id: o.id, name: o.name }))),
+            system_prompt: pickSystem(from.join(", "), options.map((o) => ({ id: o.id, name: o.name }))),
             max_completion_tokens: 120,
           },
         }),
@@ -387,7 +401,7 @@ export async function POST(request: Request) {
       // The rail. An id we did not offer is not an exercise, whatever it sounds
       // like, and a lift the app cannot load or explain is worse than no answer.
       if (!options.some((o) => o.id === id)) {
-        console.warn(`[generate:pick] discarded id ${JSON.stringify(id)} for ${muscle}`);
+        console.warn(`[generate:pick] discarded id ${JSON.stringify(id)} for ${from.join(",")}`);
         return local();
       }
 
