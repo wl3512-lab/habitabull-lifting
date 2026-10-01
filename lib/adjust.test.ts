@@ -12,6 +12,20 @@ describe("reading what is different today", () => {
     expect(out.constraints.equipment).toEqual(["dumbbell"]);
   });
 
+  it("asks the same question Today always asked", async () => {
+    const calls: { url: unknown; init: RequestInit | undefined }[] = [];
+    const spy = (async (url: unknown, init?: RequestInit) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, json: async () => ({ equipment: [], avoid: [], source: "ai" }) };
+    }) as unknown as typeof fetch;
+    await readConstraints("only dumbbells", spy);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("/api/generate");
+    expect(calls[0].init?.method).toBe("POST");
+    expect((calls[0].init?.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(calls[0].init?.body as string)).toEqual({ text: "only dumbbells" });
+  });
+
   it("is honest when the server fell back on its own", async () => {
     const out = await readConstraints("only dumbbells", reply({ equipment: ["dumbbell"], avoid: [], source: "local" }));
     expect(out.offline).toBe(true);
