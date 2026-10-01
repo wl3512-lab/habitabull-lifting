@@ -123,9 +123,11 @@ export default function Page() {
   /*
     What a rebuild from the list understood. Today used to hold this itself,
     but the sentence can now be asked from the list, and the line has to
-    survive the trip back to Today to be read.
+    survive the trip back to Today to be read. It carries the date it was said
+    on because the day can roll over while the app stays open, and the next
+    day's plan must not show yesterday's sentence.
   */
-  const [adjusted, setAdjusted] = useState("");
+  const [adjusted, setAdjusted] = useState<{ date: string; line: string }>({ date: "", line: "" });
   const [welcomed, setWelcomed] = useState(false);
   // Set when the beat hands over, so Today rises into place rather than simply
   // appearing. A ref, not state: it is read during the render that dismissing
@@ -327,7 +329,7 @@ export default function Page() {
 
   function startLogging() {
     if (!profile) return;
-    setAdjusted("");
+    setAdjusted({ date: "", line: "" });
     /*
       Fired here, on the same tick as the tap, so the browser still treats the
       window it opens as user-activated. Before the state write rather than
@@ -901,7 +903,7 @@ export default function Page() {
         onStartPlanned={startLogging}
         onAdjust={(c, line) => {
           applyConstraints(c);
-          setAdjusted(line);
+          setAdjusted({ date: today, line });
           setView("today");
         }}
         onPick={startFrom}
@@ -923,7 +925,7 @@ export default function Page() {
       }}
       onStart={startLogging}
       onQuick={startQuick}
-      adjusted={adjusted}
+      adjusted={adjusted.date === today ? adjusted.line : ""}
       /*
         "Train anyway" on a rest day, and Change on a day with a plan. Only with
         something to choose from: with an empty week and nothing saved the list
@@ -934,7 +936,12 @@ export default function Page() {
           ? () => setView("pick")
           : undefined
       }
-      onConstraints={applyConstraints}
+      onConstraints={(c) => {
+        // Today's own rebuild speaks for itself, so an older line from the
+        // list must not reappear over it after a trip to another tab.
+        setAdjusted({ date: "", line: "" });
+        applyConstraints(c);
+      }}
       onExercise={(id) => openExercise(id, "today")}
       onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
       onSetUpWeek={() => setView("week")}
