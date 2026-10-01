@@ -7,7 +7,8 @@ import PlaylistRow from "./PlaylistRow";
 import { Card, GoalBar, Pill } from "./ui";
 import { byId, nameOf } from "@/lib/exercises";
 import { goalProgress, personalRecord, streakWeeks } from "@/lib/engine";
-import { describe, parseLocally, type Constraints } from "@/lib/constraints";
+import type { Constraints } from "@/lib/constraints";
+import { adjustedLine, readConstraints } from "@/lib/adjust";
 import { greetingMood, line } from "@/lib/voice";
 import { anchorLabel, anchorOf, nextTrainingDay, observedAnchor, primaryAnchor } from "@/lib/schedule";
 import type { CrewDay } from "@/lib/cloud";
@@ -47,6 +48,7 @@ export default function Today({
   onGoal,
   onOpenDay,
   crewPreview,
+  adjusted,
 }: {
   profile: Profile;
   routine: Routine | null;
@@ -60,12 +62,10 @@ export default function Today({
    */
   onQuick?: () => void;
   /**
-   * Choose what to train on a day the plan says rest.
-   *
-   * Only reached when there is no workout scheduled, which is the one case
-   * where the app has no opinion worth acting on without asking. Optional for
-   * the same reason `onQuick` is: the gallery and the tests render this screen
-   * without a way out of it.
+   * Choose what to train instead of the plan, or on a day without one. On a
+   * rest day it is "Train anyway". On a day with a plan it is the Change
+   * beside the date line, which opens the same list with the plan first in
+   * it. Optional for the same reason `onQuick` is.
    */
   onPickWorkout?: () => void;
   onConstraints: (c: Constraints) => void;
@@ -84,10 +84,14 @@ export default function Today({
   onOpenDay: (date: string) => void;
   /** Passed straight through to the crew line, for /frames. */
   crewPreview?: CrewDay;
+  /**
+   * What a rebuild asked for from the list understood. The list hands it to
+   * the page, the page comes back here, and this is where she reads it.
+   */
+  adjusted?: string;
 }) {
   const [note, setNote] = useState("");
   const [asking, setAsking] = useState(false);
-  const [offline, setOffline] = useState(false);
   const [understood, setUnderstood] = useState("");
   const [open, setOpen] = useState(false);
   const [editingWhy, setEditingWhy] = useState(false);
@@ -134,29 +138,12 @@ export default function Today({
     const text = note.trim();
     if (!text) return;
     setAsking(true);
-    setOffline(false);
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const c = (await res.json()) as Constraints;
-      setOffline(c.source === "local");
-      setUnderstood(describe(c));
-      onConstraints(c);
-    } catch {
-      // Hard requirement: the app works with the AI layer completely dead.
-      const c = parseLocally(text);
-      setOffline(true);
-      setUnderstood(describe(c));
-      onConstraints(c);
-    } finally {
-      setAsking(false);
-      setNote("");
-      setOpen(false);
-    }
+    const { constraints, offline } = await readConstraints(text);
+    setUnderstood(adjustedLine(constraints, offline));
+    onConstraints(constraints);
+    setAsking(false);
+    setNote("");
+    setOpen(false);
   }
 
   /**
@@ -394,6 +381,13 @@ export default function Today({
     that instead.
   */
   const toBuild = Boolean(routine && routine.exercises.length === 0);
+  /*
+    A planned day nobody has started. Start is the one button, and the way to
+    anything else (another workout, or this one adjusted) is the Change beside
+    the date, which opens the list with the plan first. It used to be two
+    doors under Start with nearly the same name and different jobs.
+  */
+  const changeable = Boolean(onPickWorkout && routine && !toBuild && !started && !alreadyLogged && !unchosen);
   const resting = !unchosen && !routine;
   const enter = resting ? "settle" : "rise";
 
@@ -411,11 +405,22 @@ export default function Today({
       <header className={`${enter} stage`} style={stage()}>
         <div className="flex items-start justify-between gap-4">
           <p className="label text-cyan">
-            {new Date(today + "T00:00:00")
-              .toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
-              .toUpperCase()}
+            {changeable
+              ? "Planned for today"
+              : new Date(today + "T00:00:00")
+                  .toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
+                  .toUpperCase()}
             {weeks > 0 && ` · Week ${weeks}`}
           </p>
+          {changeable && (
+            <button
+              type="button"
+              onClick={onPickWorkout}
+              className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
+            >
+              Change
+            </button>
+          )}
         </div>
         <h1 className="statement mt-2 text-figure text-fg">
           {unchosen
@@ -558,23 +563,6 @@ export default function Today({
           Quiet, and below the plan, because on most days the plan is the better
           answer and this is the door out of it rather than a rival to it.
         */}
-        {/*
-          On a day with a plan, the alternative to the plan is the picker, not
-          the quick workout: not everybody's Monday is the same workout every
-          week, and somebody whose Monday is legs this week and back and biceps
-          the next needs to say so without editing the week to say it. Logging
-          as she goes lives inside that list, where it is one of the answers
-          rather than the only one.
-
-          Before there is a plan, it stays the quick workout. There is nothing
-          to pick between yet, and a picker with one row in it is a worse door
-          than the door itself.
-        */}
-        {onPickWorkout && !started && !unchosen && routine && (
-          <Pill variant="ghost" onClick={onPickWorkout}>
-            Something else today
-          </Pill>
-        )}
         {onQuick && !started && (!onPickWorkout || unchosen) && (
           <Pill variant="ghost" onClick={onQuick}>
             Quick workout
@@ -648,7 +636,7 @@ export default function Today({
             somebody with nothing different about today has no reason to open
             it.
           */
-          !unchosen && (
+          !unchosen && !changeable && (
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -658,12 +646,7 @@ export default function Today({
             </button>
           )
         )}
-        {understood && (
-          <p className="text-body text-dim">
-            {understood}
-            {offline && " Worked that out offline — the smart parser was unreachable."}
-          </p>
-        )}
+        {(understood || adjusted) && <p className="text-body text-dim">{understood || adjusted}</p>}
       </div>
 
       <section className={`${enter} stage mt-8`} style={stage()}>
