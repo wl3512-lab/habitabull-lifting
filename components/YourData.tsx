@@ -22,9 +22,12 @@ import type { AppState } from "@/lib/types";
 export default function YourData({
   state,
   onImport,
+  bare = false,
 }: {
   state: AppState;
   onImport: (next: AppState) => void;
+  /** Inside a Profile row, which already says "Your data" and is already a card. */
+  bare?: boolean;
 }) {
   const [busy, setBusy] = useState<"idle" | "exporting" | "importing">("idle");
   const [said, setSaid] = useState<string | null>(null);
@@ -81,9 +84,9 @@ export default function YourData({
   }
 
   return (
-    <section className="rounded-2xl bg-card p-[18px]">
-      <p className="label text-dim">Your data</p>
-      <p className="mt-2 text-body text-dim">
+    <section className={bare ? "" : "rounded-2xl bg-card p-[18px]"}>
+      {!bare && <p className="label text-dim">Your data</p>}
+      <p className={`${bare ? "" : "mt-2 "}text-body text-dim`}>
         All of this lives in this browser and nowhere else. One file holds every session,
         note and photo.
       </p>

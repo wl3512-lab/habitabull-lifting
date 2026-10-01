@@ -23,11 +23,14 @@ export default function BodyWeight({
   weighIns,
   today,
   onSave,
+  bare = false,
 }: {
   weighIns: WeighIn[];
   /** ISO date, so "today" agrees with the rest of the app's local-date rule. */
   today: string;
   onSave: (lb: number) => void;
+  /** Inside a Profile row, which already says "Body weight". */
+  bare?: boolean;
 }) {
   const latest = weighIns[weighIns.length - 1];
   const loggedToday = weighIns.some((w) => w.date === today);
@@ -46,9 +49,9 @@ export default function BodyWeight({
   }
 
   return (
-    <section className="mt-8">
+    <section className={bare ? "" : "mt-8"}>
       <div className="flex items-center justify-between gap-4">
-        <p className="label text-dim">Body weight</p>
+        {!bare && <p className="label text-dim">Body weight</p>}
         {weighIns.length > 0 && !open && (
           <button
             type="button"
@@ -56,7 +59,7 @@ export default function BodyWeight({
               setDraft(latest?.lb ?? 150);
               setOpen(true);
             }}
-            className="head tap text-body text-cyan transition-opacity hover:opacity-70"
+            className="ml-auto head tap text-body text-cyan transition-opacity hover:opacity-70"
           >
             {loggedToday ? "Update" : "Add today"}
           </button>
