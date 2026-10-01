@@ -126,6 +126,50 @@ export function LinkRow({
   );
 }
 
+/**
+ * One day of the plan.
+ *
+ * Not a label and a value like the rows around it. The workout is what the row
+ * is about and the day is how you find it, so the workout leads at the row's
+ * own weight with its lifts under it, and the day is a narrow column to the
+ * left. Today's day is cyan, the colour today already is in the week strip.
+ */
+export function PlanRow({
+  day,
+  title,
+  detail,
+  today = false,
+  onClick,
+}: {
+  day: string;
+  title: string;
+  detail: string;
+  today?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className={DIVIDED}>
+      <button type="button" onClick={onClick} className={ROW}>
+        {/* flex-1 takes the squeeze, so a long lift list truncates instead of
+            pushing the chevron out of line with the rows below. */}
+        <span className="flex min-w-0 flex-1 items-baseline gap-3.5">
+          <span className={`label w-9 shrink-0 ${today ? "text-cyan" : "text-dim"}`}>
+            {day}
+            {today && <span className="sr-only">, today</span>}
+          </span>
+          <span className="min-w-0">
+            <span className="head block truncate text-emphasis text-fg">{title}</span>
+            <span className="mt-0.5 block truncate text-body text-dim">{detail}</span>
+          </span>
+        </span>
+        <span className="shrink-0">
+          <Value />
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function SwitchRow({
   label,
   hint,

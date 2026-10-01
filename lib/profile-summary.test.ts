@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLine, equipmentLine, levelLabel, LEVELS, scheduleLine, weighInLine } from "./profile-summary";
+import { dayDetail, equipmentLine, levelLabel, LEVELS, scheduleLine, weighInLine } from "./profile-summary";
 import type { PlannedExercise } from "./types";
 
 const lift = (exerciseId: string): PlannedExercise => ({ exerciseId, sets: 3, reps: 5, weight: 100 });
@@ -39,10 +39,11 @@ describe("what each Profile row says when it is closed", () => {
   });
 
   it("describes a day by its name and its lifts", () => {
-    expect(dayLine({ label: "Full body A", exercises: ["a", "b", "c", "d", "e"].map(lift) })).toBe(
-      "Full body A · 5 lifts"
+    expect(dayDetail({ exercises: ["back-squat", "deadlift"].map(lift) })).toBe(
+      "2 lifts · Back Squat, Deadlift"
     );
-    expect(dayLine({ label: "Leg day", exercises: [] })).toBe("Leg day · nothing on it yet");
+    expect(dayDetail({ exercises: ["bench-press"].map(lift) })).toBe("1 lift · Bench Press");
+    expect(dayDetail({ exercises: [] })).toBe("Nothing on it yet");
   });
 
   it("labels every level, and only these three", () => {

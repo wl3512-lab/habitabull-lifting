@@ -1,3 +1,4 @@
+import { nameOf } from "./exercises";
 import { count } from "./plural";
 import { anchorOf, type Anchor } from "./schedule";
 import type { Equipment, Level, Routine, WeighIn } from "./types";
@@ -64,8 +65,14 @@ export function scheduleLine(trainingDays: number[], anchors?: Anchor[]): string
   return `${days} · ${anchors.map((a) => anchorOf(a).label).join(", ")}`;
 }
 
-/** A day type can arrive blank, and the row should say so rather than "0 lifts". */
-export function dayLine(routine: Pick<Routine, "label" | "exercises">): string {
-  if (routine.exercises.length === 0) return `${routine.label} · nothing on it yet`;
-  return `${routine.label} · ${count(routine.exercises.length, "lift")}`;
+/**
+ * The line under a plan day's name: how many lifts, then which. Three days of
+ * "Leg day · 6 lifts" read as one row printed three times; the lifts are what
+ * tells them apart. The row truncates it, so it can run as long as it likes.
+ * A day type can arrive blank, and the row says so rather than "0 lifts".
+ */
+export function dayDetail(routine: Pick<Routine, "exercises">): string {
+  if (routine.exercises.length === 0) return "Nothing on it yet";
+  const names = routine.exercises.map((e) => nameOf(e.exerciseId)).join(", ");
+  return `${count(routine.exercises.length, "lift")} · ${names}`;
 }

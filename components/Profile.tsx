@@ -5,14 +5,14 @@ import BodyWeight from "./BodyWeight";
 import PlaylistRow from "./PlaylistRow";
 import YourData from "./YourData";
 import Stepper from "./Stepper";
-import { ExpandRow, LinkRow, RowGroup, SwitchRow } from "./ProfileRows";
+import { ExpandRow, LinkRow, PlanRow, RowGroup, SwitchRow } from "./ProfileRows";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { count } from "@/lib/plural";
 import { offersPlates } from "@/lib/plates";
 import { REST_MAX, REST_MIN, REST_STEP, restSeconds, SHORT_DAYS } from "@/lib/engine";
 import {
-  dayLine,
+  dayDetail,
   equipmentLine,
   EQUIPMENT_LABELS,
   levelLabel,
@@ -63,6 +63,8 @@ export default function Profile({
   const [why, setWhy] = useState(profile.motivation ?? "");
   const [openRow, setOpenRow] = useState<ProfileRowId | null>(initialOpen);
   const toggle = (id: ProfileRowId) => setOpenRow((o) => (o === id ? null : id));
+  // Local midnight, so the weekday is hers and not UTC's.
+  const weekday = new Date(`${today}T00:00:00`).getDay();
 
   function saveName() {
     const clean = name.replace(/\s+/g, " ").trim().slice(0, 40);
@@ -177,10 +179,12 @@ export default function Profile({
           <LinkRow label="Set up your week" onClick={onEditWeek} />
         ) : (
           routines.map((r) => (
-            <LinkRow
+            <PlanRow
               key={`${r.day}-${r.label}`}
-              label={SHORT_DAYS[r.day]}
-              value={dayLine(r)}
+              day={SHORT_DAYS[r.day]}
+              title={r.label}
+              detail={dayDetail(r)}
+              today={r.day === weekday}
               onClick={() => onEditPlan(r.day)}
             />
           ))
