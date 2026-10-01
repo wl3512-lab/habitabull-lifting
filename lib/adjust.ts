@@ -8,15 +8,25 @@ import { describe, parseLocally, type Constraints } from "./constraints";
  * honesty about which one answered live here, once. `post` is a parameter so
  * the tests can stand in for the network.
  */
+/**
+ * How long to wait for the model before parsing locally. Nothing else bounds
+ * the request on the client, so without this a stalled connection leaves her
+ * on "Rebuilding..." until the browser gives up on its own, which can be minutes.
+ */
+export const READ_TIMEOUT_MS = 10_000;
+
 export async function readConstraints(
   text: string,
   post: typeof fetch = fetch
 ): Promise<{ constraints: Constraints; offline: boolean }> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), READ_TIMEOUT_MS);
   try {
     const res = await post("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+      signal: ctl.signal,
     });
     if (!res.ok) throw new Error(String(res.status));
     const constraints = (await res.json()) as Constraints;
@@ -24,6 +34,8 @@ export async function readConstraints(
   } catch {
     // Hard requirement: the app works with the AI layer completely dead.
     return { constraints: parseLocally(text), offline: true };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

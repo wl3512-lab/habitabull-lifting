@@ -248,11 +248,15 @@ export default function PickWorkout({
         <p className="label text-cyan">
           {planned ? SHORT[today] : `${SHORT[today]} is a rest day`}
         </p>
+        {/*
+          Stays live while asking. Cancel means "never mind": leaving unmounts
+          the list, and the unmount guard drops the late answer, so a slow
+          request can never strand her on a greyed screen.
+        */}
         <button
           type="button"
           onClick={onBack}
-          disabled={asking}
-          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
+          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
         >
           Cancel
         </button>

@@ -73,7 +73,7 @@ export const TEMPLATES: DayTemplate[] = [
     id: "full-body",
     label: "Full body",
     short: "Full body",
-    hint: "A bit of everything. The one that works on three days a week",
+    hint: "A bit of everything, and the one that works on three days a week",
     muscles: ["quads", "hamstrings", "chest", "back", "core"],
     style: "strength",
     recommended: true,

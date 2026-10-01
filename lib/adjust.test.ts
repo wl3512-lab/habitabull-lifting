@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { adjustedLine, readConstraints } from "./adjust";
+import { describe, expect, it, vi } from "vitest";
+import { adjustedLine, readConstraints, READ_TIMEOUT_MS } from "./adjust";
 import type { Constraints } from "./constraints";
 
 const reply = (body: unknown, ok = true) =>
@@ -45,6 +45,25 @@ describe("reading what is different today", () => {
     const out = await readConstraints("only dumbbells today", down);
     expect(out.offline).toBe(true);
     expect(out.constraints.equipment).toContain("dumbbell");
+  });
+
+  it("gives up on a stalled request and parses locally", async () => {
+    vi.useFakeTimers();
+    try {
+      // Never answers, and only rejects when the caller aborts it, like fetch.
+      const stalled = ((_url: unknown, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        })) as unknown as typeof fetch;
+      const pending = readConstraints("only dumbbells today", stalled);
+      await vi.advanceTimersByTimeAsync(READ_TIMEOUT_MS + 1);
+      const out = await pending;
+      expect(out.offline).toBe(true);
+      expect(out.constraints.source).toBe("local");
+      expect(out.constraints.equipment).toContain("dumbbell");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("adds the offline sentence only when it was offline", () => {
