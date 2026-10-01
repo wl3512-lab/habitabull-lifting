@@ -2,9 +2,10 @@
 
 import { useId, useRef, useState } from "react";
 import { Pill } from "./ui";
+import LiftSearch, { fileLift, strengthPicks } from "./LiftSearch";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
-import { byId, cardioLifts, makeCustomExercise, nameOf, searchLifts } from "@/lib/exercises";
+import { byId, cardioLifts, nameOf } from "@/lib/exercises";
 import { count } from "@/lib/plural";
 import {
   NAME_MAX,
@@ -16,9 +17,7 @@ import {
   yourWorkoutsCategory,
 } from "@/lib/workouts";
 import type {
-  Equipment,
   Exercise,
-  Muscle,
   PlannedExercise,
   Profile,
   Routine,
@@ -27,27 +26,6 @@ import type {
 
 const FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-const MUSCLES: { id: Muscle; label: string }[] = [
-  { id: "quads", label: "Quads" },
-  { id: "hamstrings", label: "Hamstrings" },
-  { id: "glutes", label: "Glutes" },
-  { id: "calves", label: "Calves" },
-  { id: "chest", label: "Chest" },
-  { id: "back", label: "Back" },
-  { id: "shoulders", label: "Shoulders" },
-  { id: "arms", label: "Arms" },
-  { id: "core", label: "Core" },
-];
-
-/* One lift's kit, said singular. Typed by Equipment so a new kind cannot go unnamed. */
-const KIT: Record<Equipment, string> = {
-  barbell: "Barbell",
-  dumbbell: "Dumbbell",
-  machine: "Machine",
-  kettlebell: "Kettlebell",
-  bodyweight: "Bodyweight",
-};
-const muscleName = (m: Muscle) => MUSCLES.find((x) => x.id === m)?.label ?? m;
 
 /**
  * Editing a day — the deck's second core journey (p28), and the last thing the
@@ -118,14 +96,8 @@ export default function RoutineEditor({
   const [draft, setDraft] = useState<Routine[]>(days);
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(initialAdding);
-  /*
-    What she typed into the picker's search. Clears whenever it opens. It is
-    also what "Ask for one" and "Add it as your own" send, so a search that
-    finds nothing has already said what she was after.
-  */
-  const [hunt, setHunt] = useState("");
-  const [asking, setAsking] = useState(false);
-  const [suggested, setSuggested] = useState<{ id: string; why: string } | null>(null);
+  /* Set when the picker opens from a tap, so its search field takes focus. */
+  const [focusSearch, setFocusSearch] = useState(false);
   const [weekAsk, setWeekAsk] = useState("");
   const [weekBusy, setWeekBusy] = useState(false);
   const [weekWhy, setWeekWhy] = useState<string | null>(null);
@@ -153,14 +125,12 @@ export default function RoutineEditor({
     would drop focus to the page. The search field and the Change link take it
     instead, so keyboard and screen reader users stay where they were.
   */
-  const searchRef = useRef<HTMLInputElement>(null);
   const changeRef = useRef<HTMLButtonElement>(null);
   // The chips are named by their short text, so the pressed one is described by
   // the hint, and the group is named by its label. Ids tie those together.
   const kindLabelId = useId();
   const hintId = useId();
   const [pane, setPane] = useState<"editor" | "workouts">("editor");
-  const [ownBusy, setOwnBusy] = useState(false);
   /* Naming a workout to save. Closed until asked for, like the week textarea. */
   const [naming, setNaming] = useState(false);
   const [workoutName, setWorkoutName] = useState("");
@@ -187,34 +157,14 @@ export default function RoutineEditor({
    * and having a model improvise form advice for an arbitrary barbell movement
    * is the one place here where being wrong could hurt somebody.
    */
-  async function addOwn() {
-    const name = hunt.trim();
-    if (!name || ownBusy || !onAddCustom) return;
-    setOwnBusy(true);
-
+  async function addOwn(name: string) {
+    if (!onAddCustom) return;
     // Filed under the day's first muscle until the server says otherwise.
-    let muscle: Muscle = kind.muscles[0] ?? "arms";
-    let equipment: Equipment = profile.equipment[0] ?? "dumbbell";
-    let compound = false;
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intent: "classify", text: name }),
-      });
-      const out = (await res.json()) as { muscle?: Muscle; equipment?: Equipment; compound?: boolean };
-      // Only the server's validated enums land here; if it is offline the
-      // guesses above stand and she can still add the lift.
-      if (out.muscle) muscle = out.muscle;
-      if (out.equipment) equipment = out.equipment;
-      compound = out.compound === true;
-    } catch {
-      // Offline. Her lift still gets added, filed where she was standing.
-    }
-
-    const made = makeCustomExercise(name, muscle, equipment, compound);
+    const made = await fileLift(name, {
+      muscle: kind.muscles[0] ?? "arms",
+      equipment: profile.equipment[0] ?? "dumbbell",
+    });
     onAddCustom(made);
-    setOwnBusy(false);
     add(made.id, made);
   }
 
@@ -264,50 +214,15 @@ export default function RoutineEditor({
     setWeekBusy(false);
   }
 
-  /**
-   * "I don't know what I want to do for biceps."
-   *
-   * Offered when a search finds nothing, with the words she already typed.
-   * The model only ever picks from the lifts this day's muscles have, and the
-   * server checks its answer against that list before it comes back, so the
-   * worst case is the app suggesting what it would have suggested anyway. It never proposes a weight or a rep count; adding the lift runs
-   * the rules engine exactly as tapping the name does.
-   */
-  async function askAi() {
-    if (!adding || asking || !hunt.trim()) return;
-    setAsking(true);
-    setSuggested(null);
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intent: "pick",
-          text: hunt,
-          muscles: kind.muscles,
-          equipment: profile.equipment,
-          exclude: used,
-        }),
-      });
-      const out = (await res.json()) as { id?: string; why?: string };
-      if (out.id) setSuggested({ id: out.id, why: out.why ?? "" });
-    } catch {
-      // Offline is not an error state here — the list is still on screen.
-    }
-    setAsking(false);
-  }
-
   function closeAdd() {
-    (setHunt(""), setAdding(false));
-    setSuggested(null);
+    setAdding(false);
+    setFocusSearch(false);
   }
 
   function openAdd() {
-    setHunt("");
-    setSuggested(null);
     setOpenId(null);
     setAdding(true);
-    requestAnimationFrame(() => searchRef.current?.focus());
+    setFocusSearch(true);
   }
 
   /* The type chips close on Done and on a pick, and take what they said with them. */
@@ -434,7 +349,7 @@ export default function RoutineEditor({
       )
     );
     setOpenId(null);
-    (setHunt(""), setAdding(false));
+    closeAdd();
   }
 
   /*
@@ -507,7 +422,7 @@ export default function RoutineEditor({
   function putOn(w: SavedWorkout) {
     setDraft(placeOn(draft, routine.day, w));
     setOpenId(null);
-    (setHunt(""), setAdding(false));
+    closeAdd();
     setRemoving(null);
     setPane("editor");
     setSaidSo(`${FULL[routine.day]} is now ${w.name}.`);
@@ -529,18 +444,10 @@ export default function RoutineEditor({
     type trains, starred ones first. A pull day opens on rows and curls rather
     than on a library she has to know the names in.
   */
-  const searching = hunt.trim().length >= 2;
-  const found = searching ? searchLifts(hunt, profile.equipment, used) : [];
   const picks =
     kind.id === "cardio"
       ? cardioLifts(used, profile.equipment)
-      : [
-          ...new Map(
-            [...new Set(kind.muscles)]
-              .flatMap((m) => alternativesFor(m, profile.equipment, used, profile.favourites ?? []).slice(0, 2))
-              .map((e) => [e.id, e])
-          ).values(),
-        ].slice(0, 6);
+      : strengthPicks(kind.muscles, profile.equipment, used, profile.favourites ?? [], 2);
   const kindsShown = kindOpen || describing || Boolean(weekWhy) || weekOffline;
 
   if (pane === "workouts") {
@@ -732,7 +639,7 @@ export default function RoutineEditor({
               onClick={() => {
                 setDayIndex(i);
                 setOpenId(null);
-                (setHunt(""), setAdding(false));
+                closeAdd();
                 // Said about the day she has just left, so it does not follow
                 // her onto the next one.
                 setSaidSo(null);
@@ -1104,108 +1011,19 @@ export default function RoutineEditor({
               Cancel
             </button>
           </div>
-          {/*
-            One field, and the day's own lifts under it before she types.
-
-            It used to open on nine muscle chips, then a list of names for the
-            one she picked, then a search, then "Not sure?" and "Not listed?",
-            each with a field of its own: three places to type before the first
-            lift. Search covers the whole library, filed by name, because
-            somebody standing at a machine is thinking "leg curl", not
-            "hamstrings". Asking and adding her own only come up when a search
-            finds nothing, using the words she already typed.
-          */}
-          <input
-            ref={searchRef}
-            value={hunt}
-            onChange={(e) => {
-              setHunt(e.target.value);
-              setSuggested(null);
-            }}
-            placeholder="Search every lift"
-            aria-label="Search every lift by name"
-            className="mt-3 h-12 w-full rounded-full bg-raise px-[18px] text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+          <LiftSearch
+            className="mt-3"
+            equipment={profile.equipment}
+            exclude={used}
+            picks={picks}
+            picksLabel={`Suggested for ${kind.label.toLowerCase()}`}
+            emptyNote={`Everything that fits a ${kind.label.toLowerCase()} is already on this day. Search the whole library above.`}
+            // Cardio has no muscle list to choose among, so it is not asked.
+            askMuscles={kind.id === "cardio" ? undefined : kind.muscles}
+            onPick={(id) => add(id)}
+            onAddOwn={onAddCustom ? addOwn : undefined}
+            autoFocus={focusSearch}
           />
-
-          {searching && found.length === 0 ? (
-            <div className="mt-4" aria-live="polite">
-              <p className="text-body leading-snug text-dim">
-                Nothing called &ldquo;{hunt.trim()}&rdquo; in your kit.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2.5">
-                {/* Cardio has no muscle list to choose among, so it is not asked. */}
-                {kind.id !== "cardio" && (
-                  <Pill size="sm" variant="ghost" onClick={() => void askAi()} disabled={asking}>
-                    {asking ? "Asking…" : "Ask for one"}
-                  </Pill>
-                )}
-                {onAddCustom && (
-                  <Pill
-                    size="sm"
-                    variant="ghost"
-                    className="max-w-full truncate"
-                    onClick={() => void addOwn()}
-                    disabled={ownBusy}
-                  >
-                    {ownBusy ? "Adding…" : <>Add &ldquo;{hunt.trim()}&rdquo; as your own</>}
-                  </Pill>
-                )}
-              </div>
-              {onAddCustom && (
-                <p className="mt-2 text-body leading-snug text-dim">
-                  A lift you add gets filed for you, but has no form guidance. That
-                  part only exists where a person wrote it.
-                </p>
-              )}
-              {suggested && byId(suggested.id) && (
-                <div role="status" className="mt-3 rounded-xl bg-raise/50 p-3.5">
-                  <p className="head text-emphasis text-fg">{nameOf(suggested.id)}</p>
-                  {suggested.why && (
-                    <p className="mt-1 text-body leading-snug text-dim">{suggested.why}</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => add(suggested.id)}
-                    className="head tap mt-2 text-body text-cyan transition-opacity hover:opacity-70"
-                  >
-                    Add it
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (searching ? found : picks).length === 0 ? (
-            <p className="mt-4 text-body leading-snug text-dim">
-              Everything that fits a {kind.label.toLowerCase()} is already on this day. Search the whole library above.
-            </p>
-          ) : (
-            <>
-              <p className="label mt-5 text-dim">
-                {searching ? "In your kit" : `Suggested for ${kind.label.toLowerCase()}`}
-              </p>
-              <ul className="mt-1.5">
-                {(searching ? found : picks).map((a) => (
-                  <li key={a.id} className="border-t border-line first:border-t-0">
-                    <button
-                      type="button"
-                      onClick={() => add(a.id)}
-                      aria-label={`Add ${a.name}`}
-                      className="flex min-h-14 w-full items-center justify-between gap-3 py-2.5 text-left transition-opacity hover:opacity-80 focus-visible:-outline-offset-2!"
-                    >
-                      <span className="min-w-0">
-                        <span className="head block truncate text-emphasis text-fg">{a.name}</span>
-                        <span className="block truncate text-body text-dim">
-                          {a.cardio ? "Cardio" : muscleName(a.primary)} · {KIT[a.equipment]}
-                        </span>
-                      </span>
-                      <span aria-hidden className="shrink-0 text-head leading-none text-cyan">
-                        +
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
         </div>
       ) : (
         (routine.exercises.length > 0 || suggestions.length > 0 || profile.level === "new") && (

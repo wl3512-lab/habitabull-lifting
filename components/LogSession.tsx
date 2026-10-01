@@ -6,15 +6,15 @@ import RestTimer from "./RestTimer";
 import SetLogged from "./SetLogged";
 import SetRow from "./SetRow";
 import { Pill } from "./ui";
-import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
-import { EQUIPMENT, MUSCLES } from "@/lib/constraints";
+import LiftSearch, { fileLift, strengthPicks } from "./LiftSearch";
+import { byId, cardioLifts, nameOf } from "@/lib/exercises";
 import { alternativesFor, LEVEL_SETS, personalRecord, restSeconds, lastCompletedSet, sessionTarget } from "@/lib/engine";
 import { DEFAULT_BAR_LB, offersPlates } from "@/lib/plates";
 import PlatesOffer from "./PlatesOffer";
 import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
 import { line, midsetLine } from "@/lib/voice";
-import type { Equipment, Exercise, LoggedSet, Muscle, Profile, Session, SessionTimer } from "@/lib/types";
+import type { Exercise, LoggedSet, Muscle, Profile, Session, SessionTimer } from "@/lib/types";
 import { resumePosition, replaceSessionSets, endTimedWork } from "@/lib/session-memory";
 import { count } from "@/lib/plural";
 
@@ -24,6 +24,12 @@ import { count } from "@/lib/plural";
  * free. Everything here is subordinate to that: one exercise, one set, one
  * orange button in the same place it is on every other screen.
  */
+
+/*
+  Where a quick workout's first pick starts: one lift for each of the big
+  groups, so the list is a spread to choose from rather than six squats.
+*/
+const START: Muscle[] = ["quads", "back", "chest", "hamstrings", "shoulders", "arms"];
 
 /**
  * The top set of the most recent session that logged this lift.
@@ -105,9 +111,6 @@ export default function LogSession({
    */
   initialPicking?: boolean;
 }) {
-  // The lift picker for adding to a session mid-way. Null unless open; the
-  // chosen muscle narrows the list the same way the routine editor does.
-  const [addingMuscle, setAddingMuscle] = useState<Muscle | "cardio" | null>(null);
   /*
     A quick workout: no plan behind it, built one lift at a time.
 
@@ -127,10 +130,6 @@ export default function LogSession({
     else, including after the fact.
   */
   const [addSets, setAddSets] = useState(LEVEL_SETS[profile.level]);
-  // The "not seeing it?" fallback: name a lift the library is missing.
-  const [ownOpen, setOwnOpen] = useState(false);
-  const [ownName, setOwnName] = useState("");
-  const [ownEquip, setOwnEquip] = useState<Equipment>("machine");
   // The exercise jump list — pick which lift to do next, any time.
   const [picking, setPicking] = useState(initialPicking);
   /** Which row in the jump list has its swap options open. */
@@ -328,7 +327,6 @@ export default function LogSession({
     publish({ ...currentSession.current, exercises, completedAt: undefined });
     setIndex(exercises.length - 1);
     setAdding(false);
-    setAddingMuscle(null);
     setAddSets(LEVEL_SETS[profile.level]);
   }
 
@@ -381,27 +379,52 @@ export default function LogSession({
     writeSets(sets.slice(0, -1));
   }
 
-  // The fallback for a machine or lift the library does not have: name it, file
-  // it under the muscle you were browsing, and it joins the session and is kept
-  // as a custom for next time. No network needed — this is the offline path.
-  function addOwn() {
-    const name = ownName.trim();
-    if (!name || !addingMuscle || addingMuscle === "cardio") return;
-    const made = makeCustomExercise(name, addingMuscle, ownEquip, false);
+  // The fallback for a machine or lift the library does not have: the name she
+  // searched for joins the session and is kept as a custom for next time. The
+  // model files it when it can be reached; offline it is filed with the lift
+  // she is on, so this still works in a basement gym.
+  async function addOwn(name: string) {
+    const here = exercise ? byId(exercise.exerciseId) : undefined;
+    const made = await fileLift(name, {
+      muscle: here && !here.cardio ? here.primary : "arms",
+      equipment: profile.equipment[0] ?? "machine",
+    });
     onAddCustom(made); // registers it synchronously, so addLift can find it
-    setOwnName("");
-    setOwnOpen(false);
     addLift(made.id);
   }
 
   if (adding || mustPick) {
     const exclude = session.exercises.map((e) => e.exerciseId);
-    const options =
-      addingMuscle === "cardio"
-        ? cardioLifts(exclude)
-        : addingMuscle
-          ? alternativesFor(addingMuscle, profile.equipment, exclude)
-          : [];
+    /*
+      What to offer before she types. Mid-session, more for the muscles she is
+      already training today, topped up with one for each of the rest, so one
+      squat in does not leave a list of two squats. A quick workout's first
+      pick has nothing to go on yet, so one lift for each, and a cardio machine
+      to end on.
+    */
+    const trained = [
+      ...new Set(
+        session.exercises.flatMap((e) => {
+          const m = byId(e.exerciseId);
+          return m && !m.cardio ? [m.primary] : [];
+        })
+      ),
+    ];
+    const askAmong = trained.length ? trained : START;
+    const favourites = profile.favourites ?? [];
+    const picks = trained.length
+      ? [
+          ...new Map(
+            [
+              ...strengthPicks(trained, profile.equipment, exclude, favourites, 2),
+              ...strengthPicks(START, profile.equipment, exclude, favourites, 1),
+            ].map((e) => [e.id, e])
+          ).values(),
+        ].slice(0, 6)
+      : [
+          ...strengthPicks(START, profile.equipment, exclude, favourites, 1),
+          ...cardioLifts(exclude, profile.equipment).slice(0, 1),
+        ];
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
         <div className="flex items-center justify-between gap-3">
@@ -421,7 +444,6 @@ export default function LogSession({
                 return;
               }
               setAdding(false);
-              setAddingMuscle(null);
             }}
             className="head tap text-emphasis text-dim transition-colors hover:text-fg"
           >
@@ -441,117 +463,36 @@ export default function LogSession({
         {/*
           Sets first, because it applies to whatever gets picked below and
           reading it after the tap that already added the lift would be too
-          late. Hidden for cardio, which is one block of time.
+          late. A cardio pick ignores it: that is one block of time.
         */}
-        {addingMuscle !== "cardio" && (
-          <>
-            <p className="label mt-6 text-dim">Sets</p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setAddSets(n)}
-                  aria-pressed={addSets === n}
-                  className={`tabular min-w-11 rounded-full px-4 py-2 text-caption transition-colors ${
-                    addSets === n ? "bg-cyan text-ground" : "bg-raise text-fg"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        <p className="label mt-6 text-dim">Muscle</p>
+        <p className="label mt-6 text-dim">Sets</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {MUSCLES.map((mu) => (
+          {[1, 2, 3, 4, 5, 6].map((n) => (
             <button
-              key={mu}
+              key={n}
               type="button"
-              onClick={() => setAddingMuscle(mu)}
-              className={`rounded-full px-3.5 py-2 text-caption capitalize transition-colors ${
-                addingMuscle === mu ? "bg-cyan text-ground" : "bg-raise text-fg"
+              onClick={() => setAddSets(n)}
+              aria-pressed={addSets === n}
+              className={`tabular min-w-11 rounded-full px-4 py-2 text-caption transition-colors ${
+                addSets === n ? "bg-cyan text-ground" : "bg-raise text-fg"
               }`}
             >
-              {mu}
+              {n}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => setAddingMuscle("cardio")}
-            className={`rounded-full px-3.5 py-2 text-caption transition-colors ${
-              addingMuscle === "cardio" ? "bg-cyan text-ground" : "bg-raise text-fg"
-            }`}
-          >
-            Cardio
-          </button>
         </div>
-        {addingMuscle && (
-          <>
-            <div className="mt-6 flex flex-col gap-2.5">
-              {options.length === 0 ? (
-                <p className="text-body text-dim">
-                  Nothing new for that muscle with your equipment.
-                </p>
-              ) : (
-                options.map((o) => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => addLift(o.id)}
-                    className="flex items-center justify-between gap-3 rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
-                  >
-                    <span className="head text-emphasis text-fg">{o.name}</span>
-                    <span className="head text-body text-cyan">Add</span>
-                  </button>
-                ))
-              )}
-            </div>
 
-            {addingMuscle !== "cardio" && (
-              <div className="mt-3">
-                {!ownOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => setOwnOpen(true)}
-                    className="tap head text-body text-cyan transition-opacity hover:opacity-80"
-                  >
-                    Not seeing it? Add your own
-                  </button>
-                ) : (
-                  <div className="rise flex flex-col gap-3 rounded-2xl bg-card p-[18px]">
-                    <input
-                      value={ownName}
-                      onChange={(e) => setOwnName(e.target.value)}
-                      autoFocus
-                      placeholder="Name it (e.g. Hip Abductor)"
-                      className="w-full rounded-xl bg-raise p-3.5 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
-                    />
-                    <div className="flex flex-wrap gap-1.5">
-                      {EQUIPMENT.map((eq) => (
-                        <button
-                          key={eq}
-                          type="button"
-                          onClick={() => setOwnEquip(eq)}
-                          className={`rounded-full px-3.5 py-2 text-caption capitalize transition-colors ${
-                            ownEquip === eq ? "bg-cyan text-ground" : "bg-raise text-fg"
-                          }`}
-                        >
-                          {eq}
-                        </button>
-                      ))}
-                    </div>
-                    <Pill onClick={addOwn} disabled={!ownName.trim()} className="h-12">
-                      Add it
-                    </Pill>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
+        <LiftSearch
+          className="mt-6"
+          equipment={profile.equipment}
+          exclude={exclude}
+          picks={picks}
+          picksLabel="Suggested for today"
+          emptyNote="Everything that fits is already in today's session. Search the whole library above."
+          askMuscles={askAmong}
+          onPick={addLift}
+          onAddOwn={addOwn}
+        />
       </main>
     );
   }
