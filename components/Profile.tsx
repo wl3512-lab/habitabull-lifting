@@ -177,12 +177,12 @@ export default function Profile({
           <LinkRow label="Set up your week" onClick={onEditWeek} />
         ) : (
           routines.map((r) => (
-              <LinkRow
-                key={`${r.day}-${r.label}`}
-                label={SHORT_DAYS[r.day]}
-                value={dayLine(r)}
-                onClick={() => onEditPlan(r.day)}
-              />
+            <LinkRow
+              key={`${r.day}-${r.label}`}
+              label={SHORT_DAYS[r.day]}
+              value={dayLine(r)}
+              onClick={() => onEditPlan(r.day)}
+            />
           ))
         )}
         {saved.length > 0 && (
