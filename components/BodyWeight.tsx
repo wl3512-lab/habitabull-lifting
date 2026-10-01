@@ -48,89 +48,113 @@ export default function BodyWeight({
     setOpen(false);
   }
 
-  return (
-    <section className={bare ? "" : "mt-8"}>
-      <div className="flex items-center justify-between gap-4">
-        {!bare && <p className="label text-dim">Body weight</p>}
-        {weighIns.length > 0 && !open && (
-          <button
-            type="button"
-            onClick={() => {
-              setDraft(latest?.lb ?? 150);
-              setOpen(true);
-            }}
-            className="ml-auto head tap text-body text-cyan transition-opacity hover:opacity-70"
-          >
-            {loggedToday ? "Update" : "Add today"}
-          </button>
-        )}
-      </div>
-
-      <Card className="mt-3 p-[18px]">
-        {weighIns.length === 0 && !open ? (
-          <>
-            <p className="text-body text-dim">
-              Weigh in whenever you feel like it. Nothing here counts against you,
-              and it is never shared with your crew. It stays on your phone.
-            </p>
-            <div className="mt-4">
-              <Pill size="sm" variant="ghost" onClick={() => setOpen(true)}>
-                Add a weigh-in
-              </Pill>
-            </div>
-          </>
-        ) : (
-          <>
-            {latest && (
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="tabular statement text-figure text-fg">{latest.lb}</span>
-                <span className="text-body text-dim">
-                  lb ·{" "}
-                  {new Date(latest.date + "T00:00:00").toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              </div>
-            )}
-            {weighIns.length > 0 && (
-              <div className="mt-3">
-                <Chart
-                  points={weighIns.map((w) => ({ date: w.date, value: w.lb }))}
-                  label="Body weight"
-                />
-              </div>
-            )}
-            <p className="mt-3 text-caption text-dim">
-              Private to you. Your crew never sees your weight.
-            </p>
-          </>
-        )}
-
-        {open && (
-          <div className="mt-4 border-t border-line pt-4">
-            <Stepper
-              label="Weight"
-              value={draft}
-              // Half-pound steps: the increment a bathroom scale actually
-              // reports, and the one the logging screen already uses for load.
-              step={0.5}
-              min={40}
-              max={700}
-              suffix="lb"
-              onChange={setDraft}
-            />
-            <div className="mt-4 flex gap-2.5">
-              <Pill size="sm" onClick={commit}>
-                {loggedToday ? "Update today" : "Save"}
-              </Pill>
-              <Pill size="sm" variant="ghost" onClick={() => setOpen(false)}>
-                Cancel
-              </Pill>
-            </div>
+  /*
+    The same content either way. Inside a Profile row the row is already the
+    card and already pads itself, so bare renders it flush; a second Card here
+    would double the padding and open a gap above it.
+  */
+  const body = (
+    <>
+      {weighIns.length === 0 && !open ? (
+        <>
+          <p className="text-body text-dim">
+            Weigh in whenever you feel like it. Nothing here counts against you,
+            and it is never shared with your crew. It stays on your phone.
+          </p>
+          <div className="mt-4">
+            <Pill size="sm" variant="ghost" onClick={() => setOpen(true)}>
+              Add a weigh-in
+            </Pill>
           </div>
-        )}
-      </Card>
+        </>
+      ) : (
+        <>
+          {latest && (
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="tabular statement text-figure text-fg">{latest.lb}</span>
+              <span className="text-body text-dim">
+                lb ·{" "}
+                {new Date(latest.date + "T00:00:00").toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          )}
+          {weighIns.length > 0 && (
+            <div className="mt-3">
+              <Chart
+                points={weighIns.map((w) => ({ date: w.date, value: w.lb }))}
+                label="Body weight"
+              />
+            </div>
+          )}
+          <p className="mt-3 text-caption text-dim">
+            Private to you. Your crew never sees your weight.
+          </p>
+        </>
+      )}
+
+      {open && (
+        <div className="mt-4 border-t border-line pt-4">
+          <Stepper
+            label="Weight"
+            value={draft}
+            // Half-pound steps: the increment a bathroom scale actually
+            // reports, and the one the logging screen already uses for load.
+            step={0.5}
+            min={40}
+            max={700}
+            suffix="lb"
+            onChange={setDraft}
+          />
+          <div className="mt-4 flex gap-2.5">
+            <Pill size="sm" onClick={commit}>
+              {loggedToday ? "Update today" : "Save"}
+            </Pill>
+            <Pill size="sm" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Pill>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  /*
+    In bare mode the row supplies the label, so the header exists only to hold
+    the Update / Add today button. With no weigh-ins, or with the stepper open,
+    that button is hidden and the header would be an empty flex row.
+  */
+  const showAction = weighIns.length > 0 && !open;
+  const showHeader = !bare || showAction;
+
+  return (
+    <section className={bare ? undefined : "mt-8"}>
+      {showHeader && (
+        <div className="flex items-center justify-between gap-4">
+          {!bare && <p className="label text-dim">Body weight</p>}
+          {showAction && (
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(latest?.lb ?? 150);
+                setOpen(true);
+              }}
+              className="ml-auto head tap text-body text-cyan transition-opacity hover:opacity-70"
+            >
+              {loggedToday ? "Update" : "Add today"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {bare ? (
+        // Only needs a gap under the header when the header is showing.
+        <div className={showHeader ? "mt-3" : undefined}>{body}</div>
+      ) : (
+        <Card className="mt-3 p-[18px]">{body}</Card>
+      )}
     </section>
   );
 }

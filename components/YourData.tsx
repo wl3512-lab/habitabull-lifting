@@ -84,7 +84,7 @@ export default function YourData({
   }
 
   return (
-    <section className={bare ? "" : "rounded-2xl bg-card p-[18px]"}>
+    <section className={bare ? undefined : "rounded-2xl bg-card p-[18px]"}>
       {!bare && <p className="label text-dim">Your data</p>}
       <p className={`${bare ? "" : "mt-2 "}text-body text-dim`}>
         All of this lives in this browser and nowhere else. One file holds every session,
