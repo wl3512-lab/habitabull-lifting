@@ -1196,10 +1196,15 @@ export default function RoutineEditor({
 
       {/*
         Pinned, over a fade into the ground, so saving is never a scroll to the
-        bottom. The pane's own bottom padding keeps the last lift clear of it.
+        bottom. What keeps the last lift clear of it is this bar's own height in
+        the flow, plus the pane's padding, not the padding alone. The wrapper
+        ignores taps so a lift showing through the fade can still be tapped;
+        only the Save pill takes them.
       */}
-      <div className="sticky bottom-0 -mx-6 mt-auto bg-gradient-to-t from-ground from-60% to-transparent px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
-        <Pill onClick={() => onSave(draft)}>Save the week</Pill>
+      <div className="pointer-events-none sticky bottom-0 -mx-6 mt-auto bg-gradient-to-t from-ground from-60% to-transparent px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
+        <Pill className="pointer-events-auto" onClick={() => onSave(draft)}>
+          Save the week
+        </Pill>
       </div>
     </main>
   );

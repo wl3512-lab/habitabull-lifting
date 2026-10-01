@@ -138,7 +138,7 @@ export function SwitchRow({
   onChange: (next: boolean) => void;
 }) {
   // The hint is a description, not part of the name, so a screen reader says
-  // "Reminders, switch, on" and then the hint, not one long label.
+  // "Load the bar on barbell lifts, switch, on" and then the hint, not one long label.
   // Track is 52x30 with a 2px border, so its padding box is 48x26. The 20px knob
   // sits 3px from the top, bottom and left edge, and slides 22px to sit 3px from
   // the right. The border is always present, transparent when on, so nothing shifts.

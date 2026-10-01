@@ -1,5 +1,5 @@
 import { count } from "./plural";
-import type { Anchor } from "./schedule";
+import { anchorOf, type Anchor } from "./schedule";
 import type { Equipment, Level, Routine, WeighIn } from "./types";
 
 /**
@@ -25,13 +25,6 @@ export const EQUIPMENT_LABELS: { id: Equipment; label: string }[] = [
   { id: "kettlebell", label: "Kettlebells" },
   { id: "bodyweight", label: "Bodyweight" },
 ];
-
-export const ANCHOR_LABELS: Record<Anchor, string> = {
-  wake: "First thing",
-  lunch: "Lunchtime",
-  afterwork: "After work",
-  evening: "Evening",
-};
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -68,7 +61,7 @@ export function equipmentLine(kit: Equipment[]): string {
 export function scheduleLine(trainingDays: number[], anchors?: Anchor[]): string {
   const days = `${count(new Set(trainingDays).size, "day")} a week`;
   if (!anchors?.length) return days;
-  return `${days} · ${anchors.map((a) => ANCHOR_LABELS[a]).join(", ")}`;
+  return `${days} · ${anchors.map((a) => anchorOf(a).label).join(", ")}`;
 }
 
 /** A day type can arrive blank, and the row should say so rather than "0 lifts". */

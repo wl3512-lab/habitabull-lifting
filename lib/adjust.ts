@@ -30,6 +30,6 @@ export async function readConstraints(
 /** What Today says back after a rebuild, the same words wherever it was asked. */
 export function adjustedLine(c: Constraints, offline: boolean): string {
   return offline
-    ? `${describe(c)} Worked that out offline — the smart parser was unreachable.`
+    ? `${describe(c)} Worked that out offline. The smart parser was unreachable.`
     : describe(c);
 }
