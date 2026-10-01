@@ -7,6 +7,11 @@ import type { Equipment } from "./types";
 const KIT: Equipment[] = ["barbell", "dumbbell", "machine", "bodyweight"];
 
 describe("templates", () => {
+  it("gives every day type a short name for its chip, never longer than its label", () => {
+    expect(TEMPLATES.map((t) => t.short)).toEqual(["Full body", "Push", "Pull", "Legs", "Upper", "Lower", "Cardio"]);
+    for (const t of TEMPLATES) expect(t.short.length).toBeLessThanOrEqual(t.label.length);
+  });
+
   it("puts full body first and marks it as the recommended shape", () => {
     expect(TEMPLATES[0].id).toBe("full-body");
     expect(TEMPLATES[0].recommended).toBe(true);

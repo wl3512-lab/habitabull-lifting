@@ -27,6 +27,12 @@ export type TemplateId =
 export interface DayTemplate {
   id: TemplateId;
   label: string;
+  /**
+   * What the chip in the week editor says. Seven full names wrapped into four
+   * rows of chips; these wrap into two. Everywhere else, the Calendar
+   * included, still says `label`, so a day is "Leg day" and not "Legs".
+   */
+  short: string;
   hint: string;
   /** Slots, filled in order. A muscle can repeat; the picker won't reuse a lift. */
   muscles: Muscle[];
@@ -66,6 +72,7 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "full-body",
     label: "Full body",
+    short: "Full body",
     hint: "A bit of everything — the one that works on three days a week",
     muscles: ["quads", "hamstrings", "chest", "back", "core"],
     style: "strength",
@@ -74,6 +81,7 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "push",
     label: "Push day",
+    short: "Push",
     hint: "Chest, shoulders, triceps",
     muscles: ["chest", "shoulders", "arms", "chest"],
     style: "strength",
@@ -81,6 +89,7 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "pull",
     label: "Pull day",
+    short: "Pull",
     hint: "Back, biceps, hamstrings",
     muscles: ["back", "hamstrings", "back", "arms"],
     style: "strength",
@@ -88,6 +97,7 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "legs",
     label: "Leg day",
+    short: "Legs",
     hint: "Quads, hamstrings, glutes",
     muscles: ["quads", "hamstrings", "glutes", "quads"],
     style: "strength",
@@ -95,6 +105,7 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "upper",
     label: "Upper body",
+    short: "Upper",
     hint: "Everything above the hips",
     muscles: ["chest", "back", "shoulders", "arms", "core"],
     style: "strength",
@@ -102,6 +113,7 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "lower",
     label: "Lower body",
+    short: "Lower",
     hint: "Everything below them",
     muscles: ["quads", "hamstrings", "glutes", "hamstrings"],
     style: "strength",
@@ -109,6 +121,7 @@ export const TEMPLATES: DayTemplate[] = [
   {
     id: "cardio",
     label: "Cardio",
+    short: "Cardio",
     /*
       A list of what the day can be, like every hint beside it, plus the one
       clause that makes cardio different from all of them: it is set in time
