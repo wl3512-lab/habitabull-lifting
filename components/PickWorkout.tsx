@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { adjustedLine, readConstraints } from "@/lib/adjust";
+import type { Constraints } from "@/lib/constraints";
 import { nameOf } from "@/lib/exercises";
 import { generateRoutine } from "@/lib/engine";
 import { libraryChoices, sameLineup, weekChoices } from "@/lib/workouts";
@@ -47,6 +50,8 @@ export default function PickWorkout({
   dayLibrary,
   today,
   planned,
+  onStartPlanned,
+  onAdjust,
   onPick,
   onQuick,
   onBack,
@@ -67,21 +72,37 @@ export default function PickWorkout({
   /**
    * What today is already planned as, on a training day.
    *
-   * Not everybody's Monday is the same workout every week. Somebody whose
-   * Monday is legs this week and back and biceps the next is not editing their
-   * week when they say so, they are saying what today is, so this screen is
-   * reachable with a plan already on the day.
-   *
-   * Its own lineup is left out of the list below: starting it is what the
-   * button on Today already does, and a second way to start the same session
-   * is the screen inventing a decision.
+   * Not everybody's Monday is the same workout every week, so the list is
+   * reachable with a plan on the day. The plan is the first card in it: it
+   * used to be left out, because the button on Today starts it, and that made
+   * changing your mind a Cancel instead of a tap.
    */
   planned?: { label: string; exercises: PlannedExercise[] };
+  /** Start the planned workout as planned, which is not a one-off. */
+  onStartPlanned?: () => void;
+  /**
+   * Rebuild today's plan from a sentence. The list reads it and hands back
+   * the constraints with the line Today will show; the page applies them.
+   */
+  onAdjust?: (c: Constraints, line: string) => void;
   onPick: (choice: WorkoutChoice) => void;
   /** Log it lift by lift, with nothing planned. */
   onQuick?: () => void;
   onBack: () => void;
 }) {
+  const [adjusting, setAdjusting] = useState(false);
+  const [note, setNote] = useState("");
+  const [asking, setAsking] = useState(false);
+
+  async function submitAdjust() {
+    const text = note.trim();
+    if (!text || !onAdjust) return;
+    setAsking(true);
+    const { constraints, offline } = await readConstraints(text);
+    setAsking(false);
+    onAdjust(constraints, adjustedLine(constraints, offline));
+  }
+
   const isPlanned = (lineup: PlannedExercise[]) =>
     Boolean(planned && sameLineup(planned.exercises, lineup));
 
@@ -180,7 +201,7 @@ export default function PickWorkout({
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <div className="flex items-start justify-between gap-4">
         <p className="label text-cyan">
-          {planned ? `Today is ${planned.label}` : `${SHORT[today]} is a rest day`}
+          {planned ? SHORT[today] : `${SHORT[today]} is a rest day`}
         </p>
         <button
           type="button"
@@ -197,6 +218,77 @@ export default function PickWorkout({
           ? `Whatever you pick is just today. ${SHORT[today]} is still ${planned.label} next week.`
           : "Training today does not move your week. Whatever you pick is a one-off, and tomorrow is still whatever it was."}
       </p>
+
+      {planned && (
+        <section className="mt-6">
+          <div className="rounded-2xl border-[1.5px] border-action bg-card">
+            <button
+              type="button"
+              onClick={onStartPlanned}
+              aria-label={`Start ${planned.label}, planned for today: ${lifts(planned.exercises)}`}
+              className="w-full p-[18px] text-left"
+            >
+              <span className="label inline-block rounded-full border border-action px-2 py-0.5 text-action">
+                Planned for today
+              </span>
+              <span className="mt-2.5 flex items-baseline justify-between gap-3">
+                <span className="head text-head text-fg">{planned.label}</span>
+                <span className="tabular shrink-0 text-body text-cyan">
+                  {planned.exercises.length} {planned.exercises.length === 1 ? "lift" : "lifts"}
+                </span>
+              </span>
+              <span className="mt-1 block text-body leading-snug text-dim">{lifts(planned.exercises)}</span>
+            </button>
+            {onAdjust && (
+              <div className="mx-[18px] border-t border-line pb-[18px] pt-3">
+                {adjusting ? (
+                  <>
+                    <label htmlFor="adjust-note" className="label block text-dim">
+                      What&apos;s different today?
+                    </label>
+                    <textarea
+                      id="adjust-note"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      rows={2}
+                      autoFocus
+                      placeholder="I'm working from home, no machines, only dumbbells"
+                      className="mt-2.5 w-full resize-none rounded-xl bg-raise p-3.5 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                    />
+                    <div className="mt-2.5 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void submitAdjust()}
+                        disabled={asking || !note.trim()}
+                        className="head h-12 flex-1 rounded-full border border-line-strong text-body text-cyan transition-opacity disabled:opacity-40"
+                      >
+                        {asking ? "Rebuilding…" : "Rebuild today"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdjusting(false)}
+                        className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAdjusting(true)}
+                    className="head tap text-body text-cyan transition-opacity hover:opacity-70"
+                  >
+                    Adjust it for today
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {planned && <p className="label mt-8 text-dim">Or switch to</p>}
 
       {mine.length > 0 && (
         <section className="mt-6">
