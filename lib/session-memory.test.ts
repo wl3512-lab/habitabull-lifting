@@ -103,4 +103,15 @@ it("keeps session checkpoints, notes and weight-input preference through save/lo
   expect(resumePosition(restored.sessions[0]).timer?.endsAt).toBe(200000);
 });
 
+it("keeps the load-the-bar answer through a backup restore", async () => {
+  const { EMPTY } = await import("./storage");
+  const { buildBackup, parseBackup } = await import("./backup");
+  const state = {
+    ...EMPTY,
+    profile: { name: "QA", level: "new" as const, equipment: [], trainingDays: [1], createdAt: "2026-09-28T12:00:00Z", loadTheBar: false },
+  };
+  const restored = parseBackup(JSON.parse(JSON.stringify(buildBackup(state))))!.state;
+  expect(restored.profile?.loadTheBar).toBe(false);
+});
+
 afterEach(() => vi.unstubAllGlobals());

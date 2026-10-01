@@ -256,6 +256,12 @@ export interface Profile {
    * machine has no bar to load, so those keep the steppers whatever this says.
    */
   weightInput?: "steppers" | "plates";
+  /**
+   * Whether barbell lifts offer the plate loader at all. Undefined until she
+   * has answered, which the first barbell lift asks once. Read it through
+   * `offersPlates`, which also counts somebody who already used the switch.
+   */
+  loadTheBar?: boolean;
   /** What her bar weighs. 45 unless she says otherwise. */
   barLb?: number;
   /**

@@ -3,6 +3,7 @@ import {
   addPlate,
   DEFAULT_BAR_LB,
   MAX_PLATES_PER_SIDE,
+  offersPlates,
   platesFor,
   PLATES_LB,
   removePlate,
@@ -134,5 +135,26 @@ describe("a full bar", () => {
   it("is not full on a heavy day that still fits", () => {
     expect(platesFor(585).plates).toEqual([45, 45, 45, 45, 45, 45]);
     expect(platesFor(585).full).toBe(false);
+  });
+});
+
+/*
+  The plate loader used to be a pick between two that sat on every barbell
+  set whether she had ever wanted plates or not. Now it is offered or it is
+  not, and the first barbell lift asks.
+*/
+describe("offering plates", () => {
+  it("is her answer once she has given one", () => {
+    expect(offersPlates({ loadTheBar: true })).toBe(true);
+    expect(offersPlates({ loadTheBar: false, weightInput: "plates" })).toBe(false);
+  });
+
+  it("counts somebody who already used the switch as a yes", () => {
+    expect(offersPlates({ weightInput: "plates" })).toBe(true);
+    expect(offersPlates({ weightInput: "steppers" })).toBe(true);
+  });
+
+  it("is not asked yet when nothing says otherwise", () => {
+    expect(offersPlates({})).toBeUndefined();
   });
 });

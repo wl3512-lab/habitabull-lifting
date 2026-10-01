@@ -1,3 +1,5 @@
+import type { Profile } from "./types";
+
 /**
  * Loading a barbell, which is the one piece of arithmetic this app asks people
  * to do in their head.
@@ -95,6 +97,21 @@ export function removePlate(perSide: number[], plate: number): number[] {
   const i = perSide.indexOf(plate);
   if (i === -1) return perSide;
   return [...perSide.slice(0, i), ...perSide.slice(i + 1)];
+}
+
+/**
+ * Whether barbell lifts offer the plate loader.
+ *
+ * `loadTheBar` is her answer once she has given one. Before it existed the
+ * switch sat on every barbell set, so anybody with a `weightInput` has already
+ * met it and keeps it: nothing changes under a current tester. `undefined`
+ * means not asked yet, which is what puts the question on her first bar.
+ */
+export function offersPlates(
+  profile: Pick<Profile, "loadTheBar" | "weightInput">
+): boolean | undefined {
+  if (profile.loadTheBar !== undefined) return profile.loadTheBar;
+  return profile.weightInput ? true : undefined;
 }
 
 /**
