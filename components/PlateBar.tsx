@@ -44,7 +44,7 @@ export default function PlateBar({
     the progression engine seeding the next set, a swap, an import. The weight
     is the truth; the plates are a reading of it.
   */
-  const { plates, achieved, exact } = platesFor(weight, bar);
+  const { plates, achieved, exact, full } = platesFor(weight, bar);
 
   const set = (next: number[]) => onWeight(totalWeight(bar, next));
 
@@ -81,11 +81,21 @@ export default function PlateBar({
           : `${plates.map((p) => (p % 1 ? p : p.toFixed(0))).join(" · ")} a side`}
       </p>
 
-      {/* Not every number is loadable, and saying so beats rounding in silence. */}
+      {/*
+        Not every number is loadable, and saying so beats rounding in silence.
+        Two different reasons, and they get different sentences: a number the
+        plates cannot make, and a number bigger than the bar can hold, which
+        only the stepper can type since the plates stop at a full sleeve.
+      */}
       {!exact && (
         <p className="text-body text-fault">
-          {weight} lb needs a plate this gym may not have. Nearest is {achieved}.
+          {full && weight > achieved
+            ? `${weight} lb is more than a bar holds. Full, it is ${achieved}.`
+            : `${weight} lb needs a plate this gym may not have. Nearest is ${achieved}.`}
         </p>
+      )}
+      {full && exact && (
+        <p className="text-body text-dim">That is a full bar. Take a plate off to change it.</p>
       )}
 
       <div className="flex flex-wrap gap-1.5">
@@ -94,8 +104,9 @@ export default function PlateBar({
             key={p}
             type="button"
             onClick={() => set(addPlate(plates, p))}
+            disabled={full}
             aria-label={`Add one ${p} pound plate to each side`}
-            className="tabular head min-w-14 rounded-full bg-raise px-4 py-3 text-body text-fg transition-colors hover:bg-line"
+            className="tabular head min-w-14 rounded-full bg-raise px-4 py-3 text-body text-fg transition-colors hover:bg-line disabled:opacity-40 disabled:hover:bg-raise"
           >
             {p}
           </button>

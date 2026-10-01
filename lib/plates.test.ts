@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addPlate, DEFAULT_BAR_LB, platesFor, PLATES_LB, removePlate, totalWeight } from "./plates";
+import {
+  addPlate,
+  DEFAULT_BAR_LB,
+  MAX_PLATES_PER_SIDE,
+  platesFor,
+  PLATES_LB,
+  removePlate,
+  totalWeight,
+} from "./plates";
 
 describe("totalWeight", () => {
   it("counts both sides, which is the whole point", () => {
@@ -87,5 +95,44 @@ describe("adding and taking off", () => {
     for (const p of PLATES_LB) {
       expect(removePlate(addPlate([], p), p)).toEqual([]);
     }
+  });
+});
+
+/*
+  A tester tapped the 45 until the bar said 13,545 lb. Nothing in here knew a
+  sleeve fills up, so every tap was another plate, another "45 ·" in the line
+  under the drawing, and another sliver squeezed into a sleeve that had run out
+  of room long before.
+*/
+describe("a full bar", () => {
+  it("stops taking plates once the sleeve is full", () => {
+    let side: number[] = [];
+    for (let i = 0; i < 150; i++) side = addPlate(side, 45);
+    expect(side).toHaveLength(MAX_PLATES_PER_SIDE);
+    expect(totalWeight(DEFAULT_BAR_LB, side)).toBe(DEFAULT_BAR_LB + 2 * 45 * MAX_PLATES_PER_SIDE);
+  });
+
+  it("keeps a full sleeve as it was rather than swapping a plate out", () => {
+    const full = Array.from({ length: MAX_PLATES_PER_SIDE }, () => 45);
+    expect(addPlate(full, 2.5)).toBe(full);
+  });
+
+  it("never reads a number as more plates than a sleeve holds", () => {
+    const { plates, achieved, exact, full } = platesFor(2000);
+    expect(plates).toHaveLength(MAX_PLATES_PER_SIDE);
+    expect(achieved).toBe(DEFAULT_BAR_LB + 2 * 45 * MAX_PLATES_PER_SIDE);
+    expect(exact).toBe(false);
+    expect(full).toBe(true);
+  });
+
+  it("is full, and exact, at exactly what the sleeve holds", () => {
+    const most = DEFAULT_BAR_LB + 2 * 45 * MAX_PLATES_PER_SIDE;
+    expect(platesFor(most).exact).toBe(true);
+    expect(platesFor(most).full).toBe(true);
+  });
+
+  it("is not full on a heavy day that still fits", () => {
+    expect(platesFor(585).plates).toEqual([45, 45, 45, 45, 45, 45]);
+    expect(platesFor(585).full).toBe(false);
   });
 });

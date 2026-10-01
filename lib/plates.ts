@@ -19,6 +19,18 @@ export const DEFAULT_BAR_LB = 45;
 export const BAR_MIN = 0;
 export const BAR_MAX = 100;
 
+/**
+ * How many plates one end of the bar takes before the sleeve is full.
+ *
+ * A sleeve is about sixteen inches of loadable steel, which is ten iron 45s
+ * and not many more. It used to be unlimited, and a tester tapped the 45 until
+ * the bar said 13,545 lb: every tap another plate, another "45 ·" in the line
+ * under the drawing, until the list had pushed the rest of the screen out of
+ * reach. Ten 45s a side is 945 lb on a 45 bar, which is more than anybody
+ * logging a set in this app is going to put on it.
+ */
+export const MAX_PLATES_PER_SIDE = 10;
+
 /** What is actually on the bar: the bar itself, plus both sides. */
 export function totalWeight(bar: number, perSide: number[]): number {
   return round(bar + 2 * perSide.reduce((n, p) => n + p, 0));
@@ -32,26 +44,36 @@ export function totalWeight(bar: number, perSide: number[]): number {
  * the plates, because not every number is loadable: 47.5 on a 45 bar needs
  * 1.25 a side and most gyms do not have them. Saying so is better than
  * silently rounding a number somebody typed.
+ *
+ * It also stops at a full sleeve. The stepper goes to 2000, and a number that
+ * big read as plates used to come back as twenty-odd 45s a side, a drawing
+ * with no room for them. So it loads what fits, says it is not exact, and
+ * `full` tells the screen why.
  */
 export function platesFor(
   target: number,
   bar: number = DEFAULT_BAR_LB,
   available: readonly number[] = PLATES_LB
-): { plates: number[]; achieved: number; exact: boolean } {
+): { plates: number[]; achieved: number; exact: boolean; full: boolean } {
   const perSide = (target - bar) / 2;
   if (!Number.isFinite(perSide) || perSide <= 0) {
-    return { plates: [], achieved: round(bar), exact: round(bar) === round(target) };
+    return { plates: [], achieved: round(bar), exact: round(bar) === round(target), full: false };
   }
   const plates: number[] = [];
   let left = perSide;
   for (const p of [...available].sort((a, b) => b - a)) {
-    while (round(left) >= p) {
+    while (round(left) >= p && plates.length < MAX_PLATES_PER_SIDE) {
       plates.push(p);
       left = round(left - p);
     }
   }
   const achieved = totalWeight(bar, plates);
-  return { plates, achieved, exact: round(achieved) === round(target) };
+  return {
+    plates,
+    achieved,
+    exact: round(achieved) === round(target),
+    full: plates.length >= MAX_PLATES_PER_SIDE,
+  };
 }
 
 /**
@@ -59,8 +81,12 @@ export function platesFor(
  *
  * Order matters only because it is drawn: plates go on the bar big end in, so
  * a stack that is not sorted looks wrong to anybody who has loaded one.
+ *
+ * A full sleeve comes back as it was. Not a lighter plate swapped out to make
+ * room, because at a rack nobody takes a plate off by putting one on.
  */
 export function addPlate(perSide: number[], plate: number): number[] {
+  if (perSide.length >= MAX_PLATES_PER_SIDE) return perSide;
   return [...perSide, plate].sort((a, b) => b - a);
 }
 
