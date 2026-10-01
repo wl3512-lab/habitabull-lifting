@@ -628,6 +628,7 @@ function gallery(challenge: Challenge) {
             </Frame>
             <Frame n="14c" name="Build the week · describe it" note="The model picks day shapes and nothing else — full body, push, legs — from the same seven the list shows. Every exercise, set, rep and weight then comes out of the rules engine, so the worst a bad answer can do is put leg day on a Wednesday.">
               <RoutineEditor
+                initialDescribing
                 profile={f.profile}
                 routines={f.routines}
                 onSave={f.noop}

@@ -75,7 +75,7 @@ const SHOTS = [
   ["14", "14-routine-editor"],
   ["14d", "14d-blank-day", 620],
   ["14b", "14b-add-a-lift-ask", 1120],
-  ["14c", "14c-build-the-week", 480],
+  ["14c", "14c-build-the-week"],
   ["10", "10-crew"],
   ["10b", "10b-crew-joined"],
   ["10c", "10c-crew-join"],
