@@ -605,9 +605,9 @@ function gallery(challenge: Challenge) {
                 onBack={f.noop}
               />
             </Frame>
-<Frame n="14b" name="Add a lift · ask" note="For the person who does not know the names yet. The model only picks from the same shortlist the buttons show, and the server checks its answer against that list — the worst case is it suggesting what the screen would have suggested anyway. ">
+<Frame n="14b" name="Add a lift · search" note="One field, with the day's own lifts under it before anything is typed. It used to open on nine muscle chips, then a list, then three separate fields. Asking and adding a lift of your own only appear when a search finds nothing, using the words already typed; the model still only picks from lifts the day's muscles have, checked on the server.">
               <RoutineEditor
-                initialAdding="core"
+                initialAdding
                 profile={f.profile}
                 routines={f.routines}
                 onSave={f.noop}

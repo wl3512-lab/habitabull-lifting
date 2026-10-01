@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
@@ -39,6 +39,16 @@ const MUSCLES: { id: Muscle; label: string }[] = [
   { id: "core", label: "Core" },
 ];
 
+/* One lift's kit, said singular. Typed by Equipment so a new kind cannot go unnamed. */
+const KIT: Record<Equipment, string> = {
+  barbell: "Barbell",
+  dumbbell: "Dumbbell",
+  machine: "Machine",
+  kettlebell: "Kettlebell",
+  bodyweight: "Bodyweight",
+};
+const muscleName = (m: Muscle) => MUSCLES.find((x) => x.id === m)?.label ?? m;
+
 /**
  * Editing a day — the deck's second core journey (p28), and the last thing the
  * app could not do. Until now a routine was generated once at signup and was
@@ -62,7 +72,7 @@ export default function RoutineEditor({
   onSaveWorkout,
   onRemoveWorkout,
   onAddCustom,
-  initialAdding = null,
+  initialAdding = false,
   initialDescribing = false,
   onBack,
 }: {
@@ -86,7 +96,7 @@ export default function RoutineEditor({
   /** A lift the library does not have, added by hand. */
   onAddCustom?: (e: Exercise) => void;
   /** Opens straight into the picker, so /frames can show it. */
-  initialAdding?: Muscle | null;
+  initialAdding?: boolean;
   /** Opens with the describe-your-week field showing. Only /frames uses it. */
   initialDescribing?: boolean;
   onBack: () => void;
@@ -107,10 +117,13 @@ export default function RoutineEditor({
   });
   const [draft, setDraft] = useState<Routine[]>(days);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [adding, setAdding] = useState<Muscle | null>(initialAdding);
-  /* What she typed into the picker's search. Clears whenever it opens. */
+  const [adding, setAdding] = useState(initialAdding);
+  /*
+    What she typed into the picker's search. Clears whenever it opens. It is
+    also what "Ask for one" and "Add it as your own" send, so a search that
+    finds nothing has already said what she was after.
+  */
   const [hunt, setHunt] = useState("");
-  const [ask, setAsk] = useState("");
   const [asking, setAsking] = useState(false);
   const [suggested, setSuggested] = useState<{ id: string; why: string } | null>(null);
   const [weekAsk, setWeekAsk] = useState("");
@@ -130,25 +143,23 @@ export default function RoutineEditor({
   */
   const [describing, setDescribing] = useState(initialDescribing);
   /*
-    The nine muscle chips were open under every day, between the last lift and
-    Save. They are one row now, and open when she wants to add something.
+    The seven day types sat open on every visit, three rows of chips between
+    the day's name and its first lift. The chosen type is one line now, and
+    Change opens the chips in place; picking one closes them again.
   */
-  const [showMuscles, setShowMuscles] = useState(false);
+  const [kindOpen, setKindOpen] = useState(false);
   /*
-    Tapping "+ Add a lift" unmounts that button, which would drop focus to the
-    page. The first chip takes it instead, so keyboard and screen reader users
-    stay where they were.
+    Tapping "+ Add a lift" or a type chip unmounts what was pressed, which
+    would drop focus to the page. The search field and the Change link take it
+    instead, so keyboard and screen reader users stay where they were.
   */
-  const firstMuscle = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (showMuscles) firstMuscle.current?.focus();
-  }, [showMuscles]);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const changeRef = useRef<HTMLButtonElement>(null);
   // The chips are named by their short text, so the pressed one is described by
   // the hint, and the group is named by its label. Ids tie those together.
   const kindLabelId = useId();
   const hintId = useId();
   const [pane, setPane] = useState<"editor" | "workouts">("editor");
-  const [ownName, setOwnName] = useState("");
   const [ownBusy, setOwnBusy] = useState(false);
   /* Naming a workout to save. Closed until asked for, like the week textarea. */
   const [naming, setNaming] = useState(false);
@@ -177,11 +188,12 @@ export default function RoutineEditor({
    * is the one place here where being wrong could hurt somebody.
    */
   async function addOwn() {
-    const name = ownName.trim();
+    const name = hunt.trim();
     if (!name || ownBusy || !onAddCustom) return;
     setOwnBusy(true);
 
-    let muscle: Muscle = adding ?? "arms";
+    // Filed under the day's first muscle until the server says otherwise.
+    let muscle: Muscle = kind.muscles[0] ?? "arms";
     let equipment: Equipment = profile.equipment[0] ?? "dumbbell";
     let compound = false;
     try {
@@ -202,7 +214,6 @@ export default function RoutineEditor({
 
     const made = makeCustomExercise(name, muscle, equipment, compound);
     onAddCustom(made);
-    setOwnName("");
     setOwnBusy(false);
     add(made.id, made);
   }
@@ -256,14 +267,14 @@ export default function RoutineEditor({
   /**
    * "I don't know what I want to do for biceps."
    *
-   * The model only ever picks from the same shortlist the buttons above show,
-   * and the server checks its answer against that list before it comes back —
-   * so the worst case is the app suggesting what it would have suggested
-   * anyway. It never proposes a weight or a rep count; adding the lift runs
+   * Offered when a search finds nothing, with the words she already typed.
+   * The model only ever picks from the lifts this day's muscles have, and the
+   * server checks its answer against that list before it comes back, so the
+   * worst case is the app suggesting what it would have suggested anyway. It never proposes a weight or a rep count; adding the lift runs
    * the rules engine exactly as tapping the name does.
    */
   async function askAi() {
-    if (!adding || asking) return;
+    if (!adding || asking || !hunt.trim()) return;
     setAsking(true);
     setSuggested(null);
     try {
@@ -272,8 +283,8 @@ export default function RoutineEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           intent: "pick",
-          text: ask,
-          muscle: adding,
+          text: hunt,
+          muscles: kind.muscles,
           equipment: profile.equipment,
           exclude: used,
         }),
@@ -287,9 +298,25 @@ export default function RoutineEditor({
   }
 
   function closeAdd() {
-    (setHunt(""), setAdding(null));
-    setAsk("");
+    (setHunt(""), setAdding(false));
     setSuggested(null);
+  }
+
+  function openAdd() {
+    setHunt("");
+    setSuggested(null);
+    setOpenId(null);
+    setAdding(true);
+    requestAnimationFrame(() => searchRef.current?.focus());
+  }
+
+  /* The type chips close on Done and on a pick, and take what they said with them. */
+  function closeKinds() {
+    setKindOpen(false);
+    setDescribing(false);
+    setWeekWhy(null);
+    setWeekOffline(false);
+    requestAnimationFrame(() => changeRef.current?.focus());
   }
 
   const routine = draft[dayIndex];
@@ -368,6 +395,9 @@ export default function RoutineEditor({
    * is exempt: it is meant to vary, so it always rebuilds.
    */
   function setTemplate(id: TemplateId) {
+    // Pressing the type the day already is used to rebuild it, and full body
+    // rebuilds empty, so one tap on the pressed chip wiped the day.
+    if ((routine.template ?? "full-body") === id) return;
     const [rebuilt] = generateRoutine(
       profile.level,
       [routine.day],
@@ -404,7 +434,7 @@ export default function RoutineEditor({
       )
     );
     setOpenId(null);
-    (setHunt(""), setAdding(null));
+    (setHunt(""), setAdding(false));
   }
 
   /*
@@ -477,7 +507,7 @@ export default function RoutineEditor({
   function putOn(w: SavedWorkout) {
     setDraft(placeOn(draft, routine.day, w));
     setOpenId(null);
-    (setHunt(""), setAdding(null));
+    (setHunt(""), setAdding(false));
     setRemoving(null);
     setPane("editor");
     setSaidSo(`${FULL[routine.day]} is now ${w.name}.`);
@@ -493,6 +523,25 @@ export default function RoutineEditor({
   const suggestions = suggestFrom(profile.favourites ?? [], profile.equipment).filter(
     (sg) => !used.includes(sg.tryThis)
   );
+
+  /*
+    What the picker offers before she types: two lifts for each muscle this day
+    type trains, starred ones first. A pull day opens on rows and curls rather
+    than on a library she has to know the names in.
+  */
+  const searching = hunt.trim().length >= 2;
+  const found = searching ? searchLifts(hunt, profile.equipment, used) : [];
+  const picks =
+    kind.id === "cardio"
+      ? cardioLifts(used, profile.equipment)
+      : [
+          ...new Map(
+            [...new Set(kind.muscles)]
+              .flatMap((m) => alternativesFor(m, profile.equipment, used, profile.favourites ?? []).slice(0, 2))
+              .map((e) => [e.id, e])
+          ).values(),
+        ].slice(0, 6);
+  const kindsShown = kindOpen || describing || Boolean(weekWhy) || weekOffline;
 
   if (pane === "workouts") {
     return (
@@ -669,7 +718,10 @@ export default function RoutineEditor({
       </div>
 
       <h1 className="statement mt-2 text-figure text-fg">{FULL[routine.day]}</h1>
-      <p className="mt-1 text-emphasis text-dim">{kind.label}</p>
+      {/* The type has its own line in the card below, so this says what the day holds. */}
+      <p className="mt-1 text-emphasis text-dim">
+        {routine.exercises.length ? count(routine.exercises.length, "lift") : "No lifts yet"}
+      </p>
 
       {days.length > 1 && (
         <div className="mt-4 flex gap-2">
@@ -680,13 +732,13 @@ export default function RoutineEditor({
               onClick={() => {
                 setDayIndex(i);
                 setOpenId(null);
-                (setHunt(""), setAdding(null));
+                (setHunt(""), setAdding(false));
                 // Said about the day she has just left, so it does not follow
                 // her onto the next one.
                 setSaidSo(null);
                 setNaming(false);
                 setRemoving(null);
-                setShowMuscles(false);
+                setKindOpen(false);
               }}
               aria-pressed={i === dayIndex}
               className={`head h-11 flex-1 rounded-full border text-emphasis transition-colors duration-quick ${
@@ -709,104 +761,133 @@ export default function RoutineEditor({
 
       {/*
         The seven shapes used to be tall cards with a sentence each, 802px of
-        list before a single lift. As chips they take two rows, and only the
-        chosen one says what it is, which is the sentence that matters.
+        list before a single lift. As chips they took three rows on every
+        visit; now the chosen one is a line, and the chips open on Change.
       */}
       <section className="mt-4 rounded-2xl bg-card p-[18px]">
-        <p id={kindLabelId} className="label text-dim">What kind of day</p>
-        <div role="group" aria-labelledby={kindLabelId} className="mt-3 flex flex-wrap gap-2">
-          {ownWorkouts && (
-            <button
-              type="button"
-              onClick={() => {
-                closeAdd();
-                setPane("workouts");
-                setRemoving(null);
-              }}
-              className="head h-11 rounded-full border border-line-strong px-4 text-body text-fg transition-colors duration-quick hover:border-fg"
-            >
-              {ownWorkouts.label}
-              {mine.length > 0 && ` · ${mine.length}`}
-            </button>
-          )}
-          {TEMPLATES.map((t) => {
-            const on = (routine.template ?? "full-body") === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTemplate(t.id)}
-                aria-pressed={on}
-                aria-describedby={on ? hintId : undefined}
-                className={`head h-11 rounded-full border px-4 text-body transition-colors duration-quick ${
-                  on ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg hover:text-fg"
-                }`}
-              >
-                {t.short}
-              </button>
-            );
-          })}
+        <div className="flex items-baseline justify-between gap-3">
+          <p id={kindLabelId} className="label text-dim">What kind of day</p>
+          <button
+            ref={changeRef}
+            type="button"
+            onClick={() => (kindsShown ? closeKinds() : setKindOpen(true))}
+            aria-expanded={kindsShown}
+            className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
+          >
+            {kindsShown ? "Done" : "Change"}
+          </button>
         </div>
-        <p id={hintId} aria-live="polite" className="mt-3 text-body leading-snug text-dim">
-          {kind.hint}
-          {kind.recommended && (
-            <span className="label ml-2 text-cyan">Recommended</span>
-          )}
-        </p>
 
-        {describing || weekWhy || weekOffline ? (
-          <div className="mt-4 border-t border-line pt-4">
-            <p className="label text-dim">Or describe your week</p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void buildWeek();
-              }}
-              className="mt-2.5 flex items-center gap-2.5"
-            >
-              <input
-                value={weekAsk}
-                onChange={(e) => setWeekAsk(e.target.value)}
-                maxLength={200}
-                autoFocus={describing && !initialDescribing}
-                placeholder="I want to focus on legs, and one easy day"
-                aria-label="Describe the week you want"
-                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
-              />
-              <button
-                type="submit"
-                disabled={!weekAsk.trim() || weekBusy}
-                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
+        {kindsShown ? (
+          <div className="rise">
+            <div role="group" aria-labelledby={kindLabelId} className="mt-3 flex flex-wrap gap-2">
+              {ownWorkouts && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeAdd();
+                    setPane("workouts");
+                    setRemoving(null);
+                  }}
+                  className="head h-11 rounded-full border border-line-strong px-4 text-body text-fg transition-colors duration-quick hover:border-fg"
+                >
+                  {ownWorkouts.label}
+                  {mine.length > 0 && ` · ${mine.length}`}
+                </button>
+              )}
+              {TEMPLATES.map((t) => {
+                const on = (routine.template ?? "full-body") === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setTemplate(t.id);
+                      closeKinds();
+                    }}
+                    aria-pressed={on}
+                    aria-describedby={on ? hintId : undefined}
+                    className={`head h-11 rounded-full border px-4 text-body transition-colors duration-quick ${
+                      on ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg hover:text-fg"
+                    }`}
+                  >
+                    {t.short}
+                  </button>
+                );
+              })}
+            </div>
+            <p id={hintId} aria-live="polite" className="mt-3 text-body leading-snug text-dim">
+              {kind.hint}
+              {kind.recommended && (
+                <span className="label ml-2 text-cyan">Recommended</span>
+              )}
+            </p>
+
+          {describing || weekWhy || weekOffline ? (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="label text-dim">Or describe your week</p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void buildWeek();
+                }}
+                className="mt-2.5 flex items-center gap-2.5"
               >
-                {weekBusy ? "…" : "Build"}
+                <input
+                  value={weekAsk}
+                  onChange={(e) => setWeekAsk(e.target.value)}
+                  maxLength={200}
+                  autoFocus={describing && !initialDescribing}
+                  placeholder="I want to focus on legs, and one easy day"
+                  aria-label="Describe the week you want"
+                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+                />
+                <button
+                  type="submit"
+                  disabled={!weekAsk.trim() || weekBusy}
+                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
+                >
+                  {weekBusy ? "…" : "Build"}
+                </button>
+              </form>
+              {weekWhy && (
+                <p role="status" className="mt-2.5 text-body leading-snug text-dim">
+                  {weekWhy} Change any day above.
+                </p>
+              )}
+              {weekOffline && (
+                <p role="status" className="mt-2.5 text-body leading-snug text-dim">
+                  No signal, so this one cannot answer. Pick the day types above and you
+                  get the same week without it.
+                </p>
+              )}
+            </div>
+          ) : (
+            // .tap carries its own unlayered -12px margin, which beats Tailwind's
+            // layered mt-3, so the spacing lives on a wrapper. It is mt-5 because
+            // 12px of it is cancelled by that margin, leaving the hit area clear
+            // of the hint and the words 20px below it.
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setDescribing(true)}
+                className="head tap text-body text-cyan transition-opacity hover:opacity-70"
+              >
+                Or describe your week
               </button>
-            </form>
-            {weekWhy && (
-              <p role="status" className="mt-2.5 text-body leading-snug text-dim">
-                {weekWhy} Change any day above.
-              </p>
-            )}
-            {weekOffline && (
-              <p role="status" className="mt-2.5 text-body leading-snug text-dim">
-                No signal, so this one cannot answer. Pick the day types above and you
-                get the same week without it.
-              </p>
-            )}
+            </div>
+          )}
           </div>
         ) : (
-          // .tap carries its own unlayered -12px margin, which beats Tailwind's
-          // layered mt-3, so the spacing lives on a wrapper. It is mt-5 because
-          // 12px of it is cancelled by that margin, leaving the hit area clear
-          // of the hint and the words 20px below it.
-          <div className="mt-5">
-            <button
-              type="button"
-              onClick={() => setDescribing(true)}
-              className="head tap text-body text-cyan transition-opacity hover:opacity-70"
-            >
-              Or describe your week
-            </button>
-          </div>
+          <>
+            <p className="head mt-2 text-head text-fg">{kind.label}</p>
+            <p className="mt-0.5 text-body leading-snug text-dim">
+              {kind.hint}
+              {kind.recommended && (
+                <span className="label ml-2 text-cyan">Recommended</span>
+              )}
+            </p>
+          </>
         )}
 
         {/*
@@ -822,7 +903,13 @@ export default function RoutineEditor({
         )}
       </section>
 
-      <ul className="mt-2.5 flex flex-col gap-2">
+      {/*
+        One card with the rows divided, the way Profile lists the plan, rather
+        than a card per lift: five lifts used to cost four gaps and ten 18px
+        paddings before the first of them ended.
+      */}
+      {routine.exercises.length > 0 && (
+      <ul className="mt-2.5 overflow-hidden rounded-2xl bg-card">
         {routine.exercises.map((e) => {
           const meta = byId(e.exerciseId);
           const open = openId === e.exerciseId;
@@ -839,12 +926,12 @@ export default function RoutineEditor({
               ? cardioLifts(used, profile.equipment)
               : alternativesFor(meta.primary, profile.equipment, used, profile.favourites ?? []);
           return (
-            <li key={e.exerciseId} className="rounded-2xl bg-card">
+            <li key={e.exerciseId} className="border-t border-line first:border-t-0">
               <button
                 type="button"
                 onClick={() => setOpenId(open ? null : e.exerciseId)}
                 aria-expanded={open}
-                className="flex w-full items-center justify-between gap-3 p-[18px] text-left"
+                className="flex min-h-14 w-full items-center justify-between gap-3 px-[18px] py-3 text-left transition-colors hover:bg-raise/40 focus-visible:-outline-offset-2!"
               >
                 <span className="min-w-0">
                   <span className="head block truncate text-emphasis text-fg">
@@ -978,220 +1065,191 @@ export default function RoutineEditor({
           );
         })}
       </ul>
+      )}
 
       {/*
         The one empty state, now that a day type arrives empty rather than
         pre-filled. Three ways out of it and they are genuinely different
-        answers: choose the lifts, have the app choose them, or let the day
-        stay a rest day.
+        answers: have the app choose the lifts, choose them, or let the day stay
+        a rest day. It used to be a sentence, a button, a second sentence and a
+        dashed box further down; it is one sentence and the two answers that
+        need a tap. Both are outlines: Save is this screen's one fill.
       */}
-      {routine.exercises.length === 0 && (
+      {routine.exercises.length === 0 && !adding && (
         <div className="mt-4">
           <p className="text-body leading-snug text-dim">
-            Nothing on this day. Add a lift below, or leave it as a rest day.
+            Nothing on this day yet. Have the app fill it with {kind.label.toLowerCase()} work,
+            choose the lifts yourself, or leave it as a rest day.
           </p>
-          <Pill size="sm" variant="ghost" className="mt-3" onClick={autofill}>
-            Autofill for me
-          </Pill>
-          <p className="mt-2 text-body leading-snug text-dim">
-            Fills it with {kind.label.toLowerCase()} work
-            the app picks, for your level and your kit. Change anything after.
-          </p>
+          <div className="mt-3 flex flex-wrap gap-2.5">
+            <Pill size="sm" variant="ghost" onClick={autofill}>
+              Autofill for me
+            </Pill>
+            <Pill size="sm" variant="ghost" onClick={openAdd}>
+              Choose a lift
+            </Pill>
+          </div>
         </div>
       )}
 
       {adding ? (
         <div className="rise mt-2.5 rounded-2xl bg-card p-[18px]">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="label text-dim">Pick a {adding} lift</p>
+            <p className="label text-dim">Add a lift</p>
             <button
               type="button"
               onClick={closeAdd}
-              className="head tap shrink-0 text-body text-cyan"
+              className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
               Cancel
             </button>
           </div>
           {/*
-            Search across the whole library, not just this muscle.
+            One field, and the day's own lifts under it before she types.
 
-            The list below is filed by muscle, which is right for browsing and
-            wrong for looking something up: a seated leg curl lives under
-            hamstrings, and somebody standing at the machine is thinking "leg
-            curl". It was in the library the whole time and could not be found,
-            which from her side is the same as it not being there.
+            It used to open on nine muscle chips, then a list of names for the
+            one she picked, then a search, then "Not sure?" and "Not listed?",
+            each with a field of its own: three places to type before the first
+            lift. Search covers the whole library, filed by name, because
+            somebody standing at a machine is thinking "leg curl", not
+            "hamstrings". Asking and adding her own only come up when a search
+            finds nothing, using the words she already typed.
           */}
           <input
+            ref={searchRef}
             value={hunt}
-            onChange={(e) => setHunt(e.target.value)}
+            onChange={(e) => {
+              setHunt(e.target.value);
+              setSuggested(null);
+            }}
             placeholder="Search every lift"
             aria-label="Search every lift by name"
-            className="mt-3 h-12 w-full rounded-full bg-raise px-[18px] text-body text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+            className="mt-3 h-12 w-full rounded-full bg-raise px-[18px] text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
           />
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(hunt.trim().length >= 2
-              ? searchLifts(hunt, profile.equipment, [...used])
-              : alternativesFor(adding, profile.equipment, used, profile.favourites ?? [])
-            ).map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => add(a.id)}
-                className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
-              >
-                {a.name}
-              </button>
-            ))}
-          </div>
-          {hunt.trim().length >= 2 &&
-            searchLifts(hunt, profile.equipment, [...used]).length === 0 && (
-              <p className="mt-2.5 text-body text-dim">
-                Nothing by that name in your kit. You can add it yourself below.
+
+          {searching && found.length === 0 ? (
+            <div className="mt-4" aria-live="polite">
+              <p className="text-body leading-snug text-dim">
+                Nothing called &ldquo;{hunt.trim()}&rdquo; in your kit.
               </p>
-            )}
-
-          {/*
-            For the person who does not know the names yet. It sits under the
-            list, not instead of it: someone who knows what they want should
-            never have to talk to anything.
-          */}
-          <div className="mt-4 border-t border-line pt-4">
-            <p className="label text-dim">Not sure?</p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void askAi();
-              }}
-              className="mt-2.5 flex items-center gap-2.5"
-            >
-              <input
-                value={ask}
-                onChange={(e) => setAsk(e.target.value)}
-                maxLength={200}
-                placeholder={`Something for ${adding} that is easy on the wrists`}
-                aria-label={`Ask for help choosing a ${adding} lift`}
-                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
-              />
-              <button
-                type="submit"
-                disabled={!ask.trim() || asking}
-                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
-              >
-                {asking ? "…" : "Ask"}
-              </button>
-            </form>
-
-            {/*
-            Adding a lift the app does not have. Under the shortlist and under
-            the ask, because it is the last resort of the three, not the first.
-          */}
-          {onAddCustom && (
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="label text-dim">Not listed?</p>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void addOwn();
-                }}
-                className="mt-2.5 flex items-center gap-2.5"
-              >
-                <input
-                  value={ownName}
-                  onChange={(e) => setOwnName(e.target.value)}
-                  maxLength={40}
-                  placeholder="Cable crossover"
-                  aria-label="The name of a lift to add yourself"
-                  className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
-                />
-                <button
-                  type="submit"
-                  disabled={!ownName.trim() || ownBusy}
-                  className="head grid h-11 shrink-0 place-items-center rounded-full bg-raise px-5 text-body text-cyan transition-opacity disabled:opacity-30"
-                >
-                  {ownBusy ? "…" : "Add"}
-                </button>
-              </form>
-              <p className="mt-2 text-body leading-snug text-dim">
-                Type the name and it gets filed for you. There is no form guidance for a
-                lift you added — that part only exists where a person wrote it.
-              </p>
-            </div>
-          )}
-
-          {suggested && byId(suggested.id) && (
-              <div role="status" className="mt-3 rounded-xl bg-raise/50 p-3.5">
-                <p className="head text-emphasis text-fg">{nameOf(suggested.id)}</p>
-                {suggested.why && (
-                  <p className="mt-1 text-body leading-snug text-dim">{suggested.why}</p>
+              <div className="mt-3 flex flex-wrap gap-2.5">
+                {/* Cardio has no muscle list to choose among, so it is not asked. */}
+                {kind.id !== "cardio" && (
+                  <Pill size="sm" variant="ghost" onClick={() => void askAi()} disabled={asking}>
+                    {asking ? "Asking…" : "Ask for one"}
+                  </Pill>
                 )}
-                <button
-                  type="button"
-                  onClick={() => add(suggested.id)}
-                  className="head tap mt-2 text-body text-cyan transition-opacity hover:opacity-70"
-                >
-                  Add it
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="mt-2.5 rounded-2xl bg-card p-[18px]">
-          {showMuscles ? (
-            <>
-              <p className="label text-dim">Add a lift</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {MUSCLES.map((m) => (
-                  <button
-                    key={m.id}
-                    ref={m.id === MUSCLES[0].id ? firstMuscle : undefined}
-                    type="button"
-                    onClick={() => (setHunt(""), setAdding(m.id))}
-                    className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
+                {onAddCustom && (
+                  <Pill
+                    size="sm"
+                    variant="ghost"
+                    className="max-w-full truncate"
+                    onClick={() => void addOwn()}
+                    disabled={ownBusy}
                   >
-                    {m.label}
-                  </button>
-                ))}
+                    {ownBusy ? "Adding…" : <>Add &ldquo;{hunt.trim()}&rdquo; as your own</>}
+                  </Pill>
+                )}
               </div>
-            </>
+              {onAddCustom && (
+                <p className="mt-2 text-body leading-snug text-dim">
+                  A lift you add gets filed for you, but has no form guidance. That
+                  part only exists where a person wrote it.
+                </p>
+              )}
+              {suggested && byId(suggested.id) && (
+                <div role="status" className="mt-3 rounded-xl bg-raise/50 p-3.5">
+                  <p className="head text-emphasis text-fg">{nameOf(suggested.id)}</p>
+                  {suggested.why && (
+                    <p className="mt-1 text-body leading-snug text-dim">{suggested.why}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => add(suggested.id)}
+                    className="head tap mt-2 text-body text-cyan transition-opacity hover:opacity-70"
+                  >
+                    Add it
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (searching ? found : picks).length === 0 ? (
+            <p className="mt-4 text-body leading-snug text-dim">
+              Everything that fits a {kind.label.toLowerCase()} is already on this day. Search the whole library above.
+            </p>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowMuscles(true)}
-              className="head flex h-12 w-full items-center justify-center rounded-xl border border-dashed border-line-strong text-body text-cyan transition-colors hover:border-fg"
-            >
-              + Add a lift
-            </button>
-          )}
-          {suggestions.length > 0 && (
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="label text-dim">Because of what you starred</p>
-              <ul className="mt-2.5 flex flex-col gap-2">
-                {suggestions.map((sg) => (
-                  <li key={sg.tryThis}>
+            <>
+              <p className="label mt-5 text-dim">
+                {searching ? "In your kit" : `Suggested for ${kind.label.toLowerCase()}`}
+              </p>
+              <ul className="mt-1.5">
+                {(searching ? found : picks).map((a) => (
+                  <li key={a.id} className="border-t border-line first:border-t-0">
                     <button
                       type="button"
-                      onClick={() => add(sg.tryThis)}
-                      className="w-full rounded-xl bg-raise/50 p-3.5 text-left transition-colors hover:bg-raise"
+                      onClick={() => add(a.id)}
+                      aria-label={`Add ${a.name}`}
+                      className="flex min-h-14 w-full items-center justify-between gap-3 py-2.5 text-left transition-opacity hover:opacity-80 focus-visible:-outline-offset-2!"
                     >
-                      <span className="head block text-emphasis text-fg">{nameOf(sg.tryThis)}</span>
-                      <span className="block text-body text-dim">
-                        You star {nameOf(sg.because)} — same muscle, different feel.
+                      <span className="min-w-0">
+                        <span className="head block truncate text-emphasis text-fg">{a.name}</span>
+                        <span className="block truncate text-body text-dim">
+                          {a.cardio ? "Cardio" : muscleName(a.primary)} · {KIT[a.equipment]}
+                        </span>
+                      </span>
+                      <span aria-hidden className="shrink-0 text-head leading-none text-cyan">
+                        +
                       </span>
                     </button>
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {profile.level === "new" && (
-            <p className="mt-3 text-body text-dim">
-              Your days are full body on purpose. Hitting everything twice a week beats a
-              clever split you have to remember.
-            </p>
+            </>
           )}
         </div>
+      ) : (
+        (routine.exercises.length > 0 || suggestions.length > 0 || profile.level === "new") && (
+          <div className="mt-2.5 rounded-2xl bg-card p-[18px]">
+            {/* An empty day has its own Choose a lift above, so it does not get two. */}
+            {routine.exercises.length > 0 && (
+              <button
+                type="button"
+                onClick={openAdd}
+                className="head flex h-12 w-full items-center justify-center rounded-xl border border-dashed border-line-strong text-body text-cyan transition-colors hover:border-fg"
+              >
+                + Add a lift
+              </button>
+            )}
+            {suggestions.length > 0 && (
+              <div className={routine.exercises.length > 0 ? "mt-4 border-t border-line pt-4" : ""}>
+                <p className="label text-dim">Because of what you starred</p>
+                <ul className="mt-2.5 flex flex-col gap-2">
+                  {suggestions.map((sg) => (
+                    <li key={sg.tryThis}>
+                      <button
+                        type="button"
+                        onClick={() => add(sg.tryThis)}
+                        className="w-full rounded-xl bg-raise/50 p-3.5 text-left transition-colors hover:bg-raise"
+                      >
+                        <span className="head block text-emphasis text-fg">{nameOf(sg.tryThis)}</span>
+                        <span className="block text-body text-dim">
+                          You star {nameOf(sg.because)}. Same muscle, different feel.
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {profile.level === "new" && (
+              <p className={`text-body text-dim ${routine.exercises.length > 0 || suggestions.length > 0 ? "mt-3" : ""}`}>
+                Your days are full body on purpose. Hitting everything twice a week beats a
+                clever split you have to remember.
+              </p>
+            )}
+          </div>
+        )
       )}
 
       {/*
