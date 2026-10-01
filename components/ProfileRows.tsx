@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 /**
  * Profile as rows: a label, its value, and a way in.
@@ -15,13 +15,19 @@ import type { ReactNode } from "react";
  * the targets on a screen people visit rarely and should not have to aim at.
  */
 
-const ROW = "flex min-h-14 w-full items-center justify-between gap-3 px-[18px] py-3 text-left";
+// The ring is drawn inward because the rows run edge to edge inside a card that
+// clips its overflow, so the global 2px outset ring would be cut off.
+const ROW =
+  "flex min-h-14 w-full items-center justify-between gap-3 px-[18px] py-3 text-left transition-colors hover:bg-raise/40 -outline-offset-2";
 const DIVIDED = "border-t border-line first:border-t-0";
 
 export function RowGroup({ title, children }: { title: string; children: ReactNode }) {
+  const id = useId();
   return (
-    <section className="mt-6">
-      <p className="label text-dim">{title}</p>
+    <section aria-labelledby={id} className="mt-6">
+      <h2 id={id} className="label text-dim">
+        {title}
+      </h2>
       <div className="mt-2.5 overflow-hidden rounded-2xl bg-card">{children}</div>
     </section>
   );
@@ -60,7 +66,7 @@ export function ExpandRow({
         type="button"
         aria-expanded={open}
         onClick={onToggle}
-        className={`${ROW} transition-colors hover:bg-raise/40`}
+        className={ROW}
       >
         <span className="shrink-0 text-emphasis text-fg">{label}</span>
         <Value value={value} turned={open} />
@@ -81,7 +87,7 @@ export function LinkRow({
 }) {
   return (
     <div className={DIVIDED}>
-      <button type="button" onClick={onClick} className={`${ROW} transition-colors hover:bg-raise/40`}>
+      <button type="button" onClick={onClick} className={ROW}>
         <span className="shrink-0 text-emphasis text-fg">{label}</span>
         <Value value={value} />
       </button>
@@ -100,19 +106,40 @@ export function SwitchRow({
   on: boolean;
   onChange: (next: boolean) => void;
 }) {
+  // The hint is a description, not part of the name, so a screen reader says
+  // "Reminders, switch, on" and then the hint, not one long label.
+  // Track is 52x30 with a 2px border, so its padding box is 48x26. The 20px knob
+  // sits 3px from the top, bottom and left edge, and slides 22px to sit 3px from
+  // the right. The border is always present, transparent when on, so nothing shifts.
+  const labelId = useId();
+  const hintId = useId();
   return (
     <div className={DIVIDED}>
-      <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className={ROW}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-labelledby={labelId}
+        aria-describedby={hint ? hintId : undefined}
+        onClick={() => onChange(!on)}
+        className={ROW}
+      >
         <span className="min-w-0">
-          <span className="block text-emphasis text-fg">{label}</span>
-          {hint && <span className="mt-0.5 block text-caption leading-snug text-dim">{hint}</span>}
+          <span id={labelId} className="block text-emphasis text-fg">
+            {label}
+          </span>
+          {hint && (
+            <span id={hintId} className="mt-0.5 block text-caption leading-snug text-dim">
+              {hint}
+            </span>
+          )}
         </span>
         <span
           aria-hidden
-          className={`relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-quick ${on ? "bg-cyan" : "bg-raise"}`}
+          className={`relative h-[30px] w-[52px] shrink-0 rounded-full border-2 transition-colors duration-quick ${on ? "border-transparent bg-cyan" : "border-line-strong bg-raise"}`}
         >
           <span
-            className={`absolute top-[3px] h-6 w-6 rounded-full bg-ground transition-[left] duration-quick ${on ? "left-[25px]" : "left-[3px]"}`}
+            className={`absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-ground transition-transform duration-quick ${on ? "translate-x-[22px]" : "translate-x-0"}`}
           />
         </span>
       </button>
