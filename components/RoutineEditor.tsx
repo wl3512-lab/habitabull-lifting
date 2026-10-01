@@ -63,6 +63,7 @@ export default function RoutineEditor({
   onRemoveWorkout,
   onAddCustom,
   initialAdding = null,
+  initialDescribing = false,
   onBack,
 }: {
   profile: Profile;
@@ -86,6 +87,8 @@ export default function RoutineEditor({
   onAddCustom?: (e: Exercise) => void;
   /** Opens straight into the picker, so /frames can show it. */
   initialAdding?: Muscle | null;
+  /** Opens with the describe-your-week field showing. Only /frames uses it. */
+  initialDescribing?: boolean;
   onBack: () => void;
 }) {
   const days = [...routines].sort((a, b) => a.day - b.day);
@@ -120,6 +123,12 @@ export default function RoutineEditor({
     them out of the same variable is how a failure ends up phrased as a reason.
   */
   const [weekOffline, setWeekOffline] = useState(false);
+  /*
+    "Or describe your week" is for the person who does not know what a split
+    is, and it used to sit open under the list for everybody. It is a link
+    now; it stays open while it has something to say back.
+  */
+  const [describing, setDescribing] = useState(initialDescribing);
   const [pane, setPane] = useState<"editor" | "workouts">("editor");
   const [ownName, setOwnName] = useState("");
   const [ownBusy, setOwnBusy] = useState(false);
@@ -675,9 +684,14 @@ export default function RoutineEditor({
         </p>
       )}
 
+      {/*
+        The seven shapes used to be tall cards with a sentence each, 802px of
+        list before a single lift. As chips they take two rows, and only the
+        chosen one says what it is, which is the sentence that matters.
+      */}
       <section className="mt-4 rounded-2xl bg-card p-[18px]">
         <p className="label text-dim">What kind of day</p>
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {ownWorkouts && (
             <button
               type="button"
@@ -686,10 +700,9 @@ export default function RoutineEditor({
                 setPane("workouts");
                 setRemoving(null);
               }}
-              className="rounded-xl border border-transparent bg-raise/40 p-3.5 text-left transition-colors duration-quick hover:bg-raise/70"
+              className="head h-11 rounded-full border border-line-strong px-4 text-body text-fg transition-colors duration-quick hover:border-fg"
             >
-              <span className="head block text-emphasis text-fg">{ownWorkouts.label}</span>
-              <span className="block text-body text-dim">{ownWorkouts.hint}</span>
+              {ownWorkouts.label}
             </button>
           )}
           {TEMPLATES.map((t) => {
@@ -700,68 +713,76 @@ export default function RoutineEditor({
                 type="button"
                 onClick={() => setTemplate(t.id)}
                 aria-pressed={on}
-                className={`rounded-xl border p-3.5 text-left transition-colors duration-quick ${
-                  on ? "border-cyan bg-raise" : "border-transparent bg-raise/40 hover:bg-raise/70"
+                aria-label={t.label}
+                className={`head h-11 rounded-full border px-4 text-body transition-colors duration-quick ${
+                  on ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg hover:text-fg"
                 }`}
               >
-                <span className="head flex items-baseline gap-2 text-emphasis text-fg">
-                  {t.label}
-                  {t.recommended && (
-                    <span className="label text-cyan">Recommended</span>
-                  )}
-                </span>
-                <span className="block text-body text-dim">{t.hint}</span>
+                {t.short}
               </button>
             );
           })}
         </div>
-        {/*
-          For the person who does not know what a split is. It sits under the
-          shapes, never instead of them: anyone who knows what they want taps
-          the list and never sees a text field.
-        */}
-        <div className="mt-4 border-t border-line pt-4">
-          <p className="label text-dim">Or describe your week</p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void buildWeek();
-            }}
-            className="mt-2.5 flex items-center gap-2.5"
-          >
-            <input
-              value={weekAsk}
-              onChange={(e) => setWeekAsk(e.target.value)}
-              maxLength={200}
-              placeholder="I want to focus on legs, and one easy day"
-              aria-label="Describe the week you want"
-              className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
-            />
-            <button
-              type="submit"
-              disabled={!weekAsk.trim() || weekBusy}
-              className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
+        <p className="mt-3 text-body leading-snug text-dim">
+          {templateOf(routine.template ?? "full-body").hint}
+          {templateOf(routine.template ?? "full-body").recommended && (
+            <span className="label ml-2 text-cyan">Recommended</span>
+          )}
+        </p>
+
+        {describing || weekWhy || weekOffline ? (
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="label text-dim">Or describe your week</p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void buildWeek();
+              }}
+              className="mt-2.5 flex items-center gap-2.5"
             >
-              {weekBusy ? "…" : "Build"}
-            </button>
-          </form>
-          {weekWhy && (
-            <p role="status" className="mt-2.5 text-body leading-snug text-dim">
-              {weekWhy} Change any day above.
-            </p>
-          )}
-          {weekOffline && (
-            <p role="status" className="mt-2.5 text-body leading-snug text-dim">
-              No signal, so this one cannot answer. Pick the day types above and you
-              get the same week without it.
-            </p>
-          )}
-        </div>
+              <input
+                value={weekAsk}
+                onChange={(e) => setWeekAsk(e.target.value)}
+                maxLength={200}
+                autoFocus={describing && !initialDescribing}
+                placeholder="I want to focus on legs, and one easy day"
+                aria-label="Describe the week you want"
+                className="min-w-0 flex-1 rounded-full bg-raise px-[18px] py-3 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
+              />
+              <button
+                type="submit"
+                disabled={!weekAsk.trim() || weekBusy}
+                className="head grid h-11 shrink-0 place-items-center rounded-full bg-cyan px-5 text-body text-ground transition-opacity disabled:opacity-30"
+              >
+                {weekBusy ? "…" : "Build"}
+              </button>
+            </form>
+            {weekWhy && (
+              <p role="status" className="mt-2.5 text-body leading-snug text-dim">
+                {weekWhy} Change any day above.
+              </p>
+            )}
+            {weekOffline && (
+              <p role="status" className="mt-2.5 text-body leading-snug text-dim">
+                No signal, so this one cannot answer. Pick the day types above and you
+                get the same week without it.
+              </p>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setDescribing(true)}
+            className="head tap mt-3 text-body text-cyan transition-opacity hover:opacity-70"
+          >
+            Or describe your week
+          </button>
+        )}
 
         {/*
           One honest line, not a block. Three days of push/pull/legs trains each
-          group once a week, and ACSM's whole point is that twice is what counts
-          — she should know that and then decide for herself.
+          group once a week, and ACSM's whole point is that twice is what counts.
+          She should know that and then decide for herself.
         */}
         {!thorough && (
           <p className="mt-3 text-body text-dim">
