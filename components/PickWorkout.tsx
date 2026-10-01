@@ -5,6 +5,7 @@ import { adjustedLine, readConstraints } from "@/lib/adjust";
 import type { Constraints } from "@/lib/constraints";
 import { nameOf } from "@/lib/exercises";
 import { generateRoutine } from "@/lib/engine";
+import { count } from "@/lib/plural";
 import { libraryChoices, sameLineup, weekChoices } from "@/lib/workouts";
 import { TEMPLATES } from "@/lib/templates";
 import type { PlannedExercise, Profile, Routine, SavedWorkout } from "@/lib/types";
@@ -20,7 +21,10 @@ export interface WorkoutChoice {
 }
 
 /**
- * Training on a day the plan says rest.
+ * The list of workouts to start today: on a day the plan says rest, and on a
+ * planned day, where the plan is the first card and the rest is a switch.
+ *
+ * On a rest day:
  *
  * "Train anyway" used to pull up whichever day came next in the rotation and
  * open it, which answers a question nobody asked. Somebody training on a rest
@@ -94,6 +98,20 @@ export default function PickWorkout({
   const [note, setNote] = useState("");
   const [asking, setAsking] = useState(false);
 
+  /*
+    The read can be slow, and she is not frozen while it runs. If she has since
+    left this screen (the list unmounted because something started), applying
+    the answer would rebuild today's session and jump to Today underneath
+    whatever she is now doing.
+  */
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
   async function submitAdjust() {
     const text = note.trim();
     if (!text || !onAdjust) return;
@@ -105,6 +123,7 @@ export default function PickWorkout({
       // Reset even if the read ever rejects, so the box is never stuck asking.
       setAsking(false);
     }
+    if (!alive.current) return;
     onAdjust(read.constraints, adjustedLine(read.constraints, read.offline));
   }
 
@@ -119,6 +138,14 @@ export default function PickWorkout({
     if (wasAdjusting.current && !adjusting) adjustButton.current?.focus();
     wasAdjusting.current = adjusting;
   }, [adjusting]);
+
+  /*
+    A planned day with no lifts yet has nothing to start, so it gets no card
+    and no "Or switch to": the list reads like the rest-day list. The card also
+    needs a way to start, or its button would do nothing; with no handler it is
+    not drawn rather than drawn dead.
+  */
+  const showPlanned = Boolean(planned && planned.exercises.length > 0 && onStartPlanned);
 
   const isPlanned = (lineup: PlannedExercise[]) =>
     Boolean(planned && sameLineup(planned.exercises, lineup));
@@ -199,12 +226,13 @@ export default function PickWorkout({
         type="button"
         onClick={onClick}
         aria-label={`Start ${title}: ${lifts(exercises)}`}
-        className="w-full rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
+        disabled={asking}
+        className="w-full rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise disabled:opacity-40"
       >
         <div className="flex items-baseline justify-between gap-3">
           <span className="head text-head text-fg">{title}</span>
           <span className="tabular shrink-0 text-body text-cyan">
-            {exercises.length} {exercises.length === 1 ? "lift" : "lifts"}
+            {count(exercises.length, "lift")}
           </span>
         </div>
         <span className="mt-1 block text-body leading-snug text-dim">{lifts(exercises)}</span>
@@ -223,7 +251,8 @@ export default function PickWorkout({
         <button
           type="button"
           onClick={onBack}
-          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
+          disabled={asking}
+          className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70 disabled:opacity-40"
         >
           Cancel
         </button>
@@ -236,13 +265,14 @@ export default function PickWorkout({
           : "Training today does not move your week. Whatever you pick is a one-off, and tomorrow is still whatever it was."}
       </p>
 
-      {planned && (
+      {planned && showPlanned && (
         <section className="mt-6">
           <div className="rounded-2xl border-[1.5px] border-action bg-card">
             <button
               type="button"
               onClick={onStartPlanned}
-              className="w-full p-[18px] text-left"
+              disabled={asking}
+              className="w-full p-[18px] text-left disabled:opacity-40"
             >
               {/* A verb in front of the visible text, so the name still contains what is shown. */}
               <span className="sr-only">Start </span>
@@ -252,7 +282,7 @@ export default function PickWorkout({
               <span className="mt-2.5 flex items-baseline justify-between gap-3">
                 <span className="head text-head text-fg">{planned.label}</span>
                 <span className="tabular shrink-0 text-body text-cyan">
-                  {planned.exercises.length} {planned.exercises.length === 1 ? "lift" : "lifts"}
+                  {count(planned.exercises.length, "lift")}
                 </span>
               </span>
               <span className="mt-1 block text-body leading-snug text-dim">{lifts(planned.exercises)}</span>
@@ -308,7 +338,7 @@ export default function PickWorkout({
         </section>
       )}
 
-      {planned && <p className="label mt-8 text-dim">Or switch to</p>}
+      {showPlanned && <p className="label mt-8 text-dim">Or switch to</p>}
 
       {mine.length > 0 && (
         <section className="mt-6">
@@ -369,7 +399,7 @@ export default function PickWorkout({
 
       {ours.length > 0 && (
         <section className="mt-6">
-          <p className="label text-dim">Or one of ours</p>
+          <p className="label text-dim">{showPlanned ? "One of ours" : "Or one of ours"}</p>
           <ul className="mt-2.5 flex flex-col gap-2.5">
             {ours.map((c) => (
               <Row
@@ -398,13 +428,14 @@ export default function PickWorkout({
       */}
       {onQuick && (
         <section className="mt-6">
-          <p className="label text-dim">Or nothing planned</p>
+          <p className="label text-dim">{showPlanned ? "Nothing planned" : "Or nothing planned"}</p>
           <ul className="mt-2.5">
             <li>
               <button
                 type="button"
                 onClick={onQuick}
-                className="w-full rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise"
+                disabled={asking}
+                className="w-full rounded-2xl bg-card p-[18px] text-left transition-colors hover:bg-raise disabled:opacity-40"
               >
                 <span className="head block text-head text-fg">Log as you go</span>
                 <span className="mt-1 block text-body leading-snug text-dim">

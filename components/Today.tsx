@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Bull, { BULL } from "./Bull";
 import CrewToday from "./CrewToday";
 import PlaylistRow from "./PlaylistRow";
@@ -134,6 +134,19 @@ export default function Today({
   // draws the same seven days to make the opposite point.
   const week = weekStrip(sessions, profile.trainingDays, today);
 
+  /*
+    The read can be slow. If she has left Today by the time it answers (she
+    started a workout meanwhile), applying the constraints would rebuild the
+    plan under whatever she is now doing.
+  */
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
   async function submitNote() {
     const text = note.trim();
     if (!text) return;
@@ -141,6 +154,7 @@ export default function Today({
     // The finally keeps the button from sticking on "asking" if a handler throws.
     try {
       const { constraints, offline } = await readConstraints(text);
+      if (!alive.current) return;
       setUnderstood(adjustedLine(constraints, offline));
       onConstraints(constraints);
     } finally {
@@ -391,9 +405,11 @@ export default function Today({
     A planned day nobody has started. Start is the one button, and the way to
     anything else (another workout, or this one adjusted) is the Change beside
     the date, which opens the list with the plan first. It used to be two
-    doors under Start with nearly the same name and different jobs.
+    doors under Start with nearly the same name and different jobs. A day
+    still to be built has no Start, so Change is its only way to the list, but
+    its header stays the date: there is no plan yet to be "planned for today".
   */
-  const changeable = Boolean(onPickWorkout && routine && !toBuild && !started && !alreadyLogged && !unchosen);
+  const changeable = Boolean(onPickWorkout && routine && !started && !alreadyLogged && !unchosen);
   const resting = !unchosen && !routine;
   const enter = resting ? "settle" : "rise";
 
@@ -411,7 +427,7 @@ export default function Today({
       <header className={`${enter} stage`} style={stage()}>
         <div className="flex items-start justify-between gap-4">
           <p className="label text-cyan">
-            {changeable
+            {changeable && !toBuild
               ? "Planned for today"
               : new Date(today + "T00:00:00")
                   .toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })
