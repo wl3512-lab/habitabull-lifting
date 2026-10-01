@@ -20,11 +20,21 @@ import type { Profile } from "@/lib/types";
 export default function PlaylistRow({
   profile,
   onProfile,
+  bare = false,
+  onDone,
 }: {
   profile: Profile;
   onProfile: (p: Profile) => void;
+  /**
+   * Sit inside a Profile row. The row is already the disclosure, so the
+   * caption is skipped (it would be a second tap to reach the form) and the
+   * Card is dropped (it would pad the form twice on a same-colour row).
+   */
+  bare?: boolean;
+  /** Called when the form is finished or cancelled, so the row can close. */
+  onDone?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(bare);
   const [link, setLink] = useState("");
   const [name, setName] = useState("");
   const [bad, setBad] = useState(false);
@@ -45,7 +55,7 @@ export default function PlaylistRow({
       // screen whose whole voice is not doing that.
       playlistName: name.trim() || "Your gym playlist",
     });
-    setOpen(false);
+    bare ? onDone?.() : setOpen(false);
     setLink("");
     setName("");
     setBad(false);
@@ -86,8 +96,8 @@ export default function PlaylistRow({
     );
   }
 
-  return (
-    <Card className="rise p-[18px]">
+  const form = (
+    <>
       <label htmlFor="pl" className="label block text-dim">
         Paste a Spotify playlist link
       </label>
@@ -132,14 +142,16 @@ export default function PlaylistRow({
         )}
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={() => (bare ? onDone?.() : setOpen(false))}
           className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
         >
           Cancel
         </button>
       </div>
-    </Card>
+    </>
   );
+
+  return bare ? form : <Card className="rise p-[18px]">{form}</Card>;
 }
 
 /** Line weight matched to the rest of the app's few glyphs. */

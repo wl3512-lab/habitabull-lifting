@@ -174,7 +174,7 @@ export default function Profile({
       */}
       <RowGroup title="Your plan">
         {routines.length === 0 ? (
-          <LinkRow label="Set up your week" value="" onClick={onEditWeek} />
+          <LinkRow label="Set up your week" onClick={onEditWeek} />
         ) : (
           <>
             {routines.map((r) => (
@@ -185,45 +185,45 @@ export default function Profile({
                 onClick={() => onEditPlan(r.day)}
               />
             ))}
-            {saved.length > 0 && (
-              <ExpandRow
-                label="Saved workouts"
-                value={String(saved.length)}
-                open={openRow === "saved"}
-                onToggle={() => toggle("saved")}
-              >
-                <div className="flex flex-col gap-2.5">
-                  {saved.map((w) => {
-                    const on = routines.filter((r) => r.label === w.name).map((r) => SHORT_DAYS[r.day]);
-                    return (
-                      <Card key={w.id} className="bg-raise/40 p-3.5">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <h2 className="head text-emphasis text-fg">{w.name}</h2>
-                          <span className="label shrink-0 text-dim">{count(w.exercises.length, "lift")}</span>
-                        </div>
-                        <p className="mt-1.5 text-body leading-snug text-dim">
-                          {w.exercises.map((e) => nameOf(e.exerciseId)).join(", ")}
-                        </p>
-                        {on.length > 0 && <p className="mt-1.5 text-body text-cyan">On {on.join(", ")}</p>}
-                      </Card>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onEditPlan()}
-                  className="head tap mt-3 text-body text-cyan transition-opacity hover:opacity-70"
-                >
-                  Put one on a day
-                </button>
-              </ExpandRow>
-            )}
             <LinkRow
               label="Schedule"
               value={scheduleLine(profile.trainingDays, profile.anchors)}
               onClick={onEditWeek}
             />
           </>
+        )}
+        {saved.length > 0 && (
+          <ExpandRow
+            label="Saved workouts"
+            value={String(saved.length)}
+            open={openRow === "saved"}
+            onToggle={() => toggle("saved")}
+          >
+            <div className="flex flex-col gap-2.5">
+              {saved.map((w) => {
+                const on = routines.filter((r) => r.label === w.name).map((r) => SHORT_DAYS[r.day]);
+                return (
+                  <Card key={w.id} className="bg-raise/40 p-3.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 className="head text-emphasis text-fg">{w.name}</h3>
+                      <span className="label shrink-0 text-dim">{count(w.exercises.length, "lift")}</span>
+                    </div>
+                    <p className="mt-1.5 text-body leading-snug text-dim">
+                      {w.exercises.map((e) => nameOf(e.exerciseId)).join(", ")}
+                    </p>
+                    {on.length > 0 && <p className="mt-1.5 text-body text-cyan">On {on.join(", ")}</p>}
+                  </Card>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => onEditPlan()}
+              className="head tap mt-3 text-body text-cyan transition-opacity hover:opacity-70"
+            >
+              Put one on a day
+            </button>
+          </ExpandRow>
         )}
       </RowGroup>
 
@@ -349,11 +349,11 @@ export default function Profile({
       <RowGroup title="App">
         <ExpandRow
           label="Gym playlist"
-          value={profile.playlistName ?? "Not set"}
+          value={profile.playlistId ? (profile.playlistName ?? "Your gym playlist") : "Not set"}
           open={openRow === "playlist"}
           onToggle={() => toggle("playlist")}
         >
-          <PlaylistRow profile={profile} onProfile={onProfile} />
+          <PlaylistRow bare profile={profile} onProfile={onProfile} onDone={() => setOpenRow(null)} />
         </ExpandRow>
         <ExpandRow
           label="Your data"

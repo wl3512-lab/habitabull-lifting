@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 
 /**
  * Profile as rows: a label, its value, and a way in.
@@ -36,10 +36,10 @@ export function RowGroup({ title, children }: { title: string; children: ReactNo
   );
 }
 
-function Value({ value, turned }: { value: string; turned?: boolean }) {
+function Value({ value, turned }: { value?: string; turned?: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2.5 text-body text-dim">
-      <span className="truncate">{value}</span>
+      {value && <span className="truncate">{value}</span>}
       <span
         aria-hidden
         className={`text-head leading-none text-cyan transition-transform duration-quick ${turned ? "rotate-90" : ""}`}
@@ -63,12 +63,40 @@ export function ExpandRow({
   onToggle: () => void;
   children: ReactNode;
 }) {
+  // Only one row is open at a time, so opening this one closes another above
+  // it, and everything below that row slides up by its height: the row you just
+  // tapped jumps out from under your finger. We note where the button was when
+  // tapped, and after the layout settles scroll by however far it moved. The
+  // ref is cleared once used so a mount or an unrelated re-render never scrolls.
+  const btn = useRef<HTMLButtonElement>(null);
+  const tappedAt = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const before = tappedAt.current;
+    tappedAt.current = null;
+    if (before === null || !btn.current) return;
+    const drift = btn.current.getBoundingClientRect().top - before;
+    if (Math.abs(drift) < 1) return;
+    // The scroller is the nearest ancestor that actually scrolls: the document
+    // on the phone, #app-scroll in the desktop frame, and a frame's own box in
+    // /frames. Looking it up beats naming one, which was wrong in one of them.
+    let box: HTMLElement | null = btn.current.parentElement;
+    while (box && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) {
+      box = box.parentElement;
+    }
+    if (box) box.scrollTop += drift;
+    else window.scrollBy(0, drift);
+  }, [open]);
+
   return (
     <div className={DIVIDED}>
       <button
+        ref={btn}
         type="button"
         aria-expanded={open}
-        onClick={onToggle}
+        onClick={() => {
+          tappedAt.current = btn.current?.getBoundingClientRect().top ?? null;
+          onToggle();
+        }}
         className={ROW}
       >
         <span className="shrink-0 text-emphasis text-fg">{label}</span>
@@ -85,7 +113,7 @@ export function LinkRow({
   onClick,
 }: {
   label: string;
-  value: string;
+  value?: string;
   onClick: () => void;
 }) {
   return (
