@@ -9,7 +9,8 @@ import { Pill } from "./ui";
 import { byId, cardioLifts, makeCustomExercise, nameOf } from "@/lib/exercises";
 import { EQUIPMENT, MUSCLES } from "@/lib/constraints";
 import { alternativesFor, LEVEL_SETS, personalRecord, restSeconds, lastCompletedSet, sessionTarget } from "@/lib/engine";
-import { DEFAULT_BAR_LB } from "@/lib/plates";
+import { DEFAULT_BAR_LB, offersPlates } from "@/lib/plates";
+import PlatesOffer from "./PlatesOffer";
 import { haptic } from "@/lib/haptics";
 import { unlockAudio } from "@/lib/chime";
 import { line, midsetLine } from "@/lib/voice";
@@ -174,7 +175,8 @@ export default function LogSession({
     preference is a preference for barbell lifts; everything else keeps the
     steppers whatever it says.
   */
-  const usePlates = profile.weightInput === "plates" && meta?.equipment === "barbell";
+  const offered = offersPlates(profile);
+  const usePlates = offered === true && profile.weightInput === "plates" && meta?.equipment === "barbell";
   const hasIncline = meta?.incline ?? false;
   const isHold = meta?.hold ?? false;
   const activeSet = exercise ? exercise.sets.findIndex((s) => !s.done) : -1;
@@ -894,7 +896,18 @@ export default function LogSession({
       <div className="flex-1 px-6 pb-6 pt-4">
         {!exerciseDone ? (
           <>
-            {meta?.equipment === "barbell" && increment > 0 && onProfile && (
+            {meta?.equipment === "barbell" && increment > 0 && onProfile && offered === undefined && (
+              <PlatesOffer
+                onAnswer={(yes) =>
+                  onProfile(
+                    yes
+                      ? { ...profile, loadTheBar: true, weightInput: "plates" }
+                      : { ...profile, loadTheBar: false }
+                  )
+                }
+              />
+            )}
+            {meta?.equipment === "barbell" && increment > 0 && onProfile && offered === true && (
               <div className="mb-3 flex gap-2" aria-label="Weight entry method">
                 {(["steppers", "plates"] as const).map(mode => (
                   <button key={mode} type="button" aria-pressed={(profile.weightInput ?? "steppers") === mode}
@@ -905,7 +918,7 @@ export default function LogSession({
                 ))}
               </div>
             )}
-            {profile.weightInput === "plates" && meta?.equipment !== "barbell" && (
+            {offered === true && profile.weightInput === "plates" && meta?.equipment !== "barbell" && (
               /*
                 A footnote rather than a card: it answers a question only someone
                 who chose "Load the bar" will have, so it stays out of the set's way.

@@ -266,6 +266,19 @@ function gallery(challenge: Challenge) {
                 onExercise={f.noop}
               />
             </Frame>
+            <Frame n="04g" name="Logging · the first bar" note="Asked once, on the first barbell lift, with the bar in front of her. Onboarding stays two screens: somebody who has never loaded a bar has nothing to choose between at signup. Either answer sets the switch in Profile.">
+              <LogSession
+                session={f.draft}
+                history={f.sessions}
+                profile={f.profile}
+                onProfile={f.noop}
+                onChange={f.noop}
+                onAddCustom={f.noop}
+                onFinish={f.noop}
+                onExit={f.noop}
+                onExercise={f.noop}
+              />
+            </Frame>
             <Frame n="04e" name="Jump to" note="The session, in any order — and the two things you actually want when you open it. Swapping belongs here because here is where you find out the rack is taken; it disappears once a set is logged against a lift, since that set is a fact and swapping would either bin it or file it under a lift she did not do. Adding was reachable only after the last set of the last lift, so deciding mid-session to do one more thing meant finishing everything else first.">
               <LogSession
                 session={f.draft}
