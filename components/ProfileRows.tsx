@@ -16,9 +16,12 @@ import { useId, type ReactNode } from "react";
  */
 
 // The ring is drawn inward because the rows run edge to edge inside a card that
-// clips its overflow, so the global 2px outset ring would be cut off.
+// clips its overflow, so the global 2px outset ring would be cut off. The offset
+// is important-flagged on purpose: the global focus rule is unlayered, and an
+// unlayered declaration beats a layered utility whatever its specificity, so
+// without the "!" this would silently do nothing. Do not remove it as redundant.
 const ROW =
-  "flex min-h-14 w-full items-center justify-between gap-3 px-[18px] py-3 text-left transition-colors hover:bg-raise/40 -outline-offset-2";
+  "flex min-h-14 w-full items-center justify-between gap-3 px-[18px] py-3 text-left transition-colors hover:bg-raise/40 focus-visible:-outline-offset-2!";
 const DIVIDED = "border-t border-line first:border-t-0";
 
 export function RowGroup({ title, children }: { title: string; children: ReactNode }) {
