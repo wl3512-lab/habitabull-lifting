@@ -525,7 +525,7 @@ function gallery(challenge: Challenge) {
                 onImport={f.noop}
               />
             </Frame>
-            <Frame n="08b" name="Profile" tab="profile" note="You, and the setup that is yours rather than today's — name, your reason, body weight (moved here from Progress), the plan with its sets and reps, schedule, equipment, gym playlist, and the data export. Visited rarely, which is what lets Today and Progress each stay about one thing.">
+            <Frame n="08b" name="Profile" tab="profile" note="You, and the setup that is yours rather than today's. The name and the reason stay as they were; everything under them is a row with its value showing, so the screen is about one page and Rest is not three screens down.">
               <ProfileScreen
                 profile={f.profile}
                 state={f.state}
@@ -535,6 +535,19 @@ function gallery(challenge: Challenge) {
                 onImport={f.noop}
                 onEditPlan={f.noop}
                 onEditWeek={f.noop}
+              />
+            </Frame>
+            <Frame n="08c" name="Profile · a row open" tab="profile" note="A row opens the same controls and the same explanation it always had, and closes whichever was open. Nothing about what a setting does is lost, only where it waits.">
+              <ProfileScreen
+                profile={f.profile}
+                state={f.state}
+                today={f.today}
+                onProfile={f.noop}
+                onWeighIn={f.noop}
+                onImport={f.noop}
+                onEditPlan={f.noop}
+                onEditWeek={f.noop}
+                initialOpen="kit"
               />
             </Frame>
             <Frame n="11" name="Calendar" tab="calendar" note="Weeks, not days. The Figma's “you're on fire” was cut — PRODUCT.md bans hustle language by name.">

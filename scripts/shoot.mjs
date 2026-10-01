@@ -66,7 +66,7 @@ const SHOTS = [
   ["16", "16-after-workout"],
   ["08", "08-progress"],
   ["08b", "08b-profile"],
-  ["08b", "08c-profile-you", 1790],
+  ["08c", "08c-profile-row-open"],
   ["11", "11-calendar"],
   ["17", "17-day-detail"],
   ["17b", "17b-day-detail-crew"],
