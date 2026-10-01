@@ -1,46 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import WeightInputSettings from "./WeightInputSettings";
 import BodyWeight from "./BodyWeight";
 import PlaylistRow from "./PlaylistRow";
 import YourData from "./YourData";
+import Stepper from "./Stepper";
+import { ExpandRow, LinkRow, RowGroup, SwitchRow } from "./ProfileRows";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { count } from "@/lib/plural";
+import { offersPlates } from "@/lib/plates";
 import { REST_MAX, REST_MIN, REST_STEP, restSeconds, SHORT_DAYS } from "@/lib/engine";
-import Stepper from "./Stepper";
-import type { AppState, Equipment, Profile as ProfileT } from "@/lib/types";
+import {
+  dayLine,
+  equipmentLine,
+  EQUIPMENT_LABELS,
+  levelLabel,
+  LEVELS,
+  scheduleLine,
+  weighInLine,
+} from "@/lib/profile-summary";
+import type { AppState, Profile as ProfileT } from "@/lib/types";
 
-/** Every kit the generator knows, in the order the gym floor suggests. */
-const EQUIPMENT: { id: Equipment; label: string }[] = [
-  { id: "barbell", label: "Barbells" },
-  { id: "dumbbell", label: "Dumbbells" },
-  { id: "machine", label: "Machines" },
-  { id: "kettlebell", label: "Kettlebells" },
-  { id: "bodyweight", label: "Bodyweight" },
-];
+/** The rows that open in place. Links and the switch are not in here. */
+export type ProfileRowId = "weight" | "saved" | "level" | "kit" | "rest" | "playlist" | "data";
 
 /**
  * You, and the setup that is yours rather than today's.
  *
- * Everything here used to be scattered: the reason lived on Today, the data
- * export on Progress, the playlist under the Start button, the plan behind an
- * edit link. None of it is a per-session decision, so it belongs together in
- * one place you visit rarely — which is also what lets Today and Progress stay
- * about the single thing each is for.
- *
- * Body weight moved here from Progress on purpose. It is something about you,
- * not about a workout, and keeping the record screen strictly about training
- * is the same instinct that keeps a scale out of the logging flow.
+ * It used to lay every setting out in full, 3,241px on a real history, with
+ * Rest three screens down and the whole week printed lift by lift a second
+ * time. Now the name and the reason stay as they were, because they are who
+ * she is, and everything under them is a row with its value showing. A row
+ * opens the same controls and the same explanation it always had, one at a
+ * time, so nothing about what a setting does is lost, only where it waits.
  */
-const ANCHOR: Record<string, string> = {
-  wake: "First thing",
-  lunch: "Lunchtime",
-  afterwork: "After work",
-  evening: "Evening",
-};
-
 export default function Profile({
   profile,
   state,
@@ -50,6 +44,7 @@ export default function Profile({
   onImport,
   onEditPlan,
   onEditWeek,
+  initialOpen = null,
 }: {
   profile: ProfileT;
   state: AppState;
@@ -59,11 +54,15 @@ export default function Profile({
   onImport: (s: AppState) => void;
   onEditPlan: (day?: number) => void;
   onEditWeek: () => void;
+  /** Which row starts open. Only /frames uses it, to show one open. */
+  initialOpen?: ProfileRowId | null;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(profile.name);
   const [editingWhy, setEditingWhy] = useState(false);
   const [why, setWhy] = useState(profile.motivation ?? "");
+  const [openRow, setOpenRow] = useState<ProfileRowId | null>(initialOpen);
+  const toggle = (id: ProfileRowId) => setOpenRow((o) => (o === id ? null : id));
 
   function saveName() {
     const clean = name.replace(/\s+/g, " ").trim().slice(0, 40);
@@ -78,32 +77,13 @@ export default function Profile({
 
   const routines = [...state.routines].sort((a, b) => a.day - b.day);
   const kit = [...new Set(profile.equipment)];
-  const days = [...profile.trainingDays].sort((a, b) => a - b);
-  /*
-    What a given weekday is called in the plan. A trained day with no routine
-    yet is possible — the schedule is saved before the plan is built on first
-    run — so this returns undefined rather than assuming one exists.
-  */
-  const labelFor = (d: number) => routines.find((r) => r.day === d)?.label;
-  /*
-    Workouts she saved and named. Listed here because this is where she comes
-    looking for them — the section above is her week, and a workout she kept at
-    the end of a session is not on a day yet by definition. Putting one on a day
-    is the plan editor's job, so this lists them and links there rather than
-    growing a second way to edit the week.
-  */
   const saved = state.workouts ?? [];
-  const when = profile.anchors?.length
-    ? profile.anchors.map((a) => ANCHOR[a] ?? a).join(", ")
-    : profile.anchors === undefined
-      ? null
-      : "Whenever you can";
 
   return (
     <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
       <p className="label text-cyan">Profile</p>
 
-      {/* Name — the one identifying thing, editable in place. */}
+      {/* Name: the one identifying thing, editable in place. */}
       {editingName ? (
         <input
           value={name}
@@ -127,7 +107,7 @@ export default function Profile({
         </button>
       )}
 
-      {/* Why — quoted back on the hard days; her words, never rewritten. */}
+      {/* Why: quoted back on the hard days; her words, never rewritten. */}
       <section className="mt-8">
         <div className="flex items-center justify-between gap-4">
           <p className="label text-dim">You workout because</p>
@@ -169,187 +149,100 @@ export default function Profile({
           </div>
         ) : (
           <p className="statement mt-1.5 text-title text-fg">
-            {profile.motivation ? `“${profile.motivation}”` : "—"}
+            {profile.motivation ? `“${profile.motivation}”` : "Not said yet"}
           </p>
         )}
       </section>
 
-      {/* Body weight — moved from Progress; it is about you, not a session. */}
-      <BodyWeight weighIns={state.weighIns ?? []} today={today} onSave={onWeighIn} />
-
-      {/* The plan: what you train and the sets and reps behind each lift. */}
-      <section className="mt-8">
-        <div className="flex items-center justify-between gap-4">
-          <p className="label text-dim">Your workouts</p>
-          <button
-            type="button"
-            onClick={() => onEditPlan()}
-            className="head tap text-caption text-cyan transition-opacity hover:opacity-70"
-          >
-            Edit
-          </button>
-        </div>
-        {routines.length === 0 ? (
-          <Card className="mt-3 p-[18px]">
-            <p className="text-body text-dim">No plan yet. Set up your week to build one.</p>
-            <div className="mt-4">
-              <Pill size="sm" variant="ghost" onClick={onEditWeek}>
-                Set up your week
-              </Pill>
-            </div>
-          </Card>
-        ) : (
-          <div className="mt-3 flex flex-col gap-2.5">
-            {routines.map((r) => (
-              <Card key={`${r.day}-${r.label}`} className="p-[18px]">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h2 className="head text-emphasis text-fg">{r.label}</h2>
-                  <span className="label shrink-0 text-dim">{SHORT_DAYS[r.day]}</span>
-                </div>
-                <ul className="mt-2.5 flex flex-col gap-1.5">
-                  {r.exercises.map((e) => (
-                    <li
-                      key={e.exerciseId}
-                      className="flex items-baseline justify-between gap-3 text-body"
-                    >
-                      <span className="text-fg">{nameOf(e.exerciseId)}</span>
-                      <span className="tabular shrink-0 text-dim">
-                        {e.sets} × {e.reps}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {saved.length > 0 && (
-        <section className="mt-8">
-          <div className="flex items-center justify-between gap-4">
-            <p className="label text-dim">Saved workouts</p>
-            <button
-              type="button"
-              onClick={() => onEditPlan()}
-              className="head tap text-caption text-cyan transition-opacity hover:opacity-70"
-            >
-              Put one on a day
-            </button>
-          </div>
-          <div className="mt-3 flex flex-col gap-2.5">
-            {saved.map((w) => {
-              const on = routines.filter((r) => r.label === w.name).map((r) => SHORT_DAYS[r.day]);
-              return (
-                <Card key={w.id} className="p-[18px]">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h2 className="head text-emphasis text-fg">{w.name}</h2>
-                    <span className="label shrink-0 text-dim">
-                      {count(w.exercises.length, "lift")}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-body leading-snug text-dim">
-                    {w.exercises.map((e) => nameOf(e.exerciseId)).join(", ")}
-                  </p>
-                  {/* Where it is currently running, which is the thing this
-                      list cannot otherwise say. */}
-                  {on.length > 0 && (
-                    <p className="mt-1.5 text-body text-cyan">On {on.join(", ")}</p>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Schedule and equipment — the frame the plan is built inside. */}
-      <section className="mt-8">
-        <div className="flex items-center justify-between gap-4">
-          <p className="label text-dim">Schedule</p>
-          <button
-            type="button"
-            onClick={onEditWeek}
-            className="head tap text-caption text-cyan transition-opacity hover:opacity-70"
-          >
-            Edit
-          </button>
-        </div>
-        {/*
-          The trained days are the way into what each one is. They were flat
-          labels, so changing Wednesday from a pull day to a leg day meant
-          knowing to go up to "Your workouts" and hunt for Wednesday there —
-          the screen that says which days you train could not say what they
-          were. A day you do not train is still a label: there is nothing to
-          open, and offering one would imply tapping it adds the day, which is
-          what Edit is for.
-        */}
-        <Card className="mt-3 p-[18px]">
-          <div className="flex flex-wrap gap-1.5">
-            {[0, 1, 2, 3, 4, 5, 6].map((d) =>
-              days.includes(d) ? (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => onEditPlan(d)}
-                  aria-label={`${SHORT_DAYS[d]}: ${labelFor(d) ?? "training day"}. Edit this day.`}
-                  className="rounded-tick bg-cyan px-2.5 py-1.5 text-caption text-ground transition-opacity hover:opacity-80"
-                >
-                  {SHORT_DAYS[d]}
-                </button>
-              ) : (
-                <span
-                  key={d}
-                  className="rounded-tick bg-raise px-2.5 py-1.5 text-caption text-dim"
-                >
-                  {SHORT_DAYS[d]}
-                </span>
-              )
-            )}
-          </div>
-          {/* What each trained day is, which the row of letters cannot say. */}
-          <ul className="mt-3 flex flex-col gap-1">
-            {days.map((d) => (
-              <li key={d} className="flex items-baseline justify-between gap-3 text-body">
-                <span className="text-dim">{SHORT_DAYS[d]}</span>
-                <button
-                  type="button"
-                  onClick={() => onEditPlan(d)}
-                  className="head text-body text-cyan transition-opacity hover:opacity-70"
-                >
-                  {labelFor(d) ?? "Not set"}
-                </button>
-              </li>
-            ))}
-          </ul>
-          {when && <p className="mt-3 text-body text-dim">{when}</p>}
-        </Card>
-      </section>
+      <RowGroup title="You">
+        <ExpandRow
+          label="Body weight"
+          value={weighInLine(state.weighIns ?? []) ?? "Add"}
+          open={openRow === "weight"}
+          onToggle={() => toggle("weight")}
+        >
+          <BodyWeight bare weighIns={state.weighIns ?? []} today={today} onSave={onWeighIn} />
+        </ExpandRow>
+      </RowGroup>
 
       {/*
-        Both of these were set for her at signup and then frozen: onboarding
-        never asks (a beginner has no basis to answer, which is deliberate),
-        and this screen drew them as text. So the two facts the engine leans on
-        hardest were the two she could not correct. Moving gyms meant living
-        with a plan built for kit she no longer had.
-
-        Changing either changes what the app chooses *next*: the lifts autofill
-        reaches for, the swaps it offers, the sets and reps a new day gets.
-        Neither rewrites the week she already has, because a setting that
-        quietly rebuilds her days is the plan changing itself, which this app
-        does not do.
+        The week, one row a day. Each goes straight to that day in the editor,
+        which is where its lifts are, so they are not printed here a second
+        time. A trained day with no routine yet is possible (the schedule is
+        saved before the plan is built on first run), which is why there is a
+        "Set up your week" row rather than an empty group.
       */}
-      <section className="mt-8">
-        <p className="label text-dim">Training experience</p>
-        <Card className="mt-3 p-[18px]">
+      <RowGroup title="Your plan">
+        {routines.length === 0 ? (
+          <LinkRow label="Set up your week" value="" onClick={onEditWeek} />
+        ) : (
+          <>
+            {routines.map((r) => (
+              <LinkRow
+                key={`${r.day}-${r.label}`}
+                label={SHORT_DAYS[r.day]}
+                value={dayLine(r)}
+                onClick={() => onEditPlan(r.day)}
+              />
+            ))}
+            {saved.length > 0 && (
+              <ExpandRow
+                label="Saved workouts"
+                value={String(saved.length)}
+                open={openRow === "saved"}
+                onToggle={() => toggle("saved")}
+              >
+                <div className="flex flex-col gap-2.5">
+                  {saved.map((w) => {
+                    const on = routines.filter((r) => r.label === w.name).map((r) => SHORT_DAYS[r.day]);
+                    return (
+                      <Card key={w.id} className="bg-raise/40 p-3.5">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <h2 className="head text-emphasis text-fg">{w.name}</h2>
+                          <span className="label shrink-0 text-dim">{count(w.exercises.length, "lift")}</span>
+                        </div>
+                        <p className="mt-1.5 text-body leading-snug text-dim">
+                          {w.exercises.map((e) => nameOf(e.exerciseId)).join(", ")}
+                        </p>
+                        {on.length > 0 && <p className="mt-1.5 text-body text-cyan">On {on.join(", ")}</p>}
+                      </Card>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onEditPlan()}
+                  className="head tap mt-3 text-body text-cyan transition-opacity hover:opacity-70"
+                >
+                  Put one on a day
+                </button>
+              </ExpandRow>
+            )}
+            <LinkRow
+              label="Schedule"
+              value={scheduleLine(profile.trainingDays, profile.anchors)}
+              onClick={onEditWeek}
+            />
+          </>
+        )}
+      </RowGroup>
+
+      {/*
+        Experience and equipment were set for her at signup and then frozen:
+        onboarding never asks, and this screen drew them as text. Changing
+        either changes what the app chooses next, never the week she has,
+        because a setting that quietly rebuilds her days is the plan changing
+        itself, which this app does not do.
+      */}
+      <RowGroup title="In the gym">
+        <ExpandRow
+          label="Experience"
+          value={levelLabel(profile.level)}
+          open={openRow === "level"}
+          onToggle={() => toggle("level")}
+        >
           <div className="flex flex-col gap-2">
-            {(
-              [
-                ["new", "New to this", "Fewer sets, lighter starts, full body days."],
-                ["returning", "Coming back", "You have lifted before and stopped."],
-                ["experienced", "Experienced", "More sets, and the app assumes less."],
-              ] as const
-            ).map(([id, label, hint]) => {
+            {LEVELS.map(({ id, label, hint }) => {
               const on = profile.level === id;
               return (
                 <button
@@ -371,14 +264,16 @@ export default function Profile({
             Your weights come from what you have actually lifted, so changing this moves the
             shape of a new day rather than the numbers on it.
           </p>
-        </Card>
-      </section>
+        </ExpandRow>
 
-      <section className="mt-8">
-        <p className="label text-dim">Equipment</p>
-        <Card className="mt-3 p-[18px]">
+        <ExpandRow
+          label="Equipment"
+          value={equipmentLine(kit)}
+          open={openRow === "kit"}
+          onToggle={() => toggle("kit")}
+        >
           <div className="flex flex-wrap gap-1.5">
-            {EQUIPMENT.map(({ id, label }) => {
+            {EQUIPMENT_LABELS.map(({ id, label }) => {
               const on = kit.includes(id);
               /*
                 The last one cannot be turned off. An empty gym leaves the
@@ -400,9 +295,7 @@ export default function Profile({
                     })
                   }
                   className={`head h-11 rounded-full border px-4 text-body transition-colors duration-quick disabled:opacity-60 ${
-                    on
-                      ? "border-cyan bg-cyan text-ground"
-                      : "border-line-strong text-dim hover:border-fg"
+                    on ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg"
                   }`}
                 >
                   {label}
@@ -414,30 +307,30 @@ export default function Profile({
             What the gym you actually go to has. New lifts and swaps come from this; the days
             you have already built keep whatever is on them.
           </p>
-        </Card>
-      </section>
+        </ExpandRow>
 
-      {/*
-        Two ways to put a number on a barbell lift, and she picks. The steppers
-        ask what the set weighs and assume she has worked it out; the plates ask
-        what is on the bar and work it out for her. Neither is right for
-        everybody, which is why this is a setting and not a redesign.
+        {/*
+          A switch, not a pick between two. The question was never which way
+          she enters a weight; it is whether plates are offered at all. Off,
+          barbell sets show + and minus and nothing else. On, the switch sits
+          above the set as it always has. Turning it on starts her on plates,
+          since she has just asked for them.
+        */}
+        <SwitchRow
+          label="Load the bar on barbell lifts"
+          hint="Tap plates onto the bar instead of typing the total."
+          on={offersPlates(profile) === true}
+          onChange={(on) =>
+            onProfile(on ? { ...profile, loadTheBar: true, weightInput: "plates" } : { ...profile, loadTheBar: false })
+          }
+        />
 
-        Only barbell lifts change. A dumbbell has no bar to load and a machine
-        has a pin, so those keep the steppers either way — the toggle says so
-        rather than letting her find out.
-      */}
-      <WeightInputSettings profile={profile} onProfile={onProfile} />
-
-      {/*
-        Rest was set once at signup and then unreachable forever, which is half
-        of why the old pace setting felt broken: somebody who disagreed with it
-        had nowhere to go. It belongs here rather than on the timer — it is a
-        setting, not a per-set decision — and the timer already lets you skip.
-      */}
-      <section className="mt-8">
-        <p className="label text-dim">Rest between sets</p>
-        <Card className="mt-3 p-[18px]">
+        <ExpandRow
+          label="Rest between sets"
+          value={`${restSeconds(profile)} sec`}
+          open={openRow === "rest"}
+          onToggle={() => toggle("rest")}
+        >
           <Stepper
             label="Rest"
             value={restSeconds(profile)}
@@ -448,22 +341,29 @@ export default function Profile({
             onChange={(sec) => onProfile({ ...profile, restSec: sec })}
           />
           <p className="mt-3 text-body text-dim">
-            The same on every lift. Take longer when you need it — nothing here counts it against you.
+            The same on every lift. Take longer when you need it; nothing here counts it against you.
           </p>
-        </Card>
-      </section>
+        </ExpandRow>
+      </RowGroup>
 
-      {/* Music on the way in, and the data underneath all of it. */}
-      <section className="mt-8">
-        <p className="label text-dim">Gym playlist</p>
-        <div className="mt-3">
+      <RowGroup title="App">
+        <ExpandRow
+          label="Gym playlist"
+          value={profile.playlistName ?? "Not set"}
+          open={openRow === "playlist"}
+          onToggle={() => toggle("playlist")}
+        >
           <PlaylistRow profile={profile} onProfile={onProfile} />
-        </div>
-      </section>
-
-      <div className="mt-8">
-        <YourData state={state} onImport={onImport} />
-      </div>
+        </ExpandRow>
+        <ExpandRow
+          label="Your data"
+          value="Export, import"
+          open={openRow === "data"}
+          onToggle={() => toggle("data")}
+        >
+          <YourData bare state={state} onImport={onImport} />
+        </ExpandRow>
+      </RowGroup>
     </main>
   );
 }
