@@ -138,12 +138,16 @@ export default function Today({
     const text = note.trim();
     if (!text) return;
     setAsking(true);
-    const { constraints, offline } = await readConstraints(text);
-    setUnderstood(adjustedLine(constraints, offline));
-    onConstraints(constraints);
-    setAsking(false);
-    setNote("");
-    setOpen(false);
+    // The finally keeps the button from sticking on "asking" if a handler throws.
+    try {
+      const { constraints, offline } = await readConstraints(text);
+      setUnderstood(adjustedLine(constraints, offline));
+      onConstraints(constraints);
+    } finally {
+      setAsking(false);
+      setNote("");
+      setOpen(false);
+    }
   }
 
   /**
@@ -180,6 +184,7 @@ export default function Today({
               setWhyDraft(profile.motivation ?? "");
               setEditingWhy(true);
             }}
+            aria-label="Change why you work out"
             className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
           >
             Change
@@ -315,6 +320,7 @@ export default function Today({
         <button
           type="button"
           onClick={onGoal}
+          aria-label="Change your goal"
           className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
         >
           Change
@@ -416,6 +422,7 @@ export default function Today({
             <button
               type="button"
               onClick={onPickWorkout}
+              aria-label="Change today's workout"
               className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
               Change
