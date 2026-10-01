@@ -114,7 +114,9 @@ export const TEMPLATES: DayTemplate[] = [
     id: "lower",
     label: "Lower body",
     short: "Lower",
-    hint: "Everything below them",
+    // Each hint is shown on its own, under whichever chip is pressed, so it
+    // cannot lean on Upper's hint above it. "Below them" had nothing to point at.
+    hint: "Everything below the hips",
     muscles: ["quads", "hamstrings", "glutes", "hamstrings"],
     style: "strength",
   },
