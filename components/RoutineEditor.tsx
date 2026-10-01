@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
@@ -134,6 +134,15 @@ export default function RoutineEditor({
     Save. They are one row now, and open when she wants to add something.
   */
   const [showMuscles, setShowMuscles] = useState(false);
+  /*
+    Tapping "+ Add a lift" unmounts that button, which would drop focus to the
+    page. The first chip takes it instead, so keyboard and screen reader users
+    stay where they were.
+  */
+  const firstMuscle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (showMuscles) firstMuscle.current?.focus();
+  }, [showMuscles]);
   // The chips are named by their short text, so the pressed one is described by
   // the hint, and the group is named by its label. Ids tie those together.
   const kindLabelId = useId();
@@ -1135,6 +1144,7 @@ export default function RoutineEditor({
                 {MUSCLES.map((m) => (
                   <button
                     key={m.id}
+                    ref={m.id === MUSCLES[0].id ? firstMuscle : undefined}
                     type="button"
                     onClick={() => (setHunt(""), setAdding(m.id))}
                     className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
@@ -1188,7 +1198,7 @@ export default function RoutineEditor({
         Pinned, over a fade into the ground, so saving is never a scroll to the
         bottom. The pane's own bottom padding keeps the last lift clear of it.
       */}
-      <div className="sticky bottom-0 -mx-6 mt-auto bg-gradient-to-t from-ground from-60% to-transparent px-6 pb-6 pt-8">
+      <div className="sticky bottom-0 -mx-6 mt-auto bg-gradient-to-t from-ground from-60% to-transparent px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
         <Pill onClick={() => onSave(draft)}>Save the week</Pill>
       </div>
     </main>
