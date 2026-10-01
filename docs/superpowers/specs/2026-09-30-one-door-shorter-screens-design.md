@@ -28,9 +28,11 @@ On a day with a plan that has not been started or logged, Today has one button,
   there is one), with a cyan **Change** at the right of the same row. The header
   row is already a two-sided flex (`components/Today.tsx:412`) with nothing on
   the right.
-- "Something else today" (`Today.tsx:573`) and "Something's different today"
-  (`Today.tsx:651`) leave Today, along with the constraints card they open
-  (`Today.tsx:592`).
+- On that day, "Something else today" (`Today.tsx:573`) and "Something's
+  different today" (`Today.tsx:651`) leave Today; Change is the way to both.
+  "Something else today" goes everywhere, since Change replaces it. "Something's
+  different today" stays on a rest day and on a started day, where there is no
+  Change and it still rebuilds the session in front of her.
 - Unchanged: rest days keep "Train anyway"; before there is a plan, "Quick
   workout" stays where it is; a started or logged day keeps "Continue workout"
   and "Add to today's session".
@@ -202,7 +204,8 @@ anything up, and somebody who has never loaded a bar has no basis to choose.
 
 ### Frames
 
-**04** re-shot with the switch on. A new **04g** shows the first-time card.
+**04** is unchanged: the frame passes no `onProfile`, so neither the switch nor
+the card draws there. A new **04g** passes one and shows the first-time card.
 
 ## Data and compatibility
 
@@ -245,7 +248,7 @@ again the same way before they are quoted.
 | `lib/plates.ts` | `offersPlates` |
 | `components/LogSession.tsx` | The switch only when offered; the first-time card |
 | `components/WeightInputSettings.tsx` | Deleted |
-| `app/frames/page.tsx` | 01, 04, 04g, 05c, 08b, 08c, 14, 14c, 14d |
+| `app/frames/page.tsx` | 01, 04g, 05c, 08b, 08c, 14c (14 and 14d are re-shot, not changed) |
 
 ## Not in this
 
