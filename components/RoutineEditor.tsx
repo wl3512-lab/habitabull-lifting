@@ -129,6 +129,11 @@ export default function RoutineEditor({
     now; it stays open while it has something to say back.
   */
   const [describing, setDescribing] = useState(initialDescribing);
+  /*
+    The nine muscle chips were open under every day, between the last lift and
+    Save. They are one row now, and open when she wants to add something.
+  */
+  const [showMuscles, setShowMuscles] = useState(false);
   // The chips are named by their short text, so the pressed one is described by
   // the hint, and the group is named by its label. Ids tie those together.
   const kindLabelId = useId();
@@ -672,6 +677,7 @@ export default function RoutineEditor({
                 setSaidSo(null);
                 setNaming(false);
                 setRemoving(null);
+                setShowMuscles(false);
               }}
               aria-pressed={i === dayIndex}
               className={`head h-11 flex-1 rounded-full border text-emphasis transition-colors duration-quick ${
@@ -1122,19 +1128,31 @@ export default function RoutineEditor({
         </div>
       ) : (
         <div className="mt-2.5 rounded-2xl bg-card p-[18px]">
-          <p className="label text-dim">Add a lift</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {MUSCLES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => (setHunt(""), setAdding(m.id))}
-                className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          {showMuscles ? (
+            <>
+              <p className="label text-dim">Add a lift</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {MUSCLES.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => (setHunt(""), setAdding(m.id))}
+                    className="head rounded-full border border-line-strong px-4 py-2.5 text-body text-dim transition-colors hover:border-fg hover:text-fg"
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowMuscles(true)}
+              className="head flex h-12 w-full items-center justify-center rounded-xl border border-dashed border-line-strong text-body text-cyan transition-colors hover:border-fg"
+            >
+              + Add a lift
+            </button>
+          )}
           {suggestions.length > 0 && (
             <div className="mt-4 border-t border-line pt-4">
               <p className="label text-dim">Because of what you starred</p>
@@ -1166,7 +1184,11 @@ export default function RoutineEditor({
         </div>
       )}
 
-      <div className="mt-auto pt-8">
+      {/*
+        Pinned, over a fade into the ground, so saving is never a scroll to the
+        bottom. The pane's own bottom padding keeps the last lift clear of it.
+      */}
+      <div className="sticky bottom-0 -mx-6 mt-auto bg-gradient-to-t from-ground from-60% to-transparent px-6 pb-6 pt-8">
         <Pill onClick={() => onSave(draft)}>Save the week</Pill>
       </div>
     </main>
