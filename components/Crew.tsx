@@ -83,6 +83,13 @@ export default function Crew({
   const [entry, setEntry] = useState("");
   const [trouble, setTrouble] = useState<"none" | "no-such-crew" | "unreachable">("none");
   const [busy, setBusy] = useState(false);
+  /*
+    The target's −/+ used to sit open under the bar on every visit, which is a
+    settings row answering a question asked once a month. Progress is what she
+    comes here to see; the stepper waits behind Change, the way the goal and
+    the reason on Today wait behind theirs.
+  */
+  const [adjusting, setAdjusting] = useState(false);
 
   /*
     Whether the crew could not be reached, as opposed to not existing.
@@ -253,7 +260,17 @@ export default function Crew({
       )}
 
       <section className="mt-6 rounded-2xl bg-card p-[18px]">
-        <p className="label text-dim">This month</p>
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="label text-dim">This month</p>
+          <button
+            type="button"
+            onClick={() => setAdjusting(!adjusting)}
+            aria-expanded={adjusting}
+            className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
+          >
+            {adjusting ? "Done" : "Change"}
+          </button>
+        </div>
         <p className="statement mt-2 text-display leading-tight text-fg">
           {challenge.target} {challenge.target === 1 ? "session" : "sessions"} in {monthName}.
         </p>
@@ -282,17 +299,28 @@ export default function Crew({
               : "More sessions than days left. Lower it and keep it real."}
         </p>
 
-        <div className="mt-4 flex items-center gap-2.5 border-t border-line pt-4">
+        {adjusting && (
+        <div className="rise mt-4 flex items-center gap-2.5 border-t border-line pt-4">
           <span className="flex-1 text-body text-dim">
-            Adjust the target
+            Sessions this month
             {/*
               The hint below was `dim/70`, which is 3.78:1 on this card. It is
               already a step down by size; it does not need to be a step down
               in colour as well, and this palette could not afford it.
+
+              It is a button now rather than a sentence: "your schedule says
+              14" was telling her the right number and then making her press
+              minus until she reached it.
             */}
             {challenge.target !== suggested && (
-              <span className="block text-caption text-dim">
-                Your schedule says {suggested}.
+              <span className="block">
+                <button
+                  type="button"
+                  onClick={() => onChallenge({ ...challenge, target: suggested })}
+                  className="head tap text-caption text-cyan transition-opacity hover:opacity-70"
+                >
+                  Use your schedule: {suggested}
+                </button>
               </span>
             )}
           </span>
@@ -314,6 +342,7 @@ export default function Crew({
             +
           </button>
         </div>
+        )}
       </section>
 
       {/*
