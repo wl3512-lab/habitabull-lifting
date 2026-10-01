@@ -64,6 +64,8 @@ export default function PlaylistRow({
   function detach() {
     const { playlistId: _id, playlistName: _name, ...rest } = profile;
     onProfile(rest);
+    // Same as Save: the row has done its job, so it closes.
+    if (bare) onDone?.();
   }
 
   // A caption, not a settings row. It sits directly under the Start button and
@@ -108,7 +110,10 @@ export default function PlaylistRow({
           setLink(e.target.value);
           setBad(false);
         }}
-        autoFocus
+        // Not in a Profile row. There she may only be looking, or removing, and
+        // the keyboard would cover the row; the focus scroll also fights the
+        // row's own scroll correction. On Today the form is opened to type.
+        autoFocus={!bare}
         inputMode="url"
         placeholder="open.spotify.com/playlist/…"
         className="mt-2.5 w-full rounded-xl bg-raise p-3.5 text-emphasis text-fg placeholder:text-dim focus:outline-none focus:ring-2 focus:ring-cyan"
