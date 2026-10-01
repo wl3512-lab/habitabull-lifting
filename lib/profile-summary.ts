@@ -48,12 +48,19 @@ export function weighInLine(weighIns: WeighIn[]): string | null {
   const latest = weighIns[weighIns.length - 1];
   if (!latest) return null;
   const [, month, day] = latest.date.split("-").map(Number);
+  // Backups only check that date is a string, so a bad one must not print "undefined".
+  if (!(month >= 1 && month <= 12) || !Number.isInteger(day)) return `${latest.lb} lb`;
   return `${latest.lb} lb · ${MONTHS[month - 1]} ${day}`;
 }
 
-/** Two names and a count, so the row stays one line whatever her gym has. */
+/**
+ * Two names and a count, so the row stays one line whatever her gym has.
+ * Old saved state or an imported backup can have an empty kit, and the row
+ * should still show a value rather than a label with nothing beside it.
+ */
 export function equipmentLine(kit: Equipment[]): string {
   const names = EQUIPMENT_LABELS.filter((e) => kit.includes(e.id)).map((e) => e.label);
+  if (names.length === 0) return "None set";
   if (names.length <= 2) return names.join(", ");
   return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
 }

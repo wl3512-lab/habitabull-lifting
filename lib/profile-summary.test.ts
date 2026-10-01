@@ -15,6 +15,15 @@ describe("what each Profile row says when it is closed", () => {
     ).toBe("165.5 lb · Sep 20");
   });
 
+  it("falls back to the bare weight when the date is not a date", () => {
+    expect(weighInLine([{ date: "soon", lb: 165 }])).toBe("165 lb");
+    expect(weighInLine([{ date: "2026-13-02", lb: 165 }])).toBe("165 lb");
+  });
+
+  it("says None set for an empty kit", () => {
+    expect(equipmentLine([])).toBe("None set");
+  });
+
   it("names up to two pieces of kit and counts the rest", () => {
     expect(equipmentLine(["dumbbell"])).toBe("Dumbbells");
     expect(equipmentLine(["dumbbell", "barbell"])).toBe("Barbells, Dumbbells");
