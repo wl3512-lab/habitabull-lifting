@@ -218,7 +218,7 @@ function gallery(challenge: Challenge) {
                 onDone={f.noop}
               />
             </Frame>
-            <Frame n="01" name="Today" tab="today" note="“Full body A”, not “Monday”. A weekday is not a description of a workout.">
+            <Frame n="01" name="Today" tab="today" note="“Full body A”, not “Monday”. A weekday is not a description of a workout. One button, and Change beside the date for anything else.">
               <Today
                 profile={f.profile}
                 routine={f.routines[0]}
@@ -227,6 +227,7 @@ function gallery(challenge: Challenge) {
                 goal={f.goal}
                 onStart={f.noop}
                 onQuick={f.noop}
+                onPickWorkout={f.noop}
                 onConstraints={f.noop}
                 onExercise={f.noop}
                 onProfile={f.noop}
@@ -333,13 +334,15 @@ function gallery(challenge: Challenge) {
                 onEnd={f.noop}
               />
             </Frame>
-            <Frame n="05c" name="Training day · something else today" note="Not everybody's Monday is the same workout every week. Somebody whose Monday is legs this week and back and biceps the next is not editing their week when they say so, they are saying what today is, so the same list is reachable with a plan already on the day. What today is planned as is left out of it, since the orange button on Today already starts that, and the line at the top says what the week still thinks Wednesday is.">
+            <Frame n="05c" name="Training day · something else today" note="Change on Today opens this. The plan is the first card, outlined and tagged, so changing your mind is one tap rather than a Cancel, and adjusting it for a sore shoulder or a hotel gym happens on the card itself. Everything else is under Or switch to, and none of it moves the week.">
               <PickWorkout
                 profile={f.profile}
                 workouts={f.workouts}
                 routines={f.routines}
                 today={3}
                 planned={{ label: f.routines[1].label, exercises: f.routines[1].exercises }}
+                onStartPlanned={f.noop}
+                onAdjust={f.noop}
                 onPick={f.noop}
                 onQuick={f.noop}
                 onBack={f.noop}

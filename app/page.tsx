@@ -120,6 +120,12 @@ export default function Page() {
     afterwards.
   */
   const [arrival, setArrival] = useState<ArrivalMood | null>(null);
+  /*
+    What a rebuild from the list understood. Today used to hold this itself,
+    but the sentence can now be asked from the list, and the line has to
+    survive the trip back to Today to be read.
+  */
+  const [adjusted, setAdjusted] = useState("");
   const [welcomed, setWelcomed] = useState(false);
   // Set when the beat hands over, so Today rises into place rather than simply
   // appearing. A ref, not state: it is read during the render that dismissing
@@ -321,6 +327,7 @@ export default function Page() {
 
   function startLogging() {
     if (!profile) return;
+    setAdjusted("");
     /*
       Fired here, on the same tick as the tap, so the browser still treats the
       window it opens as user-activated. Before the state write rather than
@@ -887,11 +894,16 @@ export default function Page() {
         dayLibrary={state.dayLibrary}
         today={dow}
         /*
-          What today already is, when it is anything. Starting that is what the
-          button on Today does, so the list leaves it out and the screen says
-          what she is choosing instead of.
+          What today already is, when it is anything. The list shows it as the
+          first card, so changing her mind is one tap and not a Cancel.
         */
         planned={todayPlan ? { label: todayPlan.label, exercises: todayPlan.exercises } : undefined}
+        onStartPlanned={startLogging}
+        onAdjust={(c, line) => {
+          applyConstraints(c);
+          setAdjusted(line);
+          setView("today");
+        }}
         onPick={startFrom}
         onQuick={startQuick}
         onBack={() => setView("today")}
@@ -911,10 +923,11 @@ export default function Page() {
       }}
       onStart={startLogging}
       onQuick={startQuick}
+      adjusted={adjusted}
       /*
-        Only on a rest day, and only with something to choose from. With an
-        empty week and nothing saved the picker would be an empty screen
-        between her and a workout, so the old behaviour stands there.
+        "Train anyway" on a rest day, and Change on a day with a plan. Only with
+        something to choose from: with an empty week and nothing saved the list
+        would be an empty screen between her and a workout.
       */
       onPickWorkout={
         routines.length > 0 || (state.workouts?.length ?? 0) > 0

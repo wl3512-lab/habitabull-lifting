@@ -286,7 +286,7 @@ export default function PickWorkout({
                         type="button"
                         onClick={() => setAdjusting(false)}
                         disabled={asking}
-                        className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg"
+                        className="head h-12 shrink-0 px-4 text-body text-dim transition-colors hover:text-fg disabled:opacity-40"
                       >
                         Cancel
                       </button>
