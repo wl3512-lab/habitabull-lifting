@@ -279,8 +279,6 @@ export default function RoutineEditor({
   }
 
   const routine = draft[dayIndex];
-  // Read once: the heading, the hint and the Fill button all describe this day's type.
-  const kind = templateOf(routine.template ?? "full-body");
   if (!routine) {
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
@@ -291,6 +289,10 @@ export default function RoutineEditor({
       </main>
     );
   }
+
+  // Read once: the heading, the hint and the Fill button all describe this day's type.
+  // It sits below the guard above because with no days there is no routine to read.
+  const kind = templateOf(routine.template ?? "full-body");
 
   const write = (exercises: PlannedExercise[]) =>
     setDraft(draft.map((r, i) => (i === dayIndex ? { ...r, exercises } : r)));
