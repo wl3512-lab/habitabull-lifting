@@ -1,0 +1,43 @@
+import { describe, expect, it } from "vitest";
+import { dayLine, equipmentLine, levelLabel, LEVELS, scheduleLine, weighInLine } from "./profile-summary";
+import type { PlannedExercise } from "./types";
+
+const lift = (exerciseId: string): PlannedExercise => ({ exerciseId, sets: 3, reps: 5, weight: 100 });
+
+describe("what each Profile row says when it is closed", () => {
+  it("reads the latest weigh-in with its date, or nothing", () => {
+    expect(weighInLine([])).toBeNull();
+    expect(
+      weighInLine([
+        { date: "2026-09-13", lb: 165.85 },
+        { date: "2026-09-20", lb: 165.5 },
+      ])
+    ).toBe("165.5 lb · Sep 20");
+  });
+
+  it("names up to two pieces of kit and counts the rest", () => {
+    expect(equipmentLine(["dumbbell"])).toBe("Dumbbells");
+    expect(equipmentLine(["dumbbell", "barbell"])).toBe("Barbells, Dumbbells");
+    expect(equipmentLine(["barbell", "dumbbell", "machine", "bodyweight", "kettlebell"])).toBe(
+      "Barbells, Dumbbells +3"
+    );
+  });
+
+  it("counts days a week, and adds when if she said", () => {
+    expect(scheduleLine([1, 3, 5])).toBe("3 days a week");
+    expect(scheduleLine([2], [])).toBe("1 day a week");
+    expect(scheduleLine([1, 3, 5], ["evening", "lunch"])).toBe("3 days a week · Evening, Lunchtime");
+  });
+
+  it("describes a day by its name and its lifts", () => {
+    expect(dayLine({ label: "Full body A", exercises: ["a", "b", "c", "d", "e"].map(lift) })).toBe(
+      "Full body A · 5 lifts"
+    );
+    expect(dayLine({ label: "Leg day", exercises: [] })).toBe("Leg day · nothing on it yet");
+  });
+
+  it("labels every level, and only these three", () => {
+    expect(LEVELS.map((l) => l.id)).toEqual(["new", "returning", "experienced"]);
+    expect(levelLabel("returning")).toBe("Coming back");
+  });
+});
