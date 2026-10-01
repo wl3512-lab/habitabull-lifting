@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Pill } from "./ui";
 import { alternativesFor, generateRoutine, LEVEL_SETS, repsFor, SHORT_DAYS, startingWeight, suggestFrom } from "@/lib/engine";
 import { TEMPLATES, coversTwiceWeekly, templateOf, type TemplateId } from "@/lib/templates";
@@ -129,6 +129,10 @@ export default function RoutineEditor({
     now; it stays open while it has something to say back.
   */
   const [describing, setDescribing] = useState(initialDescribing);
+  // The chips are named by their short text, so the pressed one is described by
+  // the hint, and the group is named by its label. Ids tie those together.
+  const kindLabelId = useId();
+  const hintId = useId();
   const [pane, setPane] = useState<"editor" | "workouts">("editor");
   const [ownName, setOwnName] = useState("");
   const [ownBusy, setOwnBusy] = useState(false);
@@ -275,6 +279,8 @@ export default function RoutineEditor({
   }
 
   const routine = draft[dayIndex];
+  // Read once: the heading, the hint and the Fill button all describe this day's type.
+  const kind = templateOf(routine.template ?? "full-body");
   if (!routine) {
     return (
       <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-6 pb-10 pt-12">
@@ -647,7 +653,7 @@ export default function RoutineEditor({
       </div>
 
       <h1 className="statement mt-2 text-figure text-fg">{FULL[routine.day]}</h1>
-      <p className="mt-1 text-emphasis text-dim">{templateOf(routine.template ?? "full-body").label}</p>
+      <p className="mt-1 text-emphasis text-dim">{kind.label}</p>
 
       {days.length > 1 && (
         <div className="mt-4 flex gap-2">
@@ -690,8 +696,8 @@ export default function RoutineEditor({
         chosen one says what it is, which is the sentence that matters.
       */}
       <section className="mt-4 rounded-2xl bg-card p-[18px]">
-        <p className="label text-dim">What kind of day</p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <p id={kindLabelId} className="label text-dim">What kind of day</p>
+        <div role="group" aria-labelledby={kindLabelId} className="mt-3 flex flex-wrap gap-2">
           {ownWorkouts && (
             <button
               type="button"
@@ -703,6 +709,7 @@ export default function RoutineEditor({
               className="head h-11 rounded-full border border-line-strong px-4 text-body text-fg transition-colors duration-quick hover:border-fg"
             >
               {ownWorkouts.label}
+              {mine.length > 0 && ` · ${mine.length}`}
             </button>
           )}
           {TEMPLATES.map((t) => {
@@ -713,7 +720,7 @@ export default function RoutineEditor({
                 type="button"
                 onClick={() => setTemplate(t.id)}
                 aria-pressed={on}
-                aria-label={t.label}
+                aria-describedby={on ? hintId : undefined}
                 className={`head h-11 rounded-full border px-4 text-body transition-colors duration-quick ${
                   on ? "border-cyan bg-cyan text-ground" : "border-line-strong text-dim hover:border-fg hover:text-fg"
                 }`}
@@ -723,9 +730,9 @@ export default function RoutineEditor({
             );
           })}
         </div>
-        <p className="mt-3 text-body leading-snug text-dim">
-          {templateOf(routine.template ?? "full-body").hint}
-          {templateOf(routine.template ?? "full-body").recommended && (
+        <p id={hintId} aria-live="polite" className="mt-3 text-body leading-snug text-dim">
+          {kind.hint}
+          {kind.recommended && (
             <span className="label ml-2 text-cyan">Recommended</span>
           )}
         </p>
@@ -770,13 +777,19 @@ export default function RoutineEditor({
             )}
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => setDescribing(true)}
-            className="head tap mt-3 text-body text-cyan transition-opacity hover:opacity-70"
-          >
-            Or describe your week
-          </button>
+          // .tap carries its own unlayered -12px margin, which beats Tailwind's
+          // layered mt-3, so the spacing lives on a wrapper. It is mt-5 because
+          // 12px of it is cancelled by that margin, leaving the hit area clear
+          // of the hint and the words 20px below it.
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={() => setDescribing(true)}
+              className="head tap text-body text-cyan transition-opacity hover:opacity-70"
+            >
+              Or describe your week
+            </button>
+          </div>
         )}
 
         {/*
@@ -964,7 +977,7 @@ export default function RoutineEditor({
             Autofill for me
           </Pill>
           <p className="mt-2 text-body leading-snug text-dim">
-            Fills it with {templateOf(routine.template ?? "full-body").label.toLowerCase()} work
+            Fills it with {kind.label.toLowerCase()} work
             the app picks, for your level and your kit. Change anything after.
           </p>
         </div>
