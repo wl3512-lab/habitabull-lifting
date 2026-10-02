@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { dayDetail, equipmentLine, levelLabel, LEVELS, scheduleTitle, scheduleWhen, weighInLine } from "./profile-summary";
+import {
+  dayDetail,
+  equipmentLine,
+  levelLabel,
+  LEVELS,
+  loadTheBarLine,
+  scheduleTitle,
+  scheduleWhen,
+  weighInLine,
+} from "./profile-summary";
 import type { PlannedExercise } from "./types";
 
 const lift = (exerciseId: string): PlannedExercise => ({ exerciseId, sets: 3, reps: 5, weight: 100 });
@@ -47,6 +56,15 @@ describe("what each Profile row says when it is closed", () => {
     );
     expect(dayDetail({ exercises: ["bench-press"].map(lift) })).toBe("1 lift · Bench Press");
     expect(dayDetail({ exercises: [] })).toBe("Nothing on it yet");
+  });
+
+  it("says whether the bar is loaded, and Not set before she has answered", () => {
+    expect(loadTheBarLine({})).toBe("Not set");
+    expect(loadTheBarLine({ loadTheBar: true, weightInput: "plates" })).toBe("On");
+    expect(loadTheBarLine({ loadTheBar: true, weightInput: "steppers" })).toBe("On");
+    expect(loadTheBarLine({ loadTheBar: false, weightInput: "plates" })).toBe("Off");
+    // Somebody who used the old switch on a set has already said yes.
+    expect(loadTheBarLine({ weightInput: "steppers" })).toBe("On");
   });
 
   it("labels every level, and only these three", () => {

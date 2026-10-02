@@ -11,6 +11,7 @@ import DayDetail from "@/components/DayDetail";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
+import LoadTheBar from "@/components/LoadTheBar";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import Arrival from "@/components/Arrival";
@@ -538,6 +539,7 @@ function gallery(challenge: Challenge) {
                 onImport={f.noop}
                 onEditPlan={f.noop}
                 onEditWeek={f.noop}
+                onOpenPlates={f.noop}
               />
             </Frame>
             <Frame n="08c" name="Profile · a row open" tab="profile" note="A row opens the same controls and the same explanation it always had, and closes whichever was open. Nothing about what a setting does is lost, only where it waits.">
@@ -550,8 +552,12 @@ function gallery(challenge: Challenge) {
                 onImport={f.noop}
                 onEditPlan={f.noop}
                 onEditWeek={f.noop}
+                onOpenPlates={f.noop}
                 initialOpen="kit"
               />
+            </Frame>
+            <Frame n="08d" name="Load the bar" note="Opened from Profile, where it used to be a switch with one line under it, asking her to decide about a control she may never have seen. Now the real loader comes first with nothing riding on it: tap plates on and off and no set changes. The bar weight is the one thing here that saves, because it is a real setting that otherwise only turns up mid-workout. The switch sits under the demo and means what it meant in Profile.">
+              <LoadTheBar profile={f.profile} onProfile={f.noop} onBack={f.noop} />
             </Frame>
             <Frame n="11" name="Calendar" tab="calendar" note="Weeks, not days. The Figma's “you're on fire” was cut — PRODUCT.md bans hustle language by name.">
               <Calendar profile={f.profile} sessions={f.sessions} routines={f.routines ?? []} onOpenDay={f.noop} />

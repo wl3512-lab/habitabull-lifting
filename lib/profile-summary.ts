@@ -1,7 +1,8 @@
 import { nameOf } from "./exercises";
+import { offersPlates } from "./plates";
 import { count } from "./plural";
 import { anchorOf, type Anchor } from "./schedule";
-import type { Equipment, Level, Routine, WeighIn } from "./types";
+import type { Equipment, Level, Profile, Routine, WeighIn } from "./types";
 
 /**
  * What each Profile row says while it is closed.
@@ -57,6 +58,16 @@ export function equipmentLine(kit: Equipment[]): string {
   if (names.length === 0) return "None set";
   if (names.length <= 2) return names.join(", ");
   return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+}
+
+/**
+ * On, Off, or Not set. Not set is its own answer and not a kind of Off: the
+ * first barbell lift will still ask, and Off would say she had turned it down.
+ */
+export function loadTheBarLine(profile: Pick<Profile, "loadTheBar" | "weightInput">): string {
+  const offered = offersPlates(profile);
+  if (offered === undefined) return "Not set";
+  return offered ? "On" : "Off";
 }
 
 /*
