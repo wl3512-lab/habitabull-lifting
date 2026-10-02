@@ -20,6 +20,7 @@ import ImportWorkout from "@/components/ImportWorkout";
 import PickWorkout from "@/components/PickWorkout";
 import ProfileScreen from "@/components/Profile";
 import Progress from "@/components/Progress";
+import ProgressPhotos from "@/components/ProgressPhotos";
 import RestTimer from "@/components/RestTimer";
 import SetLogged from "@/components/SetLogged";
 import RoutineEditor from "@/components/RoutineEditor";
@@ -554,7 +555,23 @@ function gallery(challenge: Challenge) {
               />
             </Frame>
             <Frame n="11" name="Calendar" tab="calendar" note="Weeks, not days. The Figma's “you're on fire” was cut — PRODUCT.md bans hustle language by name.">
-              <Calendar profile={f.profile} sessions={f.sessions} routines={f.routines ?? []} onOpenDay={f.noop} />
+              <Calendar
+                profile={f.profile}
+                sessions={f.sessions}
+                routines={f.routines ?? []}
+                onOpenDay={f.noop}
+                onOpenPhotos={f.noop}
+              />
+            </Frame>
+            <Frame n="11b" name="Progress photos" note="Opened from See all on the calendar's photo card, or from any thumbnail on it. Her first and latest side by side and uncropped, because a crop decides what a comparison is about and that is hers to decide. The gap between them is said in whole months and never rounded up. Everything else follows by month. Nothing on the page is scored or set beside anybody else's.">
+              <ProgressPhotos preview={f.progressPhotos} onBack={f.noop} />
+            </Frame>
+            <Frame n="11c" name="A photo, opened" note="Whole, on the deepest ground, with its date and nothing laid over it. Arrows, arrow keys and a swipe move through time oldest-left, the way the calendar's months do. Compare with latest puts this one in the pair. Remove asks once more, because a photo has no undo.">
+              <ProgressPhotos
+                preview={f.progressPhotos}
+                initialOpen={f.progressPhotos[3].id}
+                onBack={f.noop}
+              />
             </Frame>
             <Frame n="17" name="Day detail" note="What you lifted, what you wrote, what you looked like. A rest day says so rather than apologising.">
               <DayDetail
@@ -720,7 +737,8 @@ function gallery(challenge: Challenge) {
 
           <p className="mt-16 max-w-[70ch] text-body text-dim">
             Photos are stored per browser, so the calendar and day-detail frames show their
-            empty photo state here unless you have added some in this browser.
+            empty photo state here unless you have added some in this browser. The progress
+            photos frames use flat stand-ins instead.
           </p>
     </>
   );

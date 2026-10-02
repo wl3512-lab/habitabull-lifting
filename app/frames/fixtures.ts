@@ -249,6 +249,49 @@ export const crewDay: CrewDay = {
   ],
 };
 
+/*
+  Progress photos for 11b and 11c. Flat gradients for the same reason as the
+  crew's: a real photo would be a real body. The shapes differ on purpose, a
+  phone's 3:4, a tall 9:16 and one landscape, so the frames show the pair and
+  the viewer keeping each photo whole rather than a set that happens to fit.
+*/
+const still = (w: number, h: number, from: string, to: string) =>
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+      `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>` +
+      `<rect width="${w}" height="${h}" fill="url(#g)"/>` +
+      `<text x="${w / 2}" y="${h / 2}" dy="0.35em" font-family="system-ui,sans-serif" font-size="${Math.round(Math.min(w, h) / 14)}" fill="#ffffff" fill-opacity="0.62" text-anchor="middle">your photo</text>` +
+      `</svg>`
+  );
+
+const TEAL = ["#1d5f6b", "#0f2a33"];
+const SLATE = ["#2b4f6e", "#121f2e"];
+const MOSS = ["#3d5a4a", "#16231c"];
+const CLAY = ["#5b4a2e", "#241d12"];
+
+/** Five months of them, newest first: weekly lately, further apart before that. */
+export const progressPhotos = (
+  [
+    [1, 900, 1200, TEAL],
+    [8, 900, 1200, SLATE],
+    [15, 900, 1200, MOSS],
+    [29, 1200, 900, CLAY],
+    [36, 900, 1200, TEAL],
+    [50, 900, 1200, SLATE],
+    [64, 720, 1280, MOSS],
+    [78, 900, 1200, TEAL],
+    [92, 900, 1200, CLAY],
+    [121, 900, 1200, SLATE],
+    [150, 900, 1200, TEAL],
+  ] as const
+).map(([ago, w, h, [from, to]]) => ({
+  id: `fx-photo-${ago}`,
+  date: iso(ago),
+  addedAt: at(ago, 7),
+  url: still(w, h, from, to),
+}));
+
 /** A crew of three, a week in. Days only — there is no other column to fill. */
 export const crew: { code: string; members: CrewMember[] } = {
   code: "K4M9TX",

@@ -19,6 +19,7 @@ import Comeback from "@/components/Comeback";
 import ImportWorkout from "@/components/ImportWorkout";
 import PickWorkout, { type WorkoutChoice } from "@/components/PickWorkout";
 import Progress from "@/components/Progress";
+import ProgressPhotos from "@/components/ProgressPhotos";
 import RoutineEditor from "@/components/RoutineEditor";
 import TabBar, { type Tab } from "@/components/TabBar";
 import TabView from "@/components/TabView";
@@ -76,7 +77,7 @@ function copyableWeek(routines: Routine[]): SharedDay[] {
   }));
 }
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "stopped" | "import" | "pick";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "stopped" | "import" | "pick" | "photos";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -108,6 +109,8 @@ export default function Page() {
   // Where an exercise detail screen returns to, so it can open from anywhere.
   const [detail, setDetail] = useState<{ id: string; from: View } | null>(null);
   const [dayOpen, setDayOpen] = useState<string | null>(null);
+  // The photo a calendar thumbnail asked the photos page to open on.
+  const [photoOpen, setPhotoOpen] = useState<string | null>(null);
   const [copying, setCopying] = useState<{ day: SharedDay; from: string } | null>(null);
   /*
     The beat the app opens on, and whether it has already played.
@@ -583,6 +586,20 @@ export default function Page() {
     );
   }
 
+  /*
+    Full screen, like the day it sits beside. It is a place inside the
+    calendar rather than one of the five, and a photo deserves the whole
+    height of the phone more than it needs a way to Crew.
+  */
+  if (view === "photos") {
+    return (
+      <ProgressPhotos
+        initialOpen={photoOpen ?? undefined}
+        onBack={() => setView("calendar")}
+      />
+    );
+  }
+
   if (view === "routine") {
     return (
       <RoutineEditor
@@ -761,6 +778,10 @@ export default function Page() {
         onOpenDay={(d: string) => {
           setDayOpen(d);
           setView("day");
+        }}
+        onOpenPhotos={(id?: string) => {
+          setPhotoOpen(id ?? null);
+          setView("photos");
         }}
       />,
       "calendar"

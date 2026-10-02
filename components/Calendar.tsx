@@ -10,7 +10,8 @@ import {
   sessionsInMonth,
   yearCounts,
 } from "@/lib/calendar";
-import { addPhoto, deletePhoto, listPhotos, photoUrl, type PhotoMeta } from "@/lib/photos";
+import { addPhoto, listPhotos, type PhotoMeta } from "@/lib/photos";
+import { usePhotoUrl } from "@/lib/use-photo-url";
 import { buildIcs, googleUrl } from "@/lib/ics";
 import type { Profile, Routine, Session } from "@/lib/types";
 import { count } from "@/lib/plural";
@@ -21,7 +22,7 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-/** One thumbnail. Owns its object URL so it can revoke it on unmount. */
+/** One thumbnail. The hook owns its object URL and revokes it on unmount. */
 function Thumb({
   photo,
   onOpen,
@@ -29,23 +30,7 @@ function Thumb({
   photo: PhotoMeta;
   onOpen: (id: string) => void;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    let made: string | null = null;
-    photoUrl(photo.id).then((u) => {
-      if (!live) {
-        if (u) URL.revokeObjectURL(u);
-        return;
-      }
-      made = u;
-      setUrl(u);
-    });
-    return () => {
-      live = false;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [photo.id]);
+  const url = usePhotoUrl(photo.id);
 
   const label = new Date(photo.date + "T00:00:00").toLocaleDateString(undefined, {
     day: "numeric",
@@ -57,7 +42,7 @@ function Thumb({
       type="button"
       onClick={() => onOpen(photo.id)}
       className="relative aspect-[3/4] w-[104px] shrink-0 overflow-hidden rounded-xl bg-raise"
-      aria-label={`Progress photo from ${label}`}
+      aria-label={`Open the photo from ${label}`}
     >
       {url ? (
         // Blobs from IndexedDB, so next/image would only get in the way.
@@ -82,28 +67,31 @@ function Thumb({
  * view, streak, and progress photos in one place (deck p27, p36).
  *
  * The photos are the point. Cathy wants them, the flow had them, and the Miro
- * sticky asked for "compare pictures after each month" — so the strip has two
- * modes, and the second one shows a single photo per month oldest to newest,
- * which is the comparison rather than another gallery.
+ * sticky asked for "compare pictures after each month". The comparison used to
+ * live here as a second mode of the strip, one photo per month at 104px. It
+ * now has a page of its own (ProgressPhotos), where the pair is big enough to
+ * actually compare, so this card is the preview and the way in: the newest
+ * photos, See all, and adding today's.
  */
 export default function Calendar({
   profile,
   sessions,
   routines,
   onOpenDay,
+  onOpenPhotos,
 }: {
   profile: Profile;
   sessions: Session[];
   /** The weekly plan, so the calendar can dot the days you are due in the gym. */
   routines: Routine[];
   onOpenDay: (date: string) => void;
+  /** The progress photos page, opened on one photo when a thumbnail was tapped. */
+  onOpenPhotos: (id?: string) => void;
 }) {
   const today = new Date();
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [view, setView] = useState<"month" | "year">("month");
   const [photos, setPhotos] = useState<PhotoMeta[]>([]);
-  const [compare, setCompare] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   // Tapping a scheduled dot names the day type here rather than opening an
@@ -136,20 +124,6 @@ export default function Calendar({
   const thisMonth = sessionsInMonth(sessions, year, month);
   const counts = useMemo(() => yearCounts(sessions, year), [sessions, year]);
 
-  // One photo per month, oldest first — the comparison the sticky asked for.
-  const strip = useMemo(() => {
-    if (!compare) return photos;
-    const seen = new Set<string>();
-    return [...photos]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .filter((p) => {
-        const key = p.date.slice(0, 7);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-  }, [photos, compare]);
-
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -160,12 +134,6 @@ export default function Calendar({
     if (meta) setPhotos(await listPhotos());
     else setFailed(true);
     setBusy(false);
-  }
-
-  async function remove(id: string) {
-    await deletePhoto(id);
-    setPhotos(await listPhotos());
-    setOpenId(null);
   }
 
   /*
@@ -446,34 +414,33 @@ export default function Calendar({
       <section className="mt-2.5 rounded-2xl bg-card p-[18px]">
         <div className="flex items-baseline justify-between gap-3">
           <p className="label text-dim">Progress photos</p>
-          {photos.length > 1 && (
+          {photos.length > 0 && (
             <button
               type="button"
-              onClick={() => setCompare(!compare)}
-              aria-pressed={compare}
+              onClick={() => onOpenPhotos()}
               className="head tap shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
             >
-              {compare ? "Show all" : "Compare months"}
+              See all
             </button>
           )}
         </div>
 
-        {strip.length > 0 ? (
+        {/*
+          A thumbnail opens the page on that photo rather than a lightbox over
+          the calendar. One tap still shows the photo she pressed; closing it
+          leaves her among the rest of them, which is where a photo is worth
+          looking at, and Back brings her here.
+        */}
+        {photos.length > 0 ? (
           <div className="-mx-[18px] mt-3 flex gap-2 overflow-x-auto px-[18px] pb-1">
-            {strip.map((p) => (
-              <Thumb key={p.id} photo={p} onOpen={setOpenId} />
+            {photos.map((p) => (
+              <Thumb key={p.id} photo={p} onOpen={onOpenPhotos} />
             ))}
           </div>
         ) : (
           <p className="mt-2 text-body text-dim">
             Nothing yet. One photo a month is enough to see the thing that daily
             mirrors hide.
-          </p>
-        )}
-
-        {compare && strip.length > 1 && (
-          <p className="mt-2.5 text-body text-dim">
-            One photo per month, oldest first.
           </p>
         )}
 
@@ -545,88 +512,6 @@ export default function Calendar({
           </p>
         )}
       </section>
-
-      {openId && (
-        <Lightbox
-          id={openId}
-          // The same date the thumbnail read out, formatted the same way.
-          label={new Date(
-            (photos.find((p) => p.id === openId)?.date ?? "") + "T00:00:00"
-          ).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
-          onClose={() => setOpenId(null)}
-          onDelete={remove}
-        />
-      )}
     </main>
-  );
-}
-
-function Lightbox({
-  id,
-  label,
-  onClose,
-  onDelete,
-}: {
-  id: string;
-  /** The date the thumbnail announced, so opening it does not lose it. */
-  label: string;
-  onClose: () => void;
-  onDelete: (id: string) => void;
-}) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    let made: string | null = null;
-    photoUrl(id).then((u) => {
-      if (!live) {
-        if (u) URL.revokeObjectURL(u);
-        return;
-      }
-      made = u;
-      setUrl(u);
-    });
-    return () => {
-      live = false;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [id]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col bg-deep/95 p-5"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Progress photo from ${label}`}
-    >
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="head tap text-emphasis text-fg"
-          autoFocus
-        >
-          Close
-        </button>
-      </div>
-      <div className="flex flex-1 items-center justify-center">
-        {url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="" className="max-h-full max-w-full rounded-2xl object-contain" />
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={() => onDelete(id)}
-        className="head tap mx-auto mt-4 text-body text-dim transition-colors hover:text-fg"
-      >
-        Delete this photo
-      </button>
-    </div>
   );
 }

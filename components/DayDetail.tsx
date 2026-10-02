@@ -6,28 +6,13 @@ import CrewPost from "./CrewPost";
 import { Pill } from "./ui";
 import { crewCode, enabled, fetchDay, sharePhoto, type CrewDay, type CrewPhoto } from "@/lib/cloud";
 import { nameOf } from "@/lib/exercises";
-import { listPhotos, photoData, photoUrl, type PhotoMeta } from "@/lib/photos";
+import { listPhotos, photoData, type PhotoMeta } from "@/lib/photos";
+import { usePhotoUrl } from "@/lib/use-photo-url";
 import type { Session } from "@/lib/types";
 
-/** One photo, owning its object URL so it can revoke it on unmount. */
+/** One photo. The hook owns its object URL and revokes it on unmount. */
 function Shot({ id, className }: { id: string; className: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    let made: string | null = null;
-    photoUrl(id).then((u) => {
-      if (!live) {
-        if (u) URL.revokeObjectURL(u);
-        return;
-      }
-      made = u;
-      setUrl(u);
-    });
-    return () => {
-      live = false;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [id]);
+  const url = usePhotoUrl(id);
   // A blob from IndexedDB; next/image would only get in the way.
   // eslint-disable-next-line @next/next/no-img-element
   return url ? (
