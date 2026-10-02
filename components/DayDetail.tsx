@@ -5,6 +5,7 @@ import Bull, { BULL } from "./Bull";
 import CrewPost from "./CrewPost";
 import { Pill } from "./ui";
 import { crewCode, enabled, fetchDay, sharePhoto, type CrewDay, type CrewPhoto } from "@/lib/cloud";
+import { attended } from "@/lib/attendance";
 import { nameOf } from "@/lib/exercises";
 import { listPhotos, photoData, photoUrl, type PhotoMeta } from "@/lib/photos";
 import type { Session } from "@/lib/types";
@@ -95,7 +96,21 @@ export default function DayDetail({
   useEffect(loadCrew, [loadCrew]);
 
   const d = new Date(date + "T00:00:00");
-  const trained = Boolean(session?.completedAt);
+  /*
+    Went, not finished. This read `completedAt`, so a day she stopped partway
+    said "Rest day", then listed what she lifted under it, then closed on
+    "Nothing here". Three answers to one question, two of them wrong. A day with
+    a logged set is a day she trained.
+
+    `partway` adds that she stopped early, once and plainly, because it is true
+    and it is not a mark against her. Only when sets were actually left: every
+    set logged and End instead of Finish is a whole workout, not a partial one.
+  */
+  const trained = Boolean(session && attended(session));
+  const partway =
+    trained &&
+    !session?.completedAt &&
+    (session?.exercises ?? []).some((e) => e.sets.some((s) => !s.done));
   const lifts = (session?.exercises ?? []).filter((e) => e.sets.some((s) => s.done));
 
   const mineShared = crew?.photos.find((p) => p.mine);
@@ -144,6 +159,10 @@ export default function DayDetail({
         />
         {trained ? `You trained${session?.label ? ` · ${session.label}` : ""}` : "Rest day"}
       </p>
+      {partway && (
+        // Indented to hang under "You trained", past the dot and its gap.
+        <p className="mt-1 pl-5 text-body text-dim">You stopped partway. It still counts.</p>
+      )}
 
       {photos.length > 0 && (
         <>

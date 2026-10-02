@@ -16,6 +16,29 @@ const session = (date: string, completed = true): Session => ({
   ...(completed ? { completedAt: `${date}T18:30:00.000Z` } : {}),
 });
 
+/** What End leaves: some sets logged, the rest still on the card, no completedAt. */
+const partial = (date: string): Session => ({
+  date,
+  label: "Test",
+  exercises: [
+    {
+      exerciseId: "back-squat",
+      sets: [
+        { weight: 135, reps: 5, done: true },
+        { weight: 135, reps: 5, done: false },
+      ],
+    },
+    { exerciseId: "bench-press", sets: [{ weight: 95, reps: 8, done: false }] },
+  ],
+});
+
+/** Opened and put down: a plan on the card, nothing logged. */
+const opened = (date: string): Session => ({
+  date,
+  label: "Test",
+  exercises: [{ exerciseId: "back-squat", sets: [{ weight: 135, reps: 5, done: false }] }],
+});
+
 describe("monthMatrix", () => {
   it("pads to whole weeks and starts on Sunday", () => {
     // May 2024: 1st is a Wednesday, 31 days.
@@ -53,9 +76,23 @@ describe("monthMatrix", () => {
     expect(cells.find((c) => c.day === 9)?.future).toBe(false);
   });
 
-  it("does not mark an uncompleted draft session as trained", () => {
-    const rows = monthMatrix(2024, 4, [session("2024-05-06", false)], [], new Date(2024, 4, 10));
+  it("marks a day she stopped partway as trained", () => {
+    // The report: "only two sessions are saved even though I logged way more".
+    // They were saved; the calendar only drew the ones that reached Finish.
+    const rows = monthMatrix(2024, 4, [partial("2024-05-06")], [], new Date(2024, 4, 10));
+    expect(rows.flat().find((c) => c.day === 6)?.trained).toBe(true);
+  });
+
+  it("does not mark a session she started and logged nothing in", () => {
+    const rows = monthMatrix(
+      2024,
+      4,
+      [opened("2024-05-06"), session("2024-05-07", false)],
+      [],
+      new Date(2024, 4, 10)
+    );
     expect(rows.flat().find((c) => c.day === 6)?.trained).toBe(false);
+    expect(rows.flat().find((c) => c.day === 7)?.trained).toBe(false);
   });
 
   it("flags days that have a progress photo", () => {
@@ -85,6 +122,21 @@ describe("comebackDates", () => {
     const s = [session("2024-05-20"), session("2024-05-01")];
     expect([...comebackDates(s)]).toEqual(["2024-05-20"]);
   });
+
+  it("counts a partial day as the day she came back, and as a day that closes a gap", () => {
+    // Back on the 20th and stopped early: still a comeback. Partway on the 10th:
+    // the gap to the 20th is ten days, not nineteen.
+    expect([...comebackDates([session("2024-05-01"), partial("2024-05-20")])]).toEqual(["2024-05-20"]);
+    expect(longestComebackGap([session("2024-05-01"), partial("2024-05-10"), session("2024-05-20")])).toBe(
+      10
+    );
+  });
+
+  it("does not let a session with nothing logged close a gap", () => {
+    expect([...comebackDates([session("2024-05-01"), opened("2024-05-10"), session("2024-05-20")])]).toEqual([
+      "2024-05-20",
+    ]);
+  });
 });
 
 describe("longestComebackGap", () => {
@@ -103,15 +155,21 @@ describe("longestComebackGap", () => {
 });
 
 describe("month and year counts", () => {
-  it("counts only completed sessions inside the month", () => {
+  it("counts the days she went inside the month, finished or not", () => {
     const s = [
       session("2024-05-01"),
       session("2024-05-30"),
       session("2024-06-01"),
-      session("2024-05-15", false),
+      partial("2024-05-20"),
+      opened("2024-05-15"),
+      session("2024-05-16", false),
     ];
-    expect(sessionsInMonth(s, 2024, 4)).toBe(2);
+    expect(sessionsInMonth(s, 2024, 4)).toBe(3);
     expect(sessionsInMonth(s, 2024, 5)).toBe(1);
+  });
+
+  it("puts a partial day in the year count", () => {
+    expect(yearCounts([partial("2024-03-04"), opened("2024-03-05")], 2024)[2]).toBe(1);
   });
 
   it("does not confuse months across years", () => {
@@ -154,9 +212,19 @@ describe("weekStrip", () => {
     expect(days.filter((d) => d.isToday).map((d) => d.iso)).toEqual([WED]);
   });
 
-  it("counts only completed sessions as trained", () => {
-    const days = weekStrip([session("2024-05-13"), session("2024-05-14", false)], [], WED);
-    expect(days.filter((d) => d.trained).map((d) => d.iso)).toEqual(["2024-05-13"]);
+  it("counts a day she went, finished or not, and not a day she only opened", () => {
+    const days = weekStrip(
+      [session("2024-05-13"), partial("2024-05-14"), opened("2024-05-12"), session("2024-05-16", false)],
+      [],
+      WED
+    );
+    expect(days.filter((d) => d.trained).map((d) => d.iso)).toEqual(["2024-05-13", "2024-05-14"]);
+  });
+
+  it("lights today from the first logged set, before she finishes", () => {
+    const days = weekStrip([partial(WED)], [3], WED);
+    expect(days[3].isToday).toBe(true);
+    expect(days[3].trained).toBe(true);
   });
 
   it("ignores sessions from other weeks", () => {

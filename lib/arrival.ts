@@ -1,3 +1,4 @@
+import { attended } from "./attendance";
 import { greetingMood } from "./voice";
 import type { AppState } from "./types";
 
@@ -73,7 +74,9 @@ export function arrivalMood(
   */
   if (!profile.planChosen && sessions.length === 0) return null;
 
-  const done = sessions.filter((s) => s.completedAt);
+  // The last day she went, finished or not. A day she stopped partway still
+  // closes a gap; one she opened and logged nothing in does not.
+  const done = sessions.filter(attended);
   const lastDone = done
     .map((s) => s.date)
     .filter((d) => d < today)

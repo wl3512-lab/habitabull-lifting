@@ -17,6 +17,7 @@ import { startedAgo, unfinishedSessions } from "@/lib/session-memory";
 import { previewExercise } from "@/lib/plan";
 import { count } from "@/lib/plural";
 import { weekStrip } from "@/lib/calendar";
+import { attended } from "@/lib/attendance";
 
 
 /**
@@ -97,20 +98,27 @@ export default function Today({
   const [editingWhy, setEditingWhy] = useState(false);
   const [whyDraft, setWhyDraft] = useState(profile.motivation ?? "");
 
-  const done = sessions.filter((s) => s.completedAt);
+  /*
+    Days she went (`attended`), finished or not. Today's own session joins once
+    it is finished: until then it is still open, this screen is still offering
+    to carry on with it, and a comeback stays a comeback while she is in it.
+    The week strip is the exception on purpose, and lights today from the
+    first logged set, because it is the week as it stands.
+  */
+  const done = sessions.filter((s) => attended(s) && (s.date < today || s.completedAt));
   const last = done.map((s) => s.date).sort().at(-1);
   const mood = greetingMood(last, today);
   const alreadyLogged = sessions.some((s) => s.date === today && s.completedAt);
   /*
-    Ending a workout early marks the session complete, because it is over — but
-    it is not *finished*, and the screen treated those as the same thing. Do one
-    lift of five, tap End, and Today said "Logged", "That is the whole job" and
-    "Logged. That's another one on the board." about four lifts that had not
-    been touched, over a button offering to *add* to a session with most of
-    itself still in it.
+    `alreadyLogged` is finished today, which is narrower than went today. Only
+    Finish writes `completedAt`. End keeps every set and leaves the session
+    open, so a workout she stopped partway is not this: it is `started`, and
+    the main button reads "Continue workout" for it.
 
-    A session with sets still unlogged is partway. The way back in is to carry
-    on, not to add.
+    A finished day can still have sets on the card, because rebuilding it with
+    "Something's different today" keeps it finished and adds the new lifts.
+    That is `partway`, and it must not say "Logged" and "That is the whole job"
+    over lifts nobody has touched. The way back in is to carry on, not to add.
   */
   const setsLeftToday = alreadyLogged
     ? (sessions.find((s) => s.date === today)?.exercises ?? []).reduce(
@@ -698,8 +706,7 @@ export default function Today({
           ))}
         </ul>
         <p className="sr-only">
-          {count(done.filter((s) => week.some((d) => d.iso === s.date)).length, "session")} logged this
-          week.
+          {count(week.filter((d) => d.trained).length, "session")} logged this week.
         </p>
       </section>
 

@@ -1,3 +1,4 @@
+import { attended } from "./attendance";
 import { allExercises, byId } from "./exercises";
 import { templateOf, defaultTemplates, type TemplateId } from "./templates";
 import type { Equipment, Exercise, Goal, Level, Muscle, PlannedExercise, Routine, Session, RestPref } from "./types";
@@ -223,9 +224,9 @@ export function generateRoutine(
  * completed set of this lift in it. What is dropped is emptiness, not
  * unfinished-ness.
  *
- * `completedAt` still means what it meant everywhere it is read elsewhere.
- * A streak, the sessions count and the "that is the whole job" line are about
- * finishing a workout; this is about what she lifted.
+ * `completedAt` still means finished, and the "that is the whole job" line is
+ * about finishing a workout. The streak, the calendar and the sessions count
+ * are about turning up, which is `attended`; this is about what she lifted.
  */
 export function historyFor(sessions: Session[], exerciseId: string) {
   // Copied before sorting. `filter` used to hand this a fresh array; without
@@ -341,12 +342,14 @@ export function personalRecord(sessions: Session[], exerciseId: string): number 
 }
 
 /**
- * Consecutive-week streak: a week counts if at least one session was completed.
- * Weeks, not days, because a 4-day-a-week lifter should never see a broken
- * streak for resting on Tuesday. The deck's whole thesis is that guilt loses.
+ * Consecutive-week streak: a week counts if she went at least once in it,
+ * finished or not (`attended`). Weeks, not days, because a 4-day-a-week lifter
+ * should never see a broken streak for resting on Tuesday. The deck's whole
+ * thesis is that guilt loses, and a week she trained in but stopped early is
+ * not one to take off her.
  */
 export function streakWeeks(sessions: Session[], today = new Date()): number {
-  const done = sessions.filter((s) => s.completedAt);
+  const done = sessions.filter(attended);
   if (done.length === 0) return 0;
   const weekOf = (d: Date) => {
     const x = new Date(d);
