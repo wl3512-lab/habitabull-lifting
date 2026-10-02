@@ -468,8 +468,29 @@ export default function Page() {
     setView("today");
   }
 
-  function keepWorkout(w: SavedWorkout) {
-    setState((s) => ({ ...s, workouts: saveWorkout(s.workouts, w) }));
+  /*
+    Saving a workout from the editor commits the day it was saved from too.
+
+    The workout used to be committed at once while the day it came from only
+    changed in the editor's draft, so saving "Legs and abs" and then pressing
+    Cancel left the workout in her list and Monday still a Leg day: two
+    different answers to "did that save?". One commit now: the workout, the
+    day's name and link, and every day already on that workout. The rest of
+    the draft still waits for Save the week. AfterWorkout passes no day.
+  */
+  function keepWorkout(w: SavedWorkout, day?: number) {
+    setState((s) => {
+      const workouts = saveWorkout(s.workouts, w);
+      if (day === undefined || !s.profile) return { ...s, workouts };
+      // saveWorkout keeps the existing id when the name is already hers.
+      const kept = workouts.find((x) => x.name.toLowerCase() === w.name.toLowerCase()) ?? w;
+      const routines = s.routines.map((r) =>
+        r.day === day || r.workoutId === kept.id
+          ? { ...r, workoutId: kept.id, label: kept.name, exercises: kept.exercises.map((e) => ({ ...e })) }
+          : r
+      );
+      return applyPlan({ ...s, workouts }, routines, s.profile.level, today);
+    });
   }
 
   function dropWorkout(id: string) {

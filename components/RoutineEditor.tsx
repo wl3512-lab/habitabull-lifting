@@ -71,7 +71,8 @@ export default function RoutineEditor({
    * plan, and cancelling an edit to Wednesday should not throw away the workout
    * she saved while she was in here.
    */
-  onSaveWorkout?: (w: SavedWorkout) => void;
+  /** With the weekday it was saved from, so that day's name and link commit with it. */
+  onSaveWorkout?: (w: SavedWorkout, day?: number) => void;
   onRemoveWorkout?: (id: string) => void;
   /** Renamed in place: same workout, new name, on every day it is on. Committed straight away, like saving one. */
   onRenameWorkout?: (id: string, name: string) => void;
@@ -504,7 +505,7 @@ export default function RoutineEditor({
           : r
       )
     );
-    onSaveWorkout(made);
+    onSaveWorkout(made, routine.day);
     setNaming(false);
     setWorkoutName("");
     setSaidSo(taken ? `Updated ${name}.` : `Saved as ${name}. It is in your workouts now.`);
