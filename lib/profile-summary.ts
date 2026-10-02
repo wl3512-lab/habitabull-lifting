@@ -59,10 +59,18 @@ export function equipmentLine(kit: Equipment[]): string {
   return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
 }
 
-export function scheduleLine(trainingDays: number[], anchors?: Anchor[]): string {
-  const days = `${count(new Set(trainingDays).size, "day")} a week`;
-  if (!anchors?.length) return days;
-  return `${days} · ${anchors.map((a) => anchorOf(a).label).join(", ")}`;
+/*
+  The schedule is the plan's heading rather than a row under it: "3 days a
+  week" is what the days below add up to. So it comes in two parts, the
+  heading and, when she has said when, the time of day under it.
+*/
+export function scheduleTitle(trainingDays: number[]): string {
+  return `${count(new Set(trainingDays).size, "day")} a week`;
+}
+
+export function scheduleWhen(anchors?: Anchor[]): string | null {
+  if (!anchors?.length) return null;
+  return anchors.map((a) => anchorOf(a).label).join(", ");
 }
 
 /**

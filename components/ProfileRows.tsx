@@ -127,6 +127,39 @@ export function LinkRow({
 }
 
 /**
+ * The top of the plan card: how many days a week, which is what the days under
+ * it add up to, so it is drawn as their heading and not as one more row. Same
+ * shape as the month on Crew and the goal on Today: the figure as a statement,
+ * Change at the top right.
+ */
+export function PlanHeader({
+  title,
+  detail,
+  onChange,
+}: {
+  title: string;
+  detail?: string | null;
+  onChange: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 p-[18px]">
+      <div className="min-w-0">
+        <p className="statement text-title text-fg">{title}</p>
+        {detail && <p className="mt-1.5 text-body text-dim">{detail}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={onChange}
+        aria-label="Change your schedule"
+        className="head tap -mt-0.5 shrink-0 text-body text-cyan transition-opacity hover:opacity-70"
+      >
+        Change
+      </button>
+    </div>
+  );
+}
+
+/**
  * One day of the plan.
  *
  * Not a label and a value like the rows around it. The workout is what the row

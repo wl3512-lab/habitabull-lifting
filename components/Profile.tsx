@@ -5,7 +5,7 @@ import BodyWeight from "./BodyWeight";
 import PlaylistRow from "./PlaylistRow";
 import YourData from "./YourData";
 import Stepper from "./Stepper";
-import { ExpandRow, LinkRow, PlanRow, RowGroup, SwitchRow } from "./ProfileRows";
+import { ExpandRow, LinkRow, PlanHeader, PlanRow, RowGroup, SwitchRow } from "./ProfileRows";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { count } from "@/lib/plural";
@@ -17,7 +17,8 @@ import {
   EQUIPMENT_LABELS,
   levelLabel,
   LEVELS,
-  scheduleLine,
+  scheduleTitle,
+  scheduleWhen,
   weighInLine,
 } from "@/lib/profile-summary";
 import type { AppState, Profile as ProfileT } from "@/lib/types";
@@ -178,6 +179,13 @@ export default function Profile({
         {routines.length === 0 ? (
           <LinkRow label="Set up your week" onClick={onEditWeek} />
         ) : (
+          <PlanHeader
+            title={scheduleTitle(profile.trainingDays)}
+            detail={scheduleWhen(profile.anchors)}
+            onChange={onEditWeek}
+          />
+        )}
+        {routines.length > 0 &&
           routines.map((r) => (
             <PlanRow
               key={`${r.day}-${r.label}`}
@@ -187,8 +195,7 @@ export default function Profile({
               today={r.day === weekday}
               onClick={() => onEditPlan(r.day)}
             />
-          ))
-        )}
+          ))}
         {saved.length > 0 && (
           <ExpandRow
             label="Saved workouts"
@@ -221,13 +228,6 @@ export default function Profile({
               Put one on a day
             </button>
           </ExpandRow>
-        )}
-        {routines.length > 0 && (
-          <LinkRow
-            label="Schedule"
-            value={scheduleLine(profile.trainingDays, profile.anchors)}
-            onClick={onEditWeek}
-          />
         )}
       </RowGroup>
 
