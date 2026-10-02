@@ -488,8 +488,9 @@ body {
   an identity matrix rather than to `none` — which still makes the element a
   containing block for any `position: fixed` inside it, permanently, after the
   animation is long over. A screen wrapped in this and holding a full-screen
-  overlay (the calendar's progress-photo lightbox) would find that overlay
-  pinned to the wrapper instead of the viewport, and scrolling away with it.
+  overlay (the calendar's progress-photo lightbox, before it became a page)
+  would find that overlay pinned to the wrapper instead of the viewport, and
+  scrolling away with it.
 
   `backwards` holds the *first* keyframe through any delay and then hands the
   element back to its own styles, which is where it was going anyway. Identical
