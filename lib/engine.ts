@@ -504,6 +504,10 @@ export function mergeDayLibrary(
 ): Record<string, PlannedExercise[]> {
   const next = { ...library };
   for (const r of routines) {
+    // A day that is one of her saved workouts is that workout, not her leg day.
+    // Without this, saving Monday as "Legs and abs" made it the lineup every
+    // other Leg day came back as, still called Leg day.
+    if (r.workoutId) continue;
     if (r.template && r.template !== "full-body" && r.exercises.length) {
       next[r.template] = r.exercises;
     }

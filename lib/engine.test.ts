@@ -676,6 +676,12 @@ describe("day library (per day-type memory)", () => {
   it("keeps the most recent version of a day type", () => {
     expect(mergeDayLibrary({}, [leg, legB]).legs).toEqual(legB.exercises);
   });
+  it("does not let a saved workout become the day type's lineup", () => {
+    // Monday saved as "Legs and abs" is her workout, not her leg day.
+    const custom: Routine = { ...legB, label: "Legs and abs", workoutId: "own-legs-and-abs" };
+    expect(mergeDayLibrary({ legs: leg.exercises }, [custom]).legs).toEqual(leg.exercises);
+    expect(mergeDayLibrary({}, [custom])).toEqual({});
+  });
 
   it("overlays the saved day type onto a freshly generated day", () => {
     const fresh: Routine = { day: 6, label: "Leg day", template: "legs",

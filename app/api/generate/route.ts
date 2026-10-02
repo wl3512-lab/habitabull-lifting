@@ -118,6 +118,24 @@ Write "why" in second person, plainly, about what the movement is like. Never
 mention sets, reps, weights or numbers. Never invent an exercise.`;
 }
 
+const NAME_SYSTEM = `A gym-goer's workout used to be one day type and now has lifts from another muscle group in it. You are given the old day type and the lifts.
+
+Name the workout in two to four plain words, the way a person writes it in their own notes. Examples: "Legs and abs", "Push and core", "Back and biceps".
+
+Return ONLY JSON, no prose, no markdown fence:
+{"name": "<the name>"}
+
+No numbers, no emoji, no hype words, no exclamation marks.`;
+
+/** A name the model wrote, or null if it is not a few plain words. */
+function cleanWorkoutName(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const name = v.replace(/["\u201c\u201d]/g, "").replace(/\s+/g, " ").trim();
+  if (name.length < 3 || name.length > 30) return null;
+  if (!/^[A-Za-z][A-Za-z &'+-]*$/.test(name)) return null;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 /**
  * "Build me a week."
  *
@@ -218,6 +236,7 @@ export async function POST(request: Request) {
   let muscles: Muscle[] = [];
   let equipment: Equipment[] = [];
   let exclude: string[] = [];
+  let lifts: string[] = [];
   let bodyCount: unknown = 3;
   try {
     const body = await request.json();
@@ -230,6 +249,12 @@ export async function POST(request: Request) {
     const cap = body?.intent === "import" ? 2400 : 500;
     text = typeof body?.text === "string" ? body.text.slice(0, cap) : "";
     if (body?.intent === "availability") intent = "availability";
+    if (body?.intent === "name") {
+      intent = "name";
+      lifts = Array.isArray(body?.lifts)
+        ? body.lifts.filter((x: unknown) => typeof x === "string").map((x: string) => x.slice(0, 40)).slice(0, 12)
+        : [];
+    }
     if (body?.intent === "pick") {
       intent = "pick";
       const known: readonly string[] = MUSCLES;
@@ -359,6 +384,41 @@ export async function POST(request: Request) {
 
       const why = typeof raw?.why === "string" ? raw.why.replace(/\s+/g, " ").trim().slice(0, 120) : "";
       return NextResponse.json({ templates, why: /\d/.test(why) ? null : why || null, source: "ai" });
+    } catch {
+      return local();
+    }
+  }
+
+  /*
+    "What should this workout be called?"
+
+    Asked when a day grows past its type, a leg day with an ab lift on it. The
+    screen already has a name ready ("Legs and abs") and shows it straight away;
+    this is the model's go at a better one. It only ever returns a few plain
+    words, checked here: no numbers, no emoji, nothing longer than a chip can
+    hold. Anything else comes back as null and the screen keeps its own name.
+  */
+  if (intent === "name") {
+    const local = () => NextResponse.json({ name: null, source: "local" });
+    if (!text.trim() || !lifts.length) return local();
+    try {
+      const res = await fetch(PROXY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: MODEL,
+          input: {
+            prompt: `${text.trim()}. Lifts: ${lifts.join(", ")}`,
+            system_prompt: NAME_SYSTEM,
+            max_completion_tokens: 40,
+          },
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return local();
+      const raw = extractJson(readOutput(await res.json())) as Record<string, unknown> | null;
+      const name = cleanWorkoutName(raw?.name);
+      return name ? NextResponse.json({ name, source: "ai" }) : local();
     } catch {
       return local();
     }

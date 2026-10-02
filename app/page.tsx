@@ -39,7 +39,7 @@ import { finishSession } from "@/lib/session-memory";
 import { applyPlan } from "@/lib/plan";
 import { enabled, publishPlan, pushCheckins } from "@/lib/cloud";
 import { setCustomExercises } from "@/lib/exercises";
-import { removeWorkout, saveWorkout, syncWorkouts, withSharedWorkout } from "@/lib/workouts";
+import { relabel, removeWorkout, renameWorkout, saveWorkout, syncWorkouts, withSharedWorkout } from "@/lib/workouts";
 import { challengeFor } from "@/lib/crew";
 import { launchPlaylist } from "@/lib/spotify";
 import { greetingMood } from "@/lib/voice";
@@ -471,6 +471,17 @@ export default function Page() {
     setState((s) => ({ ...s, workouts: removeWorkout(s.workouts, id) }));
   }
 
+  // A rename is committed at once, like saving one, and reaches the days it is
+  // on in the saved week too, so cancelling the editor afterwards cannot leave
+  // Monday under the old name.
+  function renameOwn(id: string, name: string) {
+    setState((s) => ({
+      ...s,
+      workouts: renameWorkout(s.workouts, id, name),
+      routines: relabel(s.routines, id, name),
+    }));
+  }
+
   async function shareWorkoutWithCrew(day: SharedDay): Promise<boolean> {
     const week = state.profile?.shareWeek === false ? [] : copyableWeek(state.routines);
     const res = await publishPlan(withSharedWorkout(week, day));
@@ -593,6 +604,7 @@ export default function Page() {
         workouts={state.workouts}
         onSaveWorkout={keepWorkout}
         onRemoveWorkout={dropWorkout}
+        onRenameWorkout={renameOwn}
         onAddCustom={(e) => {
           /*
             The registry is filled here, not left to `save`. It is a module

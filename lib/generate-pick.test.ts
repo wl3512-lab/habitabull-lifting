@@ -167,6 +167,39 @@ describe("asking among the day's muscles", () => {
   });
 });
 
+describe("naming a day that grew past its type", () => {
+  const name = (text = "Leg day", lifts: unknown = ["Back Squat", "Ab Crunch Machine"]) =>
+    POST(
+      new Request("https://app.test/api/generate", {
+        method: "POST",
+        body: JSON.stringify({ intent: "name", text, lifts }),
+      })
+    );
+
+  it("passes a few plain words, capitalised", async () => {
+    reply = { name: "legs and abs" };
+    expect(await (await name()).json()).toEqual({ name: "Legs and abs", source: "ai" });
+  });
+
+  it("drops a name with numbers, emoji or too many words", async () => {
+    for (const bad of ["Leg day 2", "Legs 💪 abs", "The ultimate lower body and core destroyer session", ""]) {
+      reply = { name: bad };
+      expect((await (await name()).json()).name).toBeNull();
+    }
+  });
+
+  it("survives junk", async () => {
+    reply = "not json";
+    expect((await (await name()).json()).source).toBe("local");
+  });
+
+  it("does not call the model with nothing to name", async () => {
+    await name("Leg day", []);
+    await name("   ");
+    expect(prompts).toHaveLength(0);
+  });
+});
+
 describe("building a week", () => {
   const week = (text: string, count = 3) =>
     POST(

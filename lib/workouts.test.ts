@@ -3,8 +3,11 @@ import {
   cleanName,
   fromSession,
   makeWorkout,
+  nameClash,
   placeOn,
+  relabel,
   removeWorkout,
+  renameWorkout,
   saneWorkouts,
   shareableFromSession,
   sameLineup,
@@ -467,5 +470,34 @@ describe("placeOn", () => {
     const w = makeWorkout("Leg day", [{ exerciseId: "back-squat", sets: 3, reps: 8, weight: 100 }]);
     const week: Routine[] = [{ day: 2, label: "Tuesday", exercises: [] }];
     expect(placeOn(week, 2, w)[0].workoutId).toBe(w.id);
+  });
+});
+
+describe("renaming a saved workout", () => {
+  const legs = { ...makeWorkout("Leg day", [{ exerciseId: "back-squat", sets: 3, reps: 8, weight: 0 }], "legs"), id: "own-legs" };
+  const push = { ...makeWorkout("Push", [{ exerciseId: "bench-press", sets: 3, reps: 8, weight: 0 }], "push"), id: "own-push" };
+
+  it("keeps the id, the lifts and the place in the list", () => {
+    const out = renameWorkout([push, legs], "own-legs", "  Legs   and abs ");
+    expect(out.map((w) => w.id)).toEqual(["own-push", "own-legs"]);
+    expect(out[1].name).toBe("Legs and abs");
+    expect(out[1].exercises).toEqual(legs.exercises);
+  });
+
+  it("refuses a name another workout already has, and an empty one", () => {
+    expect(nameClash([push, legs], "push", "own-legs")?.id).toBe("own-push");
+    expect(nameClash([push, legs], "Leg day", "own-legs")).toBeUndefined();
+    expect(renameWorkout([push, legs], "own-legs", "PUSH")).toEqual([push, legs]);
+    expect(renameWorkout([push, legs], "own-legs", "   ")).toEqual([push, legs]);
+  });
+
+  it("renames every day the workout is on and no other", () => {
+    const week: Routine[] = [
+      { day: 1, label: "Leg day", template: "legs", exercises: legs.exercises, workoutId: "own-legs" },
+      { day: 4, label: "Leg day", template: "legs", exercises: legs.exercises },
+    ];
+    const out = relabel(week, "own-legs", "Legs and abs");
+    expect(out[0].label).toBe("Legs and abs");
+    expect(out[1].label).toBe("Leg day");
   });
 });

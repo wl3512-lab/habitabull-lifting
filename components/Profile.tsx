@@ -205,7 +205,8 @@ export default function Profile({
           >
             <div className="flex flex-col gap-2.5">
               {saved.map((w) => {
-                const on = routines.filter((r) => r.label === w.name).map((r) => SHORT_DAYS[r.day]);
+                // By the link, not the name: a generated "Leg day" is not her saved one.
+                const on = routines.filter((r) => r.workoutId === w.id).map((r) => SHORT_DAYS[r.day]);
                 return (
                   <Card key={w.id} className="bg-raise/40 p-3.5">
                     <div className="flex items-baseline justify-between gap-3">
