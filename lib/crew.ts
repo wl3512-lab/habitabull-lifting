@@ -1,3 +1,4 @@
+import { attended } from "./attendance";
 import type { Challenge, Profile, Session } from "./types";
 
 /**
@@ -48,9 +49,12 @@ export function challengeFor(
   };
 }
 
-/** Completed sessions inside the challenge's month. */
+/**
+ * Days she went inside the challenge's month. The target is showing up, so a
+ * session she stopped partway counts the same as one she finished.
+ */
 export function challengeDone(sessions: Session[], challenge: Challenge): number {
-  return sessions.filter((s) => s.completedAt && s.date.startsWith(challenge.month)).length;
+  return sessions.filter((s) => attended(s) && s.date.startsWith(challenge.month)).length;
 }
 
 /** 0-100, capped, so a strong month never renders past the end of the bar. */

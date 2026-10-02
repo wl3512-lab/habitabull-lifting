@@ -36,6 +36,7 @@ import {
   rebuildDay,
 } from "@/lib/engine";
 import { finishSession } from "@/lib/session-memory";
+import { attended, checkinDates } from "@/lib/attendance";
 import { applyPlan } from "@/lib/plan";
 import { enabled, publishPlan, pushCheckins } from "@/lib/cloud";
 import { setCustomExercises } from "@/lib/exercises";
@@ -175,8 +176,9 @@ export default function Page() {
 
   /*
     Tell the crew which days she trained — the dates, and nothing else. It runs
-    on the completed count rather than on every keystroke of a live session, so
-    a workout in progress is nobody's business until it is finished.
+    on the count of those days rather than on every keystroke of a live session,
+    so a workout in progress is nobody's business until it is finished. A day
+    she stopped partway is told once the date turns (see `checkinDates`).
   */
   /*
     Publish the week for the crew to copy. It carries the day labels and the
@@ -195,14 +197,13 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, planKey, state.profile?.shareWeek]);
 
-  const completed = state.sessions.filter((s) => s.completedAt).length;
+  const checkins = checkinDates(state.sessions, today);
+  const checkedIn = checkins.length;
   useEffect(() => {
     if (!ready || !enabled()) return;
-    void pushCheckins(
-      state.sessions.filter((s) => s.completedAt).map((s) => s.date)
-    );
+    void pushCheckins(checkins);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, completed]);
+  }, [ready, checkedIn]);
 
   if (!ready) return <Booting />;
 
@@ -289,7 +290,7 @@ export default function Page() {
    */
   function comebackNow(): boolean {
     const lastDone = state.sessions
-      .filter((x) => x.completedAt && x.date < today)
+      .filter((x) => attended(x) && x.date < today)
       .map((x) => x.date)
       .sort()
       .pop();

@@ -5,6 +5,7 @@ import Streak from "./Streak";
 import { Pill, Stat } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { personalRecord, streakWeeks } from "@/lib/engine";
+import { attended } from "@/lib/attendance";
 import { line } from "@/lib/voice";
 import type { Session } from "@/lib/types";
 
@@ -80,7 +81,8 @@ export default function Finished({
     .sort((a, b) => b.by - a.by)[0];
 
   const weeks = streakWeeks(sessions);
-  const total = sessions.filter((s) => s.completedAt).length;
+  // Days she went, so this agrees with the calendar and Progress.
+  const total = sessions.filter(attended).length;
 
   if (best) {
     return (

@@ -1,9 +1,12 @@
+import { attended } from "./attendance";
 import type { Session } from "./types";
 
 /**
  * Calendar maths, kept pure and away from the component so it can be tested
  * without a DOM. Everything here is local-time: a 11pm workout belongs to that
  * day, not to tomorrow in UTC.
+ *
+ * A day counts as trained when she went (`attended`), finished or not.
  */
 
 export interface MonthCell {
@@ -58,7 +61,7 @@ export function weekStrip(
   trainingDays: number[],
   today: string
 ): WeekDay[] {
-  const done = sessions.filter((s) => s.completedAt);
+  const done = sessions.filter(attended);
   const now = new Date(today + "T00:00:00");
   const start = new Date(now);
   start.setDate(now.getDate() - now.getDay());
@@ -83,7 +86,7 @@ export function weekStrip(
 /** Dates that were the first session back after a break of `gapDays` or more. */
 export function comebackDates(sessions: Session[], gapDays = 7): Set<string> {
   const done = sessions
-    .filter((s) => s.completedAt)
+    .filter(attended)
     .map((s) => s.date)
     .sort();
   const out = new Set<string>();
@@ -97,7 +100,7 @@ export function comebackDates(sessions: Session[], gapDays = 7): Set<string> {
 /** The biggest break she has actually come back from. Zero if she never has. */
 export function longestComebackGap(sessions: Session[]): number {
   const done = sessions
-    .filter((s) => s.completedAt)
+    .filter(attended)
     .map((s) => s.date)
     .sort();
   let longest = 0;
@@ -119,7 +122,7 @@ export function monthMatrix(
   photoDates: string[] = [],
   today = new Date()
 ): MonthCell[][] {
-  const trained = new Set(sessions.filter((s) => s.completedAt).map((s) => s.date));
+  const trained = new Set(sessions.filter(attended).map((s) => s.date));
   const comebacks = comebackDates(sessions);
   const photos = new Set(photoDates);
   const todayIso = iso(today);
@@ -162,10 +165,10 @@ export function monthMatrix(
   return rows;
 }
 
-/** Sessions completed in a given month, for the year view and the month header. */
+/** Days she went in a given month, for the year view and the month header. */
 export function sessionsInMonth(sessions: Session[], year: number, month: number): number {
   const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
-  return sessions.filter((s) => s.completedAt && s.date.startsWith(prefix)).length;
+  return sessions.filter((s) => attended(s) && s.date.startsWith(prefix)).length;
 }
 
 /** Twelve counts, January to December, for the year view. */

@@ -85,7 +85,7 @@ export default function Arrival({
   /*
     Seven dots and nothing filled is not a rest day, it is a bad week, and
     drawing it slowly would make a ceremony of it. The beat only ever runs
-    after a completed session (see `arrivalMood`), but that session can be from
+    after a session she went to (see `arrivalMood`), but that session can be from
     last week — and on a Sunday or a Monday it usually is — so this is checked
     rather than assumed. With nothing banked the screen falls back to what it
     was before the dots existed, which is a screen that already worked.

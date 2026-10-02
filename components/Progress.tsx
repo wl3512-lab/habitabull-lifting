@@ -9,6 +9,7 @@ import { exerciseTrack } from "@/lib/progress";
 import type { AppState, Goal, Session } from "@/lib/types";
 import { count } from "@/lib/plural";
 import { isoDate } from "@/lib/calendar";
+import { attended } from "@/lib/attendance";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const WEEKS = 12;
@@ -36,8 +37,10 @@ export default function Progress({
   state: AppState;
   onImport: (s: AppState) => void;
 }) {
+  // Every day she went, finished or not. The grid is about showing up, and a
+  // session she stopped partway is a day she showed up.
   const done = sessions
-    .filter((s) => s.completedAt)
+    .filter(attended)
     .sort((a, b) => a.date.localeCompare(b.date));
   const trained = new Set(done.map((s) => s.date));
 
@@ -78,7 +81,8 @@ export default function Progress({
   const topDay = byDay.indexOf(Math.max(...byDay));
   const reliable = done.length >= 6 && byDay[topDay] >= 3;
 
-  // exercise id -> best completed set per session, oldest first
+  // exercise id -> best completed set per session, oldest first. The graphs
+  // are left as they were: `exerciseTrack` still reads finished sessions only.
   const tracks = new Map<string, { date: string; weight: number; reps: number }[]>();
   for (const id of new Set(done.flatMap(s => s.exercises.map(e => e.exerciseId)))) {
     const track = exerciseTrack(done, id);

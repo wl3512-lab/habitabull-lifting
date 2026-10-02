@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Pill } from "./ui";
 import { backupFilename, buildBackup, parseBackup } from "@/lib/backup";
 import { exportPhotos, importPhotos } from "@/lib/photos";
+import { attended } from "@/lib/attendance";
 import type { AppState } from "@/lib/types";
 
 /**
@@ -34,7 +35,8 @@ export default function YourData({
   const [confirming, setConfirming] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const sessions = state.sessions.filter((s) => s.completedAt).length;
+  // Days she went, the same count the calendar and Progress give.
+  const sessions = state.sessions.filter(attended).length;
 
   async function save() {
     setBusy("exporting");
@@ -73,7 +75,7 @@ export default function YourData({
       }
       const n = await importPhotos(parsed.photos);
       onImport(parsed.state);
-      const done = parsed.state.sessions.filter((s) => s.completedAt).length;
+      const done = parsed.state.sessions.filter(attended).length;
       setSaid(`Restored ${done} ${done === 1 ? "session" : "sessions"} and ${n} ${n === 1 ? "photo" : "photos"}.`);
     } catch {
       setSaid("That file could not be read.");

@@ -299,7 +299,7 @@ describe("rebuildDay", () => {
 describe("streakWeeks", () => {
   const today = new Date("2026-08-30T10:00:00");
 
-  it("is zero with no completed sessions", () => {
+  it("is zero with no sessions", () => {
     expect(streakWeeks([], today)).toBe(0);
   });
 
@@ -331,6 +331,23 @@ describe("streakWeeks", () => {
       session("2026-08-25", "plank", 3, 30, 0),
       session("2026-08-04", "plank", 3, 30, 0),
     ];
+    expect(streakWeeks(s, today)).toBe(1);
+  });
+
+  it("keeps a week she trained in but stopped early", () => {
+    // Ended, not finished: logged sets, no completedAt. The week still counts.
+    const ended: Session = { ...session("2026-08-18", "plank", 3, 30, 0), completedAt: undefined };
+    const s = [session("2026-08-25", "plank", 3, 30, 0), ended, session("2026-08-11", "plank", 3, 30, 0)];
+    expect(streakWeeks(s, today)).toBe(3);
+  });
+
+  it("does not count a week whose only session has nothing logged", () => {
+    const opened: Session = {
+      date: "2026-08-18",
+      label: "Test",
+      exercises: [{ exerciseId: "plank", sets: [{ weight: 0, reps: 30, done: false }] }],
+    };
+    const s = [session("2026-08-25", "plank", 3, 30, 0), opened, session("2026-08-11", "plank", 3, 30, 0)];
     expect(streakWeeks(s, today)).toBe(1);
   });
 });

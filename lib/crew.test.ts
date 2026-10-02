@@ -69,12 +69,29 @@ describe("challengeFor", () => {
 describe("challengeDone", () => {
   const c: Challenge = { month: "2026-09", target: 13 };
 
-  it("counts completed sessions inside the month only", () => {
+  it("counts the days she went inside the month only", () => {
     const s = [session("2026-09-01"), session("2026-09-30"), session("2026-08-31")];
     expect(challengeDone(s, c)).toBe(2);
   });
 
-  it("ignores an unfinished draft", () => {
+  it("counts a day she stopped partway, because the target is showing up", () => {
+    const partway: Session = {
+      date: "2026-09-02",
+      label: "Test",
+      exercises: [
+        {
+          exerciseId: "back-squat",
+          sets: [
+            { weight: 135, reps: 5, done: true },
+            { weight: 135, reps: 5, done: false },
+          ],
+        },
+      ],
+    };
+    expect(challengeDone([partway], c)).toBe(1);
+  });
+
+  it("ignores a draft with nothing logged", () => {
     expect(challengeDone([session("2026-09-02", false)], c)).toBe(0);
   });
 

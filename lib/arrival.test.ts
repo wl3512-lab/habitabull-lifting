@@ -93,12 +93,34 @@ describe("arrivalMood", () => {
     expect(arrivalMood(away, THU, open)).toBe("return");
   });
 
-  it("ignores a session that was started but never finished", () => {
-    // An abandoned session is not a session she came back from.
+  it("ignores a session that was opened but has nothing logged", () => {
+    // Opening a session and putting the phone down is not a session she came
+    // back from.
     const abandoned = state({
       sessions: [session("2026-08-20"), session("2026-09-08", false)],
     });
     expect(arrivalMood(abandoned, WED, open)).toBe("return");
+  });
+
+  it("counts a session she stopped partway as having been there", () => {
+    // One set of deadlifts and End, on Monday. She went; Wednesday is not a
+    // comeback.
+    const partway: Session = {
+      ...session("2026-09-07", false),
+      exercises: [
+        {
+          exerciseId: "deadlift",
+          sets: [
+            { weight: 185, reps: 8, done: true },
+            { weight: 185, reps: 8, done: false },
+          ],
+        },
+      ],
+    };
+    const s = state({ sessions: [session("2026-08-20"), partway] });
+    expect(arrivalMood(s, WED, open)).toBe("greet");
+    // And a rest day after it is a rest day, not silence.
+    expect(arrivalMood(state({ sessions: [partway] }), THU, open)).toBe("rest");
   });
 
   it("does not count today's own session when judging a gap", () => {
