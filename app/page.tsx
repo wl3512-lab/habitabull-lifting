@@ -9,6 +9,7 @@ import Crew from "@/components/Crew";
 import ExerciseInfo from "@/components/ExerciseInfo";
 import Finished from "@/components/Finished";
 import GoalScreen from "@/components/GoalScreen";
+import LoadTheBar from "@/components/LoadTheBar";
 import LogSession from "@/components/LogSession";
 import Onboarding from "@/components/Onboarding";
 import ProfileScreen from "@/components/Profile";
@@ -76,7 +77,7 @@ function copyableWeek(routines: Routine[]): SharedDay[] {
   }));
 }
 
-type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "comeback" | "stopped" | "import" | "pick";
+type View = "copy" | "today" | "log" | "done" | "progress" | "goal" | "exercise" | "calendar" | "crew" | "week" | "routine" | "after" | "day" | "profile" | "plates" | "comeback" | "stopped" | "import" | "pick";
 
 export default function Page() {
   const [state, setState] = useState<AppState>(EMPTY);
@@ -810,8 +811,20 @@ export default function Page() {
           setView("routine");
         }}
         onEditWeek={() => setView("week")}
+        onOpenPlates={() => setView("plates")}
       />,
       "profile"
+    );
+  }
+
+  // Full screen, like the week editor: it is a mode of Profile, not a tab.
+  if (view === "plates" && profile) {
+    return (
+      <LoadTheBar
+        profile={profile}
+        onProfile={(p: Profile) => setState((s) => ({ ...s, profile: p }))}
+        onBack={() => setView("profile")}
+      />
     );
   }
 

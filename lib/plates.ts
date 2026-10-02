@@ -115,6 +115,19 @@ export function offersPlates(
 }
 
 /**
+ * Her answer, written down: the same yes and no the first barbell lift records.
+ *
+ * Yes starts her on plates, since she has just asked for them. No leaves
+ * `weightInput` as it was, because `loadTheBar` already decides, and keeping
+ * it means a later yes is the same yes rather than a second preference.
+ */
+export function withLoadTheBar(profile: Profile, on: boolean): Profile {
+  return on
+    ? { ...profile, loadTheBar: true, weightInput: "plates" }
+    : { ...profile, loadTheBar: false };
+}
+
+/**
  * Two decimal places, then trimmed.
  *
  * 2.5 plates make thirds of a pound out of floating point — 47.5 - 45 lands on

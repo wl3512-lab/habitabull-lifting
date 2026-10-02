@@ -5,11 +5,10 @@ import BodyWeight from "./BodyWeight";
 import PlaylistRow from "./PlaylistRow";
 import YourData from "./YourData";
 import Stepper from "./Stepper";
-import { ExpandRow, LinkRow, PlanHeader, PlanRow, RowGroup, SwitchRow } from "./ProfileRows";
+import { ExpandRow, LinkRow, PlanHeader, PlanRow, RowGroup } from "./ProfileRows";
 import { Card, Pill } from "./ui";
 import { nameOf } from "@/lib/exercises";
 import { count } from "@/lib/plural";
-import { offersPlates } from "@/lib/plates";
 import { REST_MAX, REST_MIN, REST_STEP, restSeconds, SHORT_DAYS } from "@/lib/engine";
 import {
   dayDetail,
@@ -17,13 +16,14 @@ import {
   EQUIPMENT_LABELS,
   levelLabel,
   LEVELS,
+  loadTheBarLine,
   scheduleTitle,
   scheduleWhen,
   weighInLine,
 } from "@/lib/profile-summary";
 import type { AppState, Profile as ProfileT } from "@/lib/types";
 
-/** The rows that open in place. Links and the switch are not in here. */
+/** The rows that open in place. Links are not in here. */
 export type ProfileRowId = "weight" | "saved" | "level" | "kit" | "rest" | "playlist" | "data";
 
 /**
@@ -45,6 +45,7 @@ export default function Profile({
   onImport,
   onEditPlan,
   onEditWeek,
+  onOpenPlates,
   initialOpen = null,
 }: {
   profile: ProfileT;
@@ -55,6 +56,8 @@ export default function Profile({
   onImport: (s: AppState) => void;
   onEditPlan: (day?: number) => void;
   onEditWeek: () => void;
+  /** Load the bar, which has a screen of its own so it can be tried first. */
+  onOpenPlates: () => void;
   /** Which row starts open. Only /frames uses it, to show one open. */
   initialOpen?: ProfileRowId | null;
 }) {
@@ -314,20 +317,12 @@ export default function Profile({
         </ExpandRow>
 
         {/*
-          A switch, not a pick between two. The question was never which way
-          she enters a weight; it is whether plates are offered at all. Off,
-          barbell sets show + and minus and nothing else. On, the switch sits
-          above the set as it always has. Turning it on starts her on plates,
-          since she has just asked for them.
+          Whether barbell lifts offer plates at all. It was a switch here, and
+          a switch asks her to decide about a control she may never have seen,
+          so it opens a screen where the loader can be tried first, with the
+          same switch under it.
         */}
-        <SwitchRow
-          label="Load the bar on barbell lifts"
-          hint="Tap plates onto the bar instead of typing the total."
-          on={offersPlates(profile) === true}
-          onChange={(on) =>
-            onProfile(on ? { ...profile, loadTheBar: true, weightInput: "plates" } : { ...profile, loadTheBar: false })
-          }
-        />
+        <LinkRow label="Load the bar" value={loadTheBarLine(profile)} onClick={onOpenPlates} />
 
         <ExpandRow
           label="Rest between sets"

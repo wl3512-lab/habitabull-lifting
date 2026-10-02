@@ -67,6 +67,7 @@ const SHOTS = [
   ["08", "08-progress"],
   ["08b", "08b-profile"],
   ["08c", "08c-profile-row-open", 545],
+  ["08d", "08d-load-the-bar"],
   ["11", "11-calendar"],
   ["17", "17-day-detail"],
   ["17b", "17b-day-detail-crew"],

@@ -8,7 +8,9 @@ import {
   PLATES_LB,
   removePlate,
   totalWeight,
+  withLoadTheBar,
 } from "./plates";
+import type { Profile } from "./types";
 
 describe("totalWeight", () => {
   it("counts both sides, which is the whole point", () => {
@@ -156,5 +158,44 @@ describe("offering plates", () => {
 
   it("is not asked yet when nothing says otherwise", () => {
     expect(offersPlates({})).toBeUndefined();
+  });
+});
+
+/*
+  The page in Profile writes the same answer the first barbell lift does, so
+  turning it on there and saying yes at the rack cannot mean different things.
+*/
+describe("answering load the bar", () => {
+  const her: Profile = {
+    name: "QA",
+    level: "new",
+    equipment: ["barbell"],
+    trainingDays: [1],
+    createdAt: "2026-09-28T12:00:00Z",
+    barLb: 35,
+  };
+
+  it("starts her on plates when she says yes", () => {
+    const on = withLoadTheBar(her, true);
+    expect(on.loadTheBar).toBe(true);
+    expect(on.weightInput).toBe("plates");
+    expect(offersPlates(on)).toBe(true);
+  });
+
+  it("is a yes even after she chose + and − on a set", () => {
+    expect(withLoadTheBar({ ...her, loadTheBar: false, weightInput: "steppers" }, true).weightInput).toBe("plates");
+  });
+
+  it("says no without forgetting how she entered weights", () => {
+    const off = withLoadTheBar({ ...her, loadTheBar: true, weightInput: "plates" }, false);
+    expect(off.loadTheBar).toBe(false);
+    expect(off.weightInput).toBe("plates");
+    expect(offersPlates(off)).toBe(false);
+  });
+
+  it("leaves the rest of her profile alone, the bar included", () => {
+    expect(withLoadTheBar(her, true)).toMatchObject({ name: "QA", barLb: 35 });
+    expect(withLoadTheBar(her, false)).toMatchObject({ name: "QA", barLb: 35 });
+    expect(her.loadTheBar).toBeUndefined();
   });
 });
